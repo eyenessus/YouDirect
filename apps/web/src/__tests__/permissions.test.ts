@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import type { MeResponse } from '@frotaone/contracts';
+import type { MeResponse } from '@yudirect/contracts';
 import { useAuthStore } from '@/stores/auth';
 import { navigation } from '@/components/layout/navigation';
 

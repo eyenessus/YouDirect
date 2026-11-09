@@ -2,7 +2,7 @@
 import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Plus } from 'lucide-vue-next';
-import type { BankAccount, ExpenseCategory, Vehicle } from '@frotaone/contracts';
+import type { BankAccount, ExpenseCategory, Vehicle } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppCheckbox from '@/components/ui/AppCheckbox.vue';

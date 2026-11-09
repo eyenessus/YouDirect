@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { Notification, NotificationType } from '@frotaone/contracts';
+import type { Notification, NotificationType } from '@yudirect/contracts';
 import { api } from '@/lib/api';
 
 interface ListResponse {

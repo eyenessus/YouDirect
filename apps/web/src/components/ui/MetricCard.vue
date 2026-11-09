@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { formatSignedPercent } from '@frotaone/contracts';
+import { formatSignedPercent } from '@yudirect/contracts';
 
 const props = withDefaults(
   defineProps<{

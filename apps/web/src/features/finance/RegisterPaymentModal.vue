@@ -5,7 +5,7 @@ import {
   paymentMethodLabels,
   paymentMethods,
   type BankAccount,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import AppModal from '@/components/ui/AppModal.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppInput from '@/components/ui/AppInput.vue';

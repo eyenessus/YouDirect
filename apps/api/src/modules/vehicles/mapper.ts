@@ -1,5 +1,5 @@
 import type { ObjectId } from 'mongodb';
-import type { Vehicle } from '@frotaone/contracts';
+import type { Vehicle } from '@yudirect/contracts';
 import type { AppContext } from '../../context.js';
 import type { VehicleDoc } from '../../database/types.js';
 import { describeFiles } from '../../services/files.js';

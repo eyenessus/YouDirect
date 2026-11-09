@@ -8,7 +8,7 @@ import {
   vehicleStatusLabels,
   type MaintenanceVehicleCard,
   type VehicleStatus,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import SearchInput from '@/components/ui/SearchInput.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';

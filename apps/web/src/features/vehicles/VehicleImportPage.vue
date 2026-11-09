@@ -7,7 +7,7 @@ import {
   VEHICLE_IMPORT_MAX_ROWS,
   type VehicleImportPreview,
   type VehicleImportResult,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import { api, ApiRequestError, downloadFile } from '@/lib/api';

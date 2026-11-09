@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Eye, Pencil, Trash2 } from 'lucide-vue-next';
-import { driverStatusLabels, maskCpf, maskPhone, type Driver } from '@frotaone/contracts';
+import { driverStatusLabels, maskCpf, maskPhone, type Driver } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import DataTable, { type Column } from '@/components/ui/DataTable.vue';
 import SearchInput from '@/components/ui/SearchInput.vue';

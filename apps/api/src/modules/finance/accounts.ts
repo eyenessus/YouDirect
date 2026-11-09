@@ -11,7 +11,7 @@ import {
   type ExpenseCategory,
   type Payable,
   type Receivable,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import { conflict, notFound } from '../../common/errors.js';
 import {
   decodeCursor,

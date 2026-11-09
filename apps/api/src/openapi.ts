@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------ *
- * Documento OpenAPI 3.1 da API FrotaOne.
+ * Documento OpenAPI 3.1 da API YuDirect.
  * Mantido manualmente junto às rotas — `npm run openapi` exporta para
  * docs/openapi.json.
  * ------------------------------------------------------------------ */
@@ -44,10 +44,10 @@ export function openApiDocument(serverUrl: string) {
   return {
     openapi: '3.1.0',
     info: {
-      title: 'FrotaOne API',
+      title: 'YuDirect API',
       version: '1.0.0',
       description:
-        'API da plataforma FrotaOne (gestão de frota, locações, manutenções, vistorias e financeiro). ' +
+        'API da plataforma YuDirect (gestão de frota, locações, manutenções, vistorias e financeiro). ' +
         'Autenticação por sessão opaca em cookie HttpOnly. Todos os recursos são isolados por organização. ' +
         'Valores monetários são inteiros em centavos; datas de negócio usam o formato AAAA-MM-DD.',
     },
@@ -68,7 +68,7 @@ export function openApiDocument(serverUrl: string) {
     ],
     components: {
       securitySchemes: {
-        sessionCookie: { type: 'apiKey', in: 'cookie', name: 'frotaone_session' },
+        sessionCookie: { type: 'apiKey', in: 'cookie', name: 'yudirect_session' },
       },
       schemas: {
         ApiError: {

@@ -20,14 +20,14 @@ let sharedPromise: Promise<TestHarness> | null = null;
  * (transações habilitadas) e armazenamento local temporário.
  */
 export async function createHarness(): Promise<TestHarness> {
-  const storageDir = await mkdtemp(join(tmpdir(), 'frotaone-test-'));
+  const storageDir = await mkdtemp(join(tmpdir(), 'yudirect-test-'));
   resetEnvCache();
   const env = loadEnv({
     ...process.env,
     NODE_ENV: 'test',
     LOG_LEVEL: 'silent',
     MONGODB_URI: '',
-    MONGODB_DB: `frotaone_test_${Math.random().toString(36).slice(2, 8)}`,
+    MONGODB_DB: `yudirect_test_${Math.random().toString(36).slice(2, 8)}`,
     SESSION_SECRET: 'test-session-secret-at-least-16-chars',
     STORAGE_LOCAL_DIR: storageDir,
     JOBS_ENABLED: 'false',
@@ -68,7 +68,7 @@ export async function closeSharedHarness(): Promise<void> {
 export function sessionCookie(headers: Record<string, unknown>): string {
   const raw = headers['set-cookie'];
   const list = Array.isArray(raw) ? raw : [raw];
-  const cookie = list.find((c) => typeof c === 'string' && c.startsWith('frotaone_session='));
+  const cookie = list.find((c) => typeof c === 'string' && c.startsWith('yudirect_session='));
   if (!cookie) throw new Error('Cookie de sessão não retornado.');
   return String(cookie).split(';')[0]!;
 }

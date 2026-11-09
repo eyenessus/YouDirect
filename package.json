@@ -1,8 +1,8 @@
 {
-  "name": "frotaone",
+  "name": "yudirect",
   "private": true,
   "version": "1.0.0",
-  "description": "FrotaOne — plataforma SaaS de gestão de frotas e locadoras (reconstrução fiel das referências visuais).",
+  "description": "YuDirect — plataforma SaaS de gestão de frotas e locadoras (reconstrução fiel das referências visuais).",
   "workspaces": [
     "packages/*",
     "apps/*"
@@ -11,19 +11,19 @@
     "node": ">=20.11"
   },
   "scripts": {
-    "build": "npm run build -w @frotaone/contracts && npm run build -w @frotaone/api && npm run build -w @frotaone/web",
-    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @frotaone/api\" \"npm run dev -w @frotaone/web\"",
-    "dev:api": "npm run dev -w @frotaone/api",
-    "dev:web": "npm run dev -w @frotaone/web",
-    "seed": "npm run seed -w @frotaone/api",
-    "test": "npm run test -w @frotaone/contracts && npm run test -w @frotaone/api && npm run test -w @frotaone/web",
-    "test:api": "npm run test -w @frotaone/api",
-    "test:web": "npm run test -w @frotaone/web",
+    "build": "npm run build -w @yudirect/contracts && npm run build -w @yudirect/api && npm run build -w @yudirect/web",
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @yudirect/api\" \"npm run dev -w @yudirect/web\"",
+    "dev:api": "npm run dev -w @yudirect/api",
+    "dev:web": "npm run dev -w @yudirect/web",
+    "seed": "npm run seed -w @yudirect/api",
+    "test": "npm run test -w @yudirect/contracts && npm run test -w @yudirect/api && npm run test -w @yudirect/web",
+    "test:api": "npm run test -w @yudirect/api",
+    "test:web": "npm run test -w @yudirect/web",
     "test:e2e": "playwright test -c e2e/playwright.config.ts",
-    "typecheck": "npm run typecheck -w @frotaone/contracts && npm run typecheck -w @frotaone/api && npm run typecheck -w @frotaone/web",
+    "typecheck": "npm run typecheck -w @yudirect/contracts && npm run typecheck -w @yudirect/api && npm run typecheck -w @yudirect/web",
     "lint": "eslint . --ext .ts,.vue",
-    "openapi": "npm run openapi -w @frotaone/api",
-    "dev:demo": "concurrently -n api,web -c blue,green \"npm run dev:demo -w @frotaone/api\" \"npm run dev -w @frotaone/web\""
+    "openapi": "npm run openapi -w @yudirect/api",
+    "dev:demo": "concurrently -n api,web -c blue,green \"npm run dev:demo -w @yudirect/api\" \"npm run dev -w @yudirect/web\""
   },
   "devDependencies": {
     "@playwright/test": "1.49.1",

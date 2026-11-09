@@ -51,12 +51,12 @@ const expanded = computed(() => !sidebar.collapsed);
       <RouterLink
         to="/dashboard"
         class="flex min-w-0 items-center gap-3"
-        :aria-label="'FrotaOne — ir para o painel'"
+        :aria-label="'YuDirect — ir para o painel'"
       >
         <span class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-sidebar-active">
-          <img src="/brand/frotaone-mark-white.png" alt="" class="size-7 object-contain" />
+          <img src="/brand/yudirect-mark-white.png" alt="" class="size-7 object-contain" />
         </span>
-        <span v-if="expanded" class="truncate text-[22px] font-bold tracking-tight">FrotaOne</span>
+        <span v-if="expanded" class="truncate text-[22px] font-bold tracking-tight">YuDirect</span>
       </RouterLink>
       <button
         v-if="expanded"
@@ -161,7 +161,7 @@ const expanded = computed(() => !sidebar.collapsed);
         <PanelLeft class="size-5" />
       </button>
       <a
-        href="mailto:suporte@frotaone.com.br?subject=Reportar%20bug"
+        href="mailto:suporte@yudirect.com.br?subject=Reportar%20bug"
         class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[17px] text-white/85 transition-colors hover:bg-white/10"
         :class="expanded ? '' : 'justify-center px-0'"
         :title="expanded ? undefined : 'Reportar bug'"

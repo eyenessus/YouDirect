@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { formatCentsPlain } from '@frotaone/contracts';
+import { formatCentsPlain } from '@yudirect/contracts';
 
 /**
  * Campo monetário pt-BR. O valor trafega SEMPRE em centavos inteiros;

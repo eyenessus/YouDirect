@@ -9,7 +9,7 @@ import {
   formatSignedPercent,
   monthLabel,
   type FinanceDashboard,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import MetricCard from '@/components/ui/MetricCard.vue';
 import AppButton from '@/components/ui/AppButton.vue';

@@ -9,7 +9,7 @@ import {
   receivableStatusLabels,
   rentalStatusLabels,
   vehicleStatusLabels,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import { statusTone } from '@/lib/status';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import MetricCard from '@/components/ui/MetricCard.vue';

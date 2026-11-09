@@ -8,7 +8,7 @@ import {
   type Invitation,
   type Membership,
   type SubscriptionOverview,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import { conflict, notFound } from '../../common/errors.js';
 import { generateToken, sha256, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
@@ -130,8 +130,8 @@ export async function registerOrganizationRoutes(app: FastifyInstance): Promise<
       if (mailStatus.connected) {
         const result = await ctx.integrations.email.send(
           body.email,
-          `Convite para ${organization?.name ?? 'FrotaOne'}`,
-          `Olá, ${body.name}! Você foi convidado(a) para acessar o FrotaOne da ${
+          `Convite para ${organization?.name ?? 'YuDirect'}`,
+          `Olá, ${body.name}! Você foi convidado(a) para acessar o YuDirect da ${
             organization?.name ?? ''
           }. Acesse: ${acceptUrl} (válido por ${INVITE_TTL_DAYS} dias).`,
         );

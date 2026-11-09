@@ -1,4 +1,4 @@
-import type { ApiErrorCode } from '@frotaone/contracts';
+import type { ApiErrorCode } from '@yudirect/contracts';
 
 const statusByCode: Record<ApiErrorCode, number> = {
   BAD_REQUEST: 400,

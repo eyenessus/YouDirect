@@ -7,7 +7,7 @@ import {
   vehicleStatusLabels,
   type MaintenanceStatus,
   type MaintenanceType,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import {
   brandLogoDataUri,
   COLUMNS,
@@ -376,8 +376,8 @@ export function buildMaintenanceReportDefinition(
       title: `Manutenções ${data.vehicle.plate}`,
       author: data.organizationName,
       subject: 'Relatório de manutenções',
-      creator: 'FrotaOne',
-      producer: 'FrotaOne',
+      creator: 'YuDirect',
+      producer: 'YuDirect',
     },
     defaultStyle: { font: 'Roboto', fontSize: 8, color: PDF_COLORS.text, lineHeight: 1 },
     header: () => ({

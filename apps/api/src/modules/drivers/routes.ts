@@ -9,7 +9,7 @@ import {
   maskCpf,
   type Driver,
   type PostalCodeLookup,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import { badRequest, conflict, notFound } from '../../common/errors.js';
 import {
   decodeCursor,

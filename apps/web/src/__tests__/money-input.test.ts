@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { formatCentsBRL } from '@frotaone/contracts';
+import { formatCentsBRL } from '@yudirect/contracts';
 import CurrencyInput from '@/components/ui/CurrencyInput.vue';
 
 /**

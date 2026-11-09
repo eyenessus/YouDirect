@@ -8,7 +8,7 @@ import type {
   ReceivableStatus,
   RentalStatus,
   VehicleStatus,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import type { BadgeTone } from '@/components/ui/StatusBadge.vue';
 
 /**

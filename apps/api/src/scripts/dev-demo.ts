@@ -4,7 +4,7 @@
  * populado pelo seed — útil para demonstração, QA visual e E2E sem
  * depender de Docker. Os dados são descartados ao encerrar o processo.
  *
- *   npm run dev:demo -w @frotaone/api
+ *   npm run dev:demo -w @yudirect/api
  */
 import { buildApp } from '../app.js';
 import { buildContext } from '../context.js';
@@ -32,7 +32,7 @@ async function main() {
 
   console.log('');
   console.log('='.repeat(62));
-  console.log('  FrotaOne — ambiente de demonstração pronto');
+  console.log('  YuDirect — ambiente de demonstração pronto');
   console.log('='.repeat(62));
   console.log(`  API    : http://localhost:${env.PORT}/api/v1`);
   console.log(`  Web    : ${env.APP_URL}`);

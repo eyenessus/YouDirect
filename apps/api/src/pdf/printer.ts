@@ -63,11 +63,11 @@ export async function renderPdf(definition: TDocumentDefinitions): Promise<Buffe
 
 let logoCache: string | null = null;
 
-/** Logotipo FrotaOne em data URI (mesmo asset do PDF de referência). */
+/** Logotipo YuDirect em data URI (mesmo asset do PDF de referência). */
 export async function brandLogoDataUri(): Promise<string> {
   if (logoCache) return logoCache;
   const here = dirname(fileURLToPath(import.meta.url));
-  const file = join(here, '..', 'assets', 'frotaone-logo.png');
+  const file = join(here, '..', 'assets', 'yudirect-logo.png');
   const buffer = await readFile(file);
   logoCache = `data:image/png;base64,${buffer.toString('base64')}`;
   return logoCache;

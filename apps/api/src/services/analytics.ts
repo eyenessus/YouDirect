@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { monthKey } from '@frotaone/contracts';
+import { monthKey } from '@yudirect/contracts';
 import type { AppContext } from '../context.js';
 import type { IsoDate } from '../database/types.js';
 

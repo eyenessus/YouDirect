@@ -10,7 +10,7 @@ import {
   paymentMethodLabels,
   type MaintenanceOrder,
   type MaintenanceSummary,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import DataTable, { type Column } from '@/components/ui/DataTable.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';

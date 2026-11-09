@@ -11,7 +11,7 @@ import { expect, test, type Page } from '@playwright/test';
  * literal.
  */
 const EMAIL = process.env.E2E_EMAIL ?? 'erik@ffveiculos.example.com';
-const PASSWORD = process.env.E2E_PASSWORD ?? 'FrotaOne@2026';
+const PASSWORD = process.env.E2E_PASSWORD ?? 'YuDirect@2026';
 
 const brl = (value: string) => new RegExp(`R\\$\\s*${value.replace(/[.$]/g, '\\$&')}`);
 

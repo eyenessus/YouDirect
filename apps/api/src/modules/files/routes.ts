@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { filePurposeSchema } from '@frotaone/contracts';
+import { filePurposeSchema } from '@yudirect/contracts';
 import { badRequest, forbidden, notFound } from '../../common/errors.js';
 import { toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';

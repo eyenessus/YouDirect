@@ -23,7 +23,7 @@ import type {
   TransactionOrigin,
   VehicleStatus,
   FilePurpose,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 
 /** Data pura de negócio no formato `YYYY-MM-DD`. */
 export type IsoDate = string;

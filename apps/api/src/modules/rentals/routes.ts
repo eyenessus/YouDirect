@@ -7,7 +7,7 @@ import {
   rentalListQuerySchema,
   rentalUpdateSchema,
   type Rental,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import { conflict, notFound } from '../../common/errors.js';
 import { decodeCursor, encodeCursor, escapeRegex, foldAccents, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';

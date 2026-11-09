@@ -32,7 +32,7 @@ async function main() {
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
 
   await app.listen({ port: env.PORT, host: env.HOST });
-  app.log.info(`FrotaOne API em http://${env.HOST}:${env.PORT}/api/v1`);
+  app.log.info(`YuDirect API em http://${env.HOST}:${env.PORT}/api/v1`);
 }
 
 main().catch((err) => {

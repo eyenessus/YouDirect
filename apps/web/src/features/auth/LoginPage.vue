@@ -50,9 +50,9 @@ async function submit() {
     <div class="relative hidden flex-col justify-between bg-sidebar p-12 text-white lg:flex">
       <div class="flex items-center gap-3">
         <span class="flex size-12 items-center justify-center rounded-xl bg-sidebar-active">
-          <img src="/brand/frotaone-mark-white.png" alt="" class="size-8 object-contain" />
+          <img src="/brand/yudirect-mark-white.png" alt="" class="size-8 object-contain" />
         </span>
-        <span class="text-2xl font-bold tracking-tight">FrotaOne</span>
+        <span class="text-2xl font-bold tracking-tight">YuDirect</span>
       </div>
       <div class="max-w-lg">
         <h1 class="text-4xl font-bold leading-tight">Gestão completa da sua frota.</h1>
@@ -60,7 +60,7 @@ async function submit() {
           Veículos, motoristas, locações, vistorias, manutenções e financeiro — em um só lugar.
         </p>
       </div>
-      <p class="text-sm text-white/60">© {{ new Date().getFullYear() }} FrotaOne · Gestão veicular</p>
+      <p class="text-sm text-white/60">© {{ new Date().getFullYear() }} YuDirect · Gestão veicular</p>
     </div>
 
     <!-- Formulário -->
@@ -68,9 +68,9 @@ async function submit() {
       <div class="w-full max-w-md">
         <div class="mb-8 flex items-center gap-3 lg:hidden">
           <span class="flex size-11 items-center justify-center rounded-xl bg-sidebar">
-            <img src="/brand/frotaone-mark-white.png" alt="" class="size-7 object-contain" />
+            <img src="/brand/yudirect-mark-white.png" alt="" class="size-7 object-contain" />
           </span>
-          <span class="text-xl font-bold text-ink">FrotaOne</span>
+          <span class="text-xl font-bold text-ink">YuDirect</span>
         </div>
 
         <h2 class="text-[28px] font-bold text-ink">Entrar</h2>

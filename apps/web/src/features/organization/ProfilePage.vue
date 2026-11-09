@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { BellOff, Bell, Eye, EyeOff, Lock, Mail, Pencil, Phone, Shield, User } from 'lucide-vue-next';
-import { formatDateTimeBR, maskPhone } from '@frotaone/contracts';
+import { formatDateTimeBR, maskPhone } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppInput from '@/components/ui/AppInput.vue';

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { Camera, Plus, Trash2 } from 'lucide-vue-next';
-import { MAX_ACTIVE_PHOTO_SLOTS, type PhotoSlot } from '@frotaone/contracts';
+import { MAX_ACTIVE_PHOTO_SLOTS, type PhotoSlot } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppInput from '@/components/ui/AppInput.vue';

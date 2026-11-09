@@ -11,7 +11,7 @@ import {
   type MaintenanceOrder,
   type MaintenanceSummary,
   type MaintenanceVehicleCard,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import { conflict, notFound } from '../../common/errors.js';
 import { escapeRegex, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
@@ -684,7 +684,7 @@ export async function registerMaintenanceRoutes(app: FastifyInstance): Promise<v
       if (!vehicle) throw notFound('Veículo não encontrado.');
 
       const pdf = await renderMaintenanceReport({
-        organizationName: organization?.name ?? 'FrotaOne',
+        organizationName: organization?.name ?? 'YuDirect',
         issuedAt: new Date(),
         vehicle: {
           plate: vehicle.plate,

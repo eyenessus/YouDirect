@@ -11,7 +11,7 @@ import {
   transactionOriginLabels,
   type BankAccount,
   type Statement,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import { conflict, notFound } from '../../common/errors.js';
 import { toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';

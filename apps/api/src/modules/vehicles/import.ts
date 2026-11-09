@@ -10,7 +10,7 @@ import {
   vehicleImportCommitRequestSchema,
   type VehicleImportPreview,
   type VehicleImportRow,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import { badRequest, notFound } from '../../common/errors.js';
 import { generateToken } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
@@ -227,7 +227,7 @@ export async function registerVehicleImportRoutes(app: FastifyInstance): Promise
     { onRequest: [app.requireAuth, app.requirePermission('vehicles', 'create')] },
     async (_request, reply) => {
       const workbook = new ExcelJS.Workbook();
-      workbook.creator = 'FrotaOne';
+      workbook.creator = 'YuDirect';
       const sheet = workbook.addWorksheet('Veículos');
       sheet.columns = TEMPLATE_HEADERS.map((h) => ({ header: h, key: h, width: 22 }));
       sheet.getRow(1).font = { bold: true };

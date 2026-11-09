@@ -16,7 +16,7 @@ import {
   type InspectionVehicleCard,
   type PhotoSlot,
   type PublicInspection,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import { badRequest, conflict, notFound } from '../../common/errors.js';
 import { generateToken, sha256, slugify, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
@@ -566,7 +566,7 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
     ]);
 
     const payload: PublicInspection = {
-      organizationName: organization?.name ?? 'FrotaOne',
+      organizationName: organization?.name ?? 'YuDirect',
       vehicle: {
         plate: vehicle?.plate ?? '—',
         brand: vehicle?.brand ?? '—',

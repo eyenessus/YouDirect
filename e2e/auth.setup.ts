@@ -13,7 +13,7 @@ import { dirname } from 'node:path';
 export const STORAGE_STATE = '.cache/e2e-auth.json';
 
 const EMAIL = process.env.E2E_EMAIL ?? 'erik@ffveiculos.example.com';
-const PASSWORD = process.env.E2E_PASSWORD ?? 'FrotaOne@2026';
+const PASSWORD = process.env.E2E_PASSWORD ?? 'YuDirect@2026';
 
 setup('autentica e guarda a sessão', async ({ page }) => {
   await page.goto('/login');

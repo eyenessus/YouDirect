@@ -16,7 +16,7 @@ import {
   DEFAULT_PHOTO_SLOTS,
   fullMatrix,
   type PaymentMethod,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import { loadEnv } from '../config/env.js';
 import { buildContext, type AppContext } from '../context.js';
 import { foldAccents, hashPassword, lookupHash, slugify } from '../common/helpers.js';
@@ -41,7 +41,7 @@ const ORG_LEGAL_ID = '57005346000108';
 const TODAY = '2026-11-08';
 
 /** Credenciais do usuário de teste (somente ambiente de demonstração). */
-export const TEST_USER_EMAIL = 'teste@frotaone.test';
+export const TEST_USER_EMAIL = 'teste@yudirect.test';
 export const TEST_USER_PASSWORD = 'Teste@2026';
 
 const brl = (value: number) => Math.round(value * 100);
@@ -1108,7 +1108,7 @@ export async function seed(ctx: AppContext): Promise<void> {
     {
       _id: new ObjectId(),
       organizationId,
-      description: `Assinatura FrotaOne - ${ORG_NAME}`,
+      description: `Assinatura YuDirect - ${ORG_NAME}`,
       amountCents: brl(455.73),
       status: 'OVERDUE',
       dueDate: '2026-11-07',
@@ -1125,7 +1125,7 @@ export async function seed(ctx: AppContext): Promise<void> {
     {
       _id: new ObjectId(),
       organizationId,
-      description: `Assinatura FrotaOne - ${ORG_NAME}`,
+      description: `Assinatura YuDirect - ${ORG_NAME}`,
       amountCents: brl(455.73),
       status: 'PAID',
       dueDate: '2026-08-10',

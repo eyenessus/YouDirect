@@ -4,7 +4,7 @@
  * (`manutencoes-ebr7g53-2026-11-08.pdf`): número de páginas, conteúdo
  * textual e posição (x, y) de cada fragmento.
  *
- * Uso:  npm run report:verify -w @frotaone/api -- <caminho-do-golden.pdf>
+ * Uso:  npm run report:verify -w @yudirect/api -- <caminho-do-golden.pdf>
  */
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';

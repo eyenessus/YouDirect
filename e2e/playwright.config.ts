@@ -51,7 +51,7 @@ export default defineConfig({
     ? undefined
     : [
         {
-          command: 'npm run dev:demo -w @frotaone/api',
+          command: 'npm run dev:demo -w @yudirect/api',
           cwd: '..',
           url: 'http://localhost:3333/health',
           reuseExistingServer: !process.env.CI,

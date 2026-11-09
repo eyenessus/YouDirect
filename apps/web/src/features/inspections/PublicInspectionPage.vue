@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { Camera, CheckCircle2, Loader2 } from 'lucide-vue-next';
-import { formatIsoDateBR, type PublicInspection } from '@frotaone/contracts';
+import { formatIsoDateBR, type PublicInspection } from '@yudirect/contracts';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppInput from '@/components/ui/AppInput.vue';
 import AppTextarea from '@/components/ui/AppTextarea.vue';
@@ -95,10 +95,10 @@ async function submit() {
     <header class="bg-sidebar px-5 py-5 text-white">
       <div class="mx-auto flex max-w-2xl items-center gap-3">
         <span class="flex size-10 items-center justify-center rounded-xl bg-sidebar-active">
-          <img src="/brand/frotaone-mark-white.png" alt="" class="size-6 object-contain" />
+          <img src="/brand/yudirect-mark-white.png" alt="" class="size-6 object-contain" />
         </span>
         <div>
-          <p class="text-lg font-bold leading-tight">FrotaOne</p>
+          <p class="text-lg font-bold leading-tight">YuDirect</p>
           <p class="text-sm text-white/75">{{ data?.organizationName ?? 'Vistoria de veículo' }}</p>
         </div>
       </div>

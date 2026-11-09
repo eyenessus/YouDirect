@@ -13,7 +13,7 @@ gerado (decodificando os `ToUnicode` CMaps das fontes embutidas) e compara
 conteúdo e posição.
 
 ```bash
-npm run report:verify -w @frotaone/api -- ../../../manutencoes-ebr7g53-2026-11-08.pdf
+npm run report:verify -w @yudirect/api -- ../../../manutencoes-ebr7g53-2026-11-08.pdf
 ```
 
 ### Resultado medido
@@ -221,7 +221,7 @@ de banco. Os testes de web montam os componentes de verdade com
 `@vue/test-utils` sobre jsdom.
 
 Além deles, `npm run test:e2e` roda **18 testes** de Playwright
-(`e2e/frotaone.spec.ts`) contra a aplicação real: a API sobe com `dev:demo`
+(`e2e/yudirect.spec.ts`) contra a aplicação real: a API sobe com `dev:demo`
 (banco em memória já populado) e o front em `vite preview` sobre o build de
 produção. Cobre bloqueio de rota protegida, login com credencial errada sem
 vazar se o e-mail existe, indicadores do painel, fechamento de

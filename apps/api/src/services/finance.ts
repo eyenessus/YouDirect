@@ -7,7 +7,7 @@ import {
   type PayableStatus,
   addDaysIso,
   diffDaysIso,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import type { AppContext } from '../context.js';
 import { conflict, notFound, unprocessable } from '../common/errors.js';
 import { withTransaction } from '../database/mongo.js';

@@ -1,4 +1,4 @@
-# FrotaOne
+# YuDirect
 
 Plataforma SaaS de gestão de frotas e locadoras, reconstruída a partir de um
 conjunto de referências visuais (93 capturas de tela) e de um PDF de relatório
@@ -87,14 +87,14 @@ npm run dev             # API + front-end
 ```
 
 O compose sobe MongoDB 7 em replica set de um nó (`rs0`, já inicializado) e
-MinIO com o bucket `frotaone` criado. Para usar o MinIO, ajuste no `.env`:
+MinIO com o bucket `yudirect` criado. Para usar o MinIO, ajuste no `.env`:
 
 ```env
 STORAGE_DRIVER=s3
-S3_BUCKET=frotaone
+S3_BUCKET=yudirect
 S3_ENDPOINT=http://localhost:9000
-S3_ACCESS_KEY_ID=frotaone
-S3_SECRET_ACCESS_KEY=frotaone123
+S3_ACCESS_KEY_ID=yudirect
+S3_SECRET_ACCESS_KEY=yudirect123
 S3_REGION=us-east-1
 ```
 
@@ -114,7 +114,7 @@ proprietário:
 | Campo | Valor |
 |---|---|
 | E-mail | `erik@ffveiculos.example.com` |
-| Senha | `FrotaOne@2026` |
+| Senha | `YuDirect@2026` |
 
 Ambos são configuráveis por `SEED_OWNER_EMAIL` / `SEED_OWNER_PASSWORD`.
 
@@ -129,7 +129,7 @@ números verificáveis das referências (ver
 ## Estrutura do repositório
 
 ```
-frotaone/
+yudirect/
 ├─ packages/contracts/        # tipos, Zod schemas, regras e formatadores (API + web)
 ├─ apps/api/
 │  └─ src/
@@ -170,7 +170,7 @@ frotaone/
 | `npm test` | Testes de unidade e integração (contracts + API + web) |
 | `npm run test:e2e` | Playwright contra a aplicação real |
 | `npm run openapi` | Regera `docs/openapi.json` |
-| `npm run report:verify -w @frotaone/api` | Compara o PDF gerado com o golden master |
+| `npm run report:verify -w @yudirect/api` | Compara o PDF gerado com o golden master |
 
 ---
 
@@ -198,7 +198,7 @@ sem mocks de banco. Dois arquivos cobrem áreas diferentes:
 ### Comparação com o golden master do PDF
 
 ```bash
-npm run report:verify -w @frotaone/api -- ../../../manutencoes-ebr7g53-2026-11-08.pdf
+npm run report:verify -w @yudirect/api -- ../../../manutencoes-ebr7g53-2026-11-08.pdf
 ```
 
 O script extrai cada fragmento de texto posicionado dos dois PDFs

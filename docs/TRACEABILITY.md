@@ -9,7 +9,7 @@ Legenda dos testes:
 `api/flows` = `apps/api/src/__tests__/flows.test.ts` ·
 `api/ref` = `apps/api/src/__tests__/reference-figures.test.ts` ·
 `contracts` = `packages/contracts/src/__tests__/domain.test.ts` ·
-`e2e` = `e2e/frotaone.spec.ts` · `pdf` = `npm run report:verify -w @frotaone/api`
+`e2e` = `e2e/yudirect.spec.ts` · `pdf` = `npm run report:verify -w @yudirect/api`
 
 | Pág. | Estado observado | Rota / componente | Endpoint | Teste |
 |---:|---|---|---|---|

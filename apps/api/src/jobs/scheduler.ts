@@ -1,5 +1,5 @@
 import type { FastifyBaseLogger } from 'fastify';
-import { businessDate } from '@frotaone/contracts';
+import { businessDate } from '@yudirect/contracts';
 import type { AppContext } from '../context.js';
 import { runNotificationGenerators } from '../services/notifications.js';
 import { generateRecurringPayables, refreshOverdueStatuses } from '../services/finance.js';

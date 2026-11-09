@@ -9,7 +9,7 @@ import {
   Users,
   Car,
 } from 'lucide-vue-next';
-import type { PermissionModule } from '@frotaone/contracts';
+import type { PermissionModule } from '@yudirect/contracts';
 
 export interface NavChild {
   label: string;

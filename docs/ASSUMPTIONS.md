@@ -158,7 +158,7 @@ veículos reais (com placas visíveis). **Não foram extraídas nem incorporadas
 A interface exibe um placeholder quando não há foto.
 
 ### A-SEED-04 — Logotipo **[O]**
-O logotipo FrotaOne usado na interface e nos PDFs foi extraído do **próprio PDF
+O logotipo YuDirect usado na interface e nos PDFs foi extraído do **próprio PDF
 de relatório fornecido pelo proprietário** (objeto de imagem embutido). Não é
 uma marca de terceiros nem uma recriação.
 

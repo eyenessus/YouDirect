@@ -2,7 +2,7 @@
 import { onBeforeUnmount, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Bell } from 'lucide-vue-next';
-import { shortRelativeTime } from '@frotaone/contracts';
+import { shortRelativeTime } from '@yudirect/contracts';
 import { useNotificationStore } from '@/stores/notifications';
 
 const router = useRouter();

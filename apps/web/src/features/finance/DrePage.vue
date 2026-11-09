@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { Download, FileText, RefreshCw } from 'lucide-vue-next';
-import { formatCentsBRL, monthNamesPtBr, type DreReport } from '@frotaone/contracts';
+import { formatCentsBRL, monthNamesPtBr, type DreReport } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';

@@ -7,7 +7,7 @@ import {
   notificationPreferencesRequestSchema,
   updateProfileRequestSchema,
   type MeResponse,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import { badRequest, conflict, forbidden, notFound, unauthorized } from '../../common/errors.js';
 import {
   generateToken,

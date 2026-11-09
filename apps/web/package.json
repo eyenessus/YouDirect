@@ -1,5 +1,5 @@
 {
-  "name": "@frotaone/web",
+  "name": "@yudirect/web",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@frotaone/contracts": "*",
+    "@yudirect/contracts": "*",
     "echarts": "5.5.1",
     "lucide-vue-next": "0.469.0",
     "pinia": "2.3.0",

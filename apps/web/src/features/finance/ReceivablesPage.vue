@@ -10,7 +10,7 @@ import {
   receivableStatusLabels,
   receivableStatuses,
   type Receivable,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import DataTable, { type Column } from '@/components/ui/DataTable.vue';
 import SearchInput from '@/components/ui/SearchInput.vue';

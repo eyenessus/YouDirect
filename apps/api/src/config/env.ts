@@ -18,7 +18,7 @@ const envSchema = z.object({
 
   /** Vazio em desenvolvimento => sobe um MongoDB em memória (replica set). */
   MONGODB_URI: z.string().optional(),
-  MONGODB_DB: z.string().default('frotaone'),
+  MONGODB_DB: z.string().default('yudirect'),
   /** Diretório de dados do MongoDB em memória (dev/test). */
   MONGO_MEMORY_DB_PATH: z.string().default('./.cache/mongo-data'),
 
@@ -26,7 +26,7 @@ const envSchema = z.object({
   API_PUBLIC_URL: z.string().url().default('http://localhost:3333'),
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
 
-  SESSION_COOKIE_NAME: z.string().default('frotaone_session'),
+  SESSION_COOKIE_NAME: z.string().default('yudirect_session'),
   SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(720).default(12),
   SESSION_SECRET: z.string().min(16).default('dev-only-session-secret-change-me'),
   COOKIE_SECURE: booleanish.default(false),
@@ -69,7 +69,7 @@ const envSchema = z.object({
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().min(3).max(100).default(10),
 
   SEED_OWNER_EMAIL: z.string().default('erik@ffveiculos.example.com'),
-  SEED_OWNER_PASSWORD: z.string().default('FrotaOne@2026'),
+  SEED_OWNER_PASSWORD: z.string().default('YuDirect@2026'),
 });
 
 export type Env = z.infer<typeof envSchema>;

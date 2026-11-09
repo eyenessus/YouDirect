@@ -20,7 +20,7 @@ const BASE = getArg('base', 'http://localhost:5173');
 const OUT = getArg('out', '.cache/screens');
 const THEME = getArg('theme', 'light');
 const EMAIL = getArg('email', 'erik@ffveiculos.example.com');
-const PASSWORD = getArg('password', 'FrotaOne@2026');
+const PASSWORD = getArg('password', 'YuDirect@2026');
 
 const screens = [
   { name: '01-contas-a-pagar', path: '/dashboard/finance/accounts-payable' },
@@ -62,8 +62,8 @@ async function main() {
   await context.addInitScript(
     ([theme]) => {
       try {
-        localStorage.setItem('frotaone:theme', theme);
-        localStorage.setItem('frotaone:sidebar-collapsed', 'true');
+        localStorage.setItem('yudirect:theme', theme);
+        localStorage.setItem('yudirect:sidebar-collapsed', 'true');
       } catch {
         /* ignore */
       }

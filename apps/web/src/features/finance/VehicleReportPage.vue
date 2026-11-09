@@ -7,7 +7,7 @@ import {
   formatSignedPercent,
   monthLabel,
   type VehicleReport,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
 import AppSkeleton from '@/components/ui/AppSkeleton.vue';

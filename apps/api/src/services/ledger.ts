@@ -1,5 +1,5 @@
 import { ObjectId, type ClientSession } from 'mongodb';
-import type { TransactionDirection, TransactionOrigin } from '@frotaone/contracts';
+import type { TransactionDirection, TransactionOrigin } from '@yudirect/contracts';
 import type { AppContext } from '../context.js';
 import { conflict, notFound } from '../common/errors.js';
 import type { IsoDate } from '../database/types.js';

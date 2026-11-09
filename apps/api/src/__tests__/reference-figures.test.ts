@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { formatCentsBRL } from '@frotaone/contracts';
+import { formatCentsBRL } from '@yudirect/contracts';
 import { createHarness, sessionCookie, type TestHarness } from '../testing/harness.js';
 import { seed } from '../database/seed.js';
 import { extractPlainText, pageCount } from '../pdf/extract.js';

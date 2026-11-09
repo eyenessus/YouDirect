@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import { ObjectId } from 'mongodb';
-import { can, hasModule, type PermissionAction, type PermissionModule } from '@frotaone/contracts';
+import { can, hasModule, type PermissionAction, type PermissionModule } from '@yudirect/contracts';
 import type { AppContext, AuthContext } from '../context.js';
 import { forbidden, unauthorized } from '../common/errors.js';
 import { sha256 } from '../common/helpers.js';

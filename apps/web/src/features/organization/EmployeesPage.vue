@@ -13,7 +13,7 @@ import {
   type PermissionAction,
   type PermissionMatrix,
   type PermissionModule,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppInput from '@/components/ui/AppInput.vue';

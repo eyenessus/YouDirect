@@ -74,9 +74,9 @@ async function submit() {
     <div class="w-full max-w-md">
       <div class="mb-8 flex items-center gap-3">
         <span class="flex size-11 items-center justify-center rounded-xl bg-sidebar">
-          <img src="/brand/frotaone-mark-white.png" alt="" class="size-7 object-contain" />
+          <img src="/brand/yudirect-mark-white.png" alt="" class="size-7 object-contain" />
         </span>
-        <span class="text-xl font-bold text-ink">FrotaOne</span>
+        <span class="text-xl font-bold text-ink">YuDirect</span>
       </div>
 
       <div class="fo-card p-7">
@@ -93,7 +93,7 @@ async function submit() {
         <template v-else>
           <h1 class="text-2xl font-bold text-ink">Você foi convidado(a)</h1>
           <p class="mt-2 text-[15px] leading-relaxed text-ink-muted">
-            Crie sua senha para acessar o FrotaOne da
+            Crie sua senha para acessar o YuDirect da
             <strong class="text-ink">{{ preview?.organizationName }}</strong
             >.
           </p>

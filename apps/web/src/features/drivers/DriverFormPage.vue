@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { brazilianStates, maskCpf, maskPhone, type Driver, type PostalCodeLookup } from '@frotaone/contracts';
+import { brazilianStates, maskCpf, maskPhone, type Driver, type PostalCodeLookup } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppInput from '@/components/ui/AppInput.vue';

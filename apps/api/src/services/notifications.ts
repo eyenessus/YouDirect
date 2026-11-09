@@ -5,7 +5,7 @@ import {
   formatIsoDateBR,
   type NotificationSeverity,
   type NotificationType,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import type { AppContext } from '../context.js';
 
 export interface CreateNotificationInput {

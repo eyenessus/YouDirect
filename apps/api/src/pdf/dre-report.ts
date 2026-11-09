@@ -1,5 +1,5 @@
 import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces.js';
-import { formatCentsBRL, type DreReport } from '@frotaone/contracts';
+import { formatCentsBRL, type DreReport } from '@yudirect/contracts';
 import { brandLogoDataUri, PAGE, PDF_COLORS, renderPdf, TABLE_PAD } from './printer.js';
 
 /**
@@ -101,8 +101,8 @@ export function buildDreDefinition(
       title: `DRE ${report.monthLabel}`,
       author: report.organization.name,
       subject: 'Demonstração do Resultado do Exercício',
-      creator: 'FrotaOne',
-      producer: 'FrotaOne',
+      creator: 'YuDirect',
+      producer: 'YuDirect',
     },
     defaultStyle: { font: 'Roboto', fontSize: 8, color: PDF_COLORS.text, lineHeight: 1 },
     header: () => ({

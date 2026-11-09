@@ -9,7 +9,7 @@ import {
   transactionDirectionLabels,
   transactionDirections,
   type BankAccount,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppCheckbox from '@/components/ui/AppCheckbox.vue';

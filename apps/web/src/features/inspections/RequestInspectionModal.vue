@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue';
 import { Calendar, Car, Mail, MessageCircle, User } from 'lucide-vue-next';
-import type { Inspection } from '@frotaone/contracts';
+import type { Inspection } from '@yudirect/contracts';
 import AppModal from '@/components/ui/AppModal.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppInput from '@/components/ui/AppInput.vue';

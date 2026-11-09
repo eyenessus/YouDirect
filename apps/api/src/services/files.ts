@@ -1,6 +1,6 @@
 import { ObjectId, type ClientSession } from 'mongodb';
 import { extname } from 'node:path';
-import type { FilePurpose } from '@frotaone/contracts';
+import type { FilePurpose } from '@yudirect/contracts';
 import type { AppContext } from '../context.js';
 import { badRequest, notFound } from '../common/errors.js';
 import {

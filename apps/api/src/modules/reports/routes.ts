@@ -19,7 +19,7 @@ import {
   type DreReport,
   type FinanceDashboard,
   type VehicleReport,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import { requireAuthContext } from '../../plugins/auth.js';
 import { toObjectId } from '../../common/helpers.js';
 import {
@@ -566,7 +566,7 @@ export async function registerReportRoutes(app: FastifyInstance): Promise<void> 
       month,
       year,
       monthLabel: monthLabel(year, month),
-      organization: { name: organization?.name ?? 'FrotaOne', legalId: organization?.legalId ?? null },
+      organization: { name: organization?.name ?? 'YuDirect', legalId: organization?.legalId ?? null },
       netRevenueCents: netRevenue,
       grossProfitCents: grossProfit,
       netResultCents: netResult,

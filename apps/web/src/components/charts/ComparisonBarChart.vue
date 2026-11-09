@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import type { EChartsOption } from 'echarts';
 import BaseChart from './BaseChart.vue';
 import { axisBRL, compactBRL, useChartTheme, withAlpha } from './useChartTheme';
-import { formatCentsBRL } from '@frotaone/contracts';
+import { formatCentsBRL } from '@yudirect/contracts';
 
 const props = withDefaults(
   defineProps<{

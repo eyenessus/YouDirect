@@ -1,15 +1,15 @@
-name: frotaone
+name: yudirect
 
 services:
   # MongoDB em replica set de um nó — necessário para as transações
   # multi-documento usadas nos fluxos financeiros.
   mongo:
     image: mongo:7
-    container_name: frotaone-mongo
+    container_name: yudirect-mongo
     command: ['--replSet', 'rs0', '--bind_ip_all', '--keyFile', '/etc/mongo/keyfile']
     environment:
-      MONGO_INITDB_ROOT_USERNAME: frotaone
-      MONGO_INITDB_ROOT_PASSWORD: frotaone
+      MONGO_INITDB_ROOT_USERNAME: yudirect
+      MONGO_INITDB_ROOT_PASSWORD: yudirect
     ports:
       - '27017:27017'
     volumes:
@@ -32,7 +32,7 @@ services:
       - bash
       - -c
       - |
-        mongosh --host mongo -u frotaone -p frotaone --authenticationDatabase admin --quiet --eval '
+        mongosh --host mongo -u yudirect -p yudirect --authenticationDatabase admin --quiet --eval '
           try {
             rs.status();
             print("replica set já inicializado");
@@ -45,11 +45,11 @@ services:
   # Armazenamento de objetos compatível com S3 (fotos, documentos, notas).
   minio:
     image: minio/minio:RELEASE.2024-10-13T13-34-11Z
-    container_name: frotaone-minio
+    container_name: yudirect-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: frotaone
-      MINIO_ROOT_PASSWORD: frotaone123
+      MINIO_ROOT_USER: yudirect
+      MINIO_ROOT_PASSWORD: yudirect123
     ports:
       - '9000:9000'
       - '9001:9001'
@@ -71,8 +71,8 @@ services:
       - sh
       - -c
       - |
-        mc alias set local http://minio:9000 frotaone frotaone123 &&
-        mc mb --ignore-existing local/frotaone &&
+        mc alias set local http://minio:9000 yudirect yudirect123 &&
+        mc mb --ignore-existing local/yudirect &&
         echo "bucket pronto"
 
 volumes:

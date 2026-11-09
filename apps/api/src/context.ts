@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import type { PermissionMatrix, MembershipRole } from '@frotaone/contracts';
+import type { PermissionMatrix, MembershipRole } from '@yudirect/contracts';
 import { loadEnv, type Env } from './config/env.js';
 import { connectMongo, type MongoContext } from './database/mongo.js';
 import { ensureIndexes } from './database/indexes.js';

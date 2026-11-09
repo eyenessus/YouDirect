@@ -3,8 +3,8 @@ import { computed, ref, watch } from 'vue';
 
 export type ThemeMode = 'light' | 'dark';
 
-const THEME_KEY = 'frotaone:theme';
-const SIDEBAR_KEY = 'frotaone:sidebar-collapsed';
+const THEME_KEY = 'yudirect:theme';
+const SIDEBAR_KEY = 'yudirect:sidebar-collapsed';
 
 function readStored<T extends string>(key: string, allowed: readonly T[]): T | null {
   try {

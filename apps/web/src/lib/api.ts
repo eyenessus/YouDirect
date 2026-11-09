@@ -1,4 +1,4 @@
-import type { ApiError } from '@frotaone/contracts';
+import type { ApiError } from '@yudirect/contracts';
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api/v1';
 

@@ -5,7 +5,7 @@ import {
   formatCentsBRL,
   formatSignedPercent,
   type DashboardSummary,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import MetricCard from '@/components/ui/MetricCard.vue';
 import AppSkeleton from '@/components/ui/AppSkeleton.vue';
@@ -32,7 +32,7 @@ onMounted(async () => {
 
 <template>
   <div class="space-y-6">
-    <PageHeader eyebrow="PAINEL" title="Dashboard" subtitle="Bem-vindo ao FrotaOne" />
+    <PageHeader eyebrow="PAINEL" title="Dashboard" subtitle="Bem-vindo ao YuDirect" />
 
     <AppSkeleton v-if="loading" variant="cards" :rows="4" />
 

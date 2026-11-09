@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
-import type { PermissionModule } from '@frotaone/contracts';
+import type { PermissionModule } from '@yudirect/contracts';
 import { useAuthStore } from '@/stores/auth';
 
 declare module 'vue-router' {
@@ -286,5 +286,5 @@ router.beforeEach(async (to) => {
 });
 
 router.afterEach((to) => {
-  document.title = to.meta.title ? `${to.meta.title} · FrotaOne` : 'FrotaOne';
+  document.title = to.meta.title ? `${to.meta.title} · YuDirect` : 'YuDirect';
 });

@@ -11,7 +11,7 @@ import {
   type Dispatch,
   type MessageTemplate,
   type Notification,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import { badRequest, conflict, notFound } from '../../common/errors.js';
 import { decodeCursor, encodeCursor, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
@@ -77,7 +77,7 @@ function toDispatchDTO(doc: MessageDispatchDoc): Dispatch {
 
 const WELCOME_TEMPLATE_BODY = `Olá, *{{nome_motorista}}*! 👋
 
-Bem-vindo(a)! A partir de agora você irá interagir com a *FrotaOne* pela *{{nome_empresa}}*.
+Bem-vindo(a)! A partir de agora você irá interagir com a *YuDirect* pela *{{nome_empresa}}*.
 
 Fique atento(a) às mensagens — enviaremos avisos sobre vistorias, documentos e sua locação.
 

@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { CalendarDays, Car, ClipboardList, User } from 'lucide-vue-next';
-import { formatIsoDateBR, type InspectionVehicleCard } from '@frotaone/contracts';
+import { formatIsoDateBR, type InspectionVehicleCard } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import SearchInput from '@/components/ui/SearchInput.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';

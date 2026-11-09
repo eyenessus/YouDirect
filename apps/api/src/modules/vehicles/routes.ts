@@ -6,7 +6,7 @@ import {
   vehicleListQuerySchema,
   vehicleUpdateSchema,
   type TrafficFinesResponse,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import { badRequest, conflict, integrationUnavailable, notFound } from '../../common/errors.js';
 import { decodeCursor, encodeCursor, escapeRegex, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';

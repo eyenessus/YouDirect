@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ObjectId } from 'mongodb';
-import { fullMatrix } from '@frotaone/contracts';
+import { fullMatrix } from '@yudirect/contracts';
 import { createHarness, sessionCookie, type TestHarness } from '../testing/harness.js';
 import { hashPassword } from '../common/helpers.js';
 
@@ -309,7 +309,7 @@ describe('fluxos funcionais da API', () => {
     ].join('\n');
 
     const multipart = (content: string, filename = 'veiculos.csv') => {
-      const boundary = '----frotaonetest';
+      const boundary = '----yudirecttest';
       const body =
         `--${boundary}\r\n` +
         `Content-Disposition: form-data; name="file"; filename="${filename}"\r\n` +

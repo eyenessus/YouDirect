@@ -6,7 +6,7 @@ import {
   type MeResponse,
   type PermissionAction,
   type PermissionModule,
-} from '@frotaone/contracts';
+} from '@yudirect/contracts';
 import { api } from '@/lib/api';
 
 export const useAuthStore = defineStore('auth', () => {

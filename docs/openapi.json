@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "FrotaOne API",
+    "title": "YuDirect API",
     "version": "1.0.0",
-    "description": "API da plataforma FrotaOne (gestão de frota, locações, manutenções, vistorias e financeiro). Autenticação por sessão opaca em cookie HttpOnly. Todos os recursos são isolados por organização. Valores monetários são inteiros em centavos; datas de negócio usam o formato AAAA-MM-DD."
+    "description": "API da plataforma YuDirect (gestão de frota, locações, manutenções, vistorias e financeiro). Autenticação por sessão opaca em cookie HttpOnly. Todos os recursos são isolados por organização. Valores monetários são inteiros em centavos; datas de negócio usam o formato AAAA-MM-DD."
   },
   "servers": [
     {
@@ -53,7 +53,7 @@
       "sessionCookie": {
         "type": "apiKey",
         "in": "cookie",
-        "name": "frotaone_session"
+        "name": "yudirect_session"
       }
     },
     "schemas": {
