@@ -1,0 +1,22 @@
+node_modules/
+dist/
+.cache/
+.storage/
+coverage/
+*.log
+
+# Ambiente local
+.env
+.env.*
+!.env.example
+
+# Configuração de npm específica da máquina (cache/temp em outro disco)
+.npmrc
+
+# Artefatos temporários de verificação
+e2e/screenshots/
+.cache/e2e-auth.json
+tmp-*.pdf
+test-results/
+playwright-report/
+npm-cache/

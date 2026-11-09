@@ -1,0 +1,96 @@
+/* ------------------------------------------------------------------ *
+ * Design tokens do FrotaOne.
+ *
+ * Os valores são APROXIMAÇÕES amostradas das capturas de referência
+ * (PDF rasterizado): não são o CSS original. Estão centralizados aqui
+ * justamente para permitir recalibração por comparação visual.
+ * ------------------------------------------------------------------ */
+
+:root,
+[data-theme='light'] {
+  --c-brand-50: 239 246 255;
+  --c-brand-100: 219 234 254;
+  --c-brand-200: 191 219 254;
+  --c-brand-400: 96 165 250;
+  --c-brand-500: 59 130 246;
+  --c-brand-600: 37 99 235;
+  --c-brand-700: 29 78 216;
+  --c-brand-900: 30 58 138;
+
+  --c-canvas: 249 250 251;
+  --c-surface: 255 255 255;
+  --c-surface-muted: 248 250 252;
+  --c-line: 229 231 235;
+
+  --c-ink: 17 24 39;
+  --c-ink-soft: 71 85 105;
+  --c-ink-muted: 100 116 139;
+
+  --c-positive: 16 185 129;
+  --c-negative: 220 38 38;
+  --c-warning: 217 119 6;
+  /* Fundo dos badges sólidos (ver tema escuro). */
+  --c-positive-solid: 16 185 129;
+  --c-negative-solid: 220 38 38;
+  --c-warning-solid: 217 119 6;
+
+  --c-sidebar: 30 58 138;
+  --c-sidebar-active: 29 78 216;
+  --c-sidebar-hover: 37 78 170;
+
+  --topbar-bg: 255 255 255;
+  --banner-from: 239 246 255;
+  --banner-to: 255 255 255;
+  --chart-grid: 226 232 240;
+  --chart-tooltip-bg: 255 255 255;
+  --chart-tooltip-ink: 17 24 39;
+  --overlay: 15 23 42;
+}
+
+[data-theme='dark'] {
+  --c-brand-50: 30 41 59;
+  --c-brand-100: 30 58 138;
+  --c-brand-200: 37 99 235;
+  --c-brand-400: 96 165 250;
+  --c-brand-500: 59 130 246;
+  --c-brand-600: 59 130 246;
+  --c-brand-700: 37 99 235;
+  --c-brand-900: 30 58 138;
+
+  --c-canvas: 11 21 38;
+  --c-surface: 2 8 23;
+  --c-surface-muted: 15 23 42;
+  --c-line: 30 41 59;
+
+  --c-ink: 241 245 249;
+  --c-ink-soft: 203 213 225;
+  --c-ink-muted: 148 163 184;
+
+  --c-positive: 52 211 153;
+  --c-negative: 248 113 113;
+  --c-warning: 251 191 36;
+  /* Tons profundos para fundo de badge: o claro acima é cor de TEXTO.
+     #7F1D1D foi medido no badge "Crítico" da pág. 024. */
+  --c-positive-solid: 6 78 59;
+  --c-negative-solid: 127 29 29;
+  --c-warning-solid: 120 53 15;
+
+  --c-sidebar: 30 58 138;
+  --c-sidebar-active: 37 99 235;
+  --c-sidebar-hover: 37 78 170;
+
+  --topbar-bg: 11 21 38;
+  --banner-from: 17 32 58;
+  --banner-to: 11 21 38;
+  --chart-grid: 30 41 59;
+  --chart-tooltip-bg: 2 8 23;
+  --chart-tooltip-ink: 241 245 249;
+  --overlay: 2 6 16;
+}
+
+/* Preferência do sistema quando o usuário ainda não escolheu um tema. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+  }
+}

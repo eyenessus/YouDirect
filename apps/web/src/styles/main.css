@@ -1,0 +1,100 @@
+@import '@fontsource-variable/inter/index.css';
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    font-feature-settings: 'cv05' 1, 'ss01' 1;
+  }
+
+  /* Foco sempre visível (acessibilidade). */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-canvas;
+  }
+
+  ::placeholder {
+    @apply text-ink-muted/70;
+  }
+
+  /* Ícone nativo dos inputs de data legível no tema escuro. */
+  [data-theme='dark'] input[type='date']::-webkit-calendar-picker-indicator {
+    filter: invert(1) opacity(0.6);
+  }
+}
+
+@layer components {
+  .fo-card {
+    @apply rounded-card border border-line bg-surface shadow-card;
+  }
+
+  .fo-label {
+    @apply mb-1.5 block text-sm font-medium text-ink;
+  }
+
+  .fo-hint {
+    @apply mt-1.5 block text-xs text-ink-muted;
+  }
+
+  .fo-control {
+    @apply block w-full rounded-control border border-line bg-surface px-3.5 text-[15px] text-ink
+           transition-colors placeholder:text-ink-muted/70
+           focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/25
+           disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-ink-muted;
+    height: 42px;
+  }
+
+  textarea.fo-control {
+    @apply py-2.5;
+    height: auto;
+    min-height: 96px;
+  }
+
+  .fo-control-invalid {
+    @apply border-negative focus:border-negative focus:ring-negative/25;
+  }
+
+  .fo-table {
+    @apply w-full border-collapse text-left text-[15px];
+  }
+
+  /* Altura do cabeçalho medida na referência: ~42,5 px (pág. 001,
+     borda inferior em 472,5 css com o seletor terminando em 406,7). */
+  .fo-table thead th {
+    @apply whitespace-nowrap border-b border-line px-4 py-2.5 text-[15px] font-normal text-ink-soft;
+  }
+
+  .fo-table tbody td {
+    @apply border-b border-line px-4 py-4 align-middle text-ink;
+  }
+
+  .fo-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .fo-table tbody tr:hover {
+    @apply bg-surface-muted/70;
+  }
+
+  .fo-scroll-x {
+    @apply overflow-x-auto;
+    scrollbar-width: thin;
+  }
+}
+
+@layer utilities {
+  .fo-eyebrow {
+    @apply text-xs font-bold uppercase tracking-[0.12em] text-brand-600;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
