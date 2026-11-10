@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { AlertTriangle, ChevronDown, ChevronUp, ClipboardList, Maximize2 } from 'lucide-vue-next';
+import { AlertTriangle, ChevronDown, ChevronUp, ClipboardList, Maximize2, MessageCircle, RotateCcw } from 'lucide-vue-next';
 import {
   formatIsoDateBR,
   formatKm,
   inspectionStatusLabels,
   inspectionStatuses,
+  formatDateTimeBR,
+  type CollectionStatus,
   type Inspection,
 } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
@@ -18,6 +20,7 @@ import AppSkeleton from '@/components/ui/AppSkeleton.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import FormField from '@/components/ui/FormField.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
+import AppTextarea from '@/components/ui/AppTextarea.vue';
 import RequestInspectionModal from './RequestInspectionModal.vue';
 import { api, ApiRequestError } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
@@ -79,6 +82,56 @@ async function review(inspection: Inspection, decision: 'APPROVE' | 'REJECT') {
   } catch (err) {
     toasts.error('Não foi possível registrar', err instanceof ApiRequestError ? err.message : undefined);
   }
+}
+
+/* ----------------------- correção de fotos ------------------------ */
+const correction = ref<{ inspection: Inspection; slots: string[]; reason: string } | null>(null);
+const correcting = ref(false);
+
+function slotOptions(inspection: Inspection) {
+  const base = inspection.photos.map((p) => ({ code: p.slotCode, label: p.slotLabel }));
+  return [...base, { code: 'ODOMETER', label: 'Quilometragem' }];
+}
+
+function toggleSlot(code: string) {
+  if (!correction.value) return;
+  const set = new Set(correction.value.slots);
+  if (set.has(code)) set.delete(code);
+  else set.add(code);
+  correction.value.slots = [...set];
+}
+
+async function submitCorrection() {
+  if (!correction.value) return;
+  if (correction.value.slots.length === 0 || correction.value.reason.trim().length < 3) {
+    toasts.error('Escolha ao menos um ângulo e descreva o motivo');
+    return;
+  }
+  correcting.value = true;
+  try {
+    const res = await api.post<{ guided: boolean; link: string | null }>(
+      `/inspections/${correction.value.inspection.id}/request-correction`,
+      { slots: correction.value.slots, reason: correction.value.reason.trim() },
+    );
+    toasts.success(
+      'Correção solicitada',
+      res.guided ? 'O cliente receberá a solicitação pelo WhatsApp.' : 'Envie o link ao cliente manualmente.',
+    );
+    correction.value = null;
+    await load();
+  } catch (err) {
+    toasts.error('Não foi possível solicitar a correção', err instanceof ApiRequestError ? err.message : undefined);
+  } finally {
+    correcting.value = false;
+  }
+}
+
+function collectionTone(status: string) {
+  return statusTone.collection[status as CollectionStatus] ?? 'slate';
+}
+
+function previousEvidence(inspection: Inspection) {
+  return (inspection.evidence ?? []).filter((e) => e.superseded || e.late || !e.slotCode);
 }
 
 onMounted(load);
@@ -149,6 +202,18 @@ onMounted(load);
                 :label="inspectionStatusLabels[inspection.status]"
                 :tone="statusTone.inspection[inspection.status]"
               />
+              <StatusBadge
+                v-if="inspection.collection && inspection.collection.mode === 'WHATSAPP'"
+                :label="`WhatsApp · ${inspection.collection.statusLabel}`"
+                :tone="collectionTone(inspection.collection.status)"
+                :solid="false"
+              />
+              <StatusBadge
+                v-else-if="inspection.collection?.status === 'BLOCKED_NO_CONSENT'"
+                label="WhatsApp bloqueado (sem consentimento)"
+                tone="amber"
+                :solid="false"
+              />
             </div>
             <p class="mt-1.5 text-[17px] text-ink-muted">
               Prazo: {{ formatIsoDateBR(inspection.dueDate) }} • {{ inspection.responsibleName }}
@@ -201,17 +266,81 @@ onMounted(load);
           </div>
 
           <div
+            v-if="inspection.collection && inspection.collection.mode === 'WHATSAPP'"
+            class="mt-6 rounded-card border border-line bg-surface-muted p-4"
+          >
+            <p class="flex items-center gap-2 text-[15px] font-semibold text-ink">
+              <MessageCircle class="size-4" aria-hidden="true" /> Coleta pelo WhatsApp
+              <span v-if="inspection.collection.round > 0" class="font-normal text-ink-muted">
+                · correção {{ inspection.collection.round }}
+              </span>
+            </p>
+            <p class="mt-1.5 text-sm text-ink-soft">
+              <template v-if="inspection.collection.scheduledSendAt && inspection.collection.status === 'SCHEDULED'">
+                Disparo agendado para {{ formatDateTimeBR(inspection.collection.scheduledSendAt) }}.
+              </template>
+              <template v-else>
+                Fotos recebidas:
+                {{ inspection.collection.requiredSlots.filter((s) => inspection.collection!.receivedSlots.includes(s.code)).length }}
+                de {{ inspection.collection.requiredSlots.length }}
+                <span v-if="inspection.collection.requireOdometer">
+                  · quilometragem {{ inspection.collection.receivedSlots.includes('ODOMETER') ? 'informada' : 'pendente' }}
+                </span>
+              </template>
+            </p>
+            <ul class="mt-2 flex flex-wrap gap-2">
+              <li v-for="slot in inspection.collection.requiredSlots" :key="slot.code">
+                <StatusBadge
+                  :label="slot.label"
+                  :tone="inspection.collection.receivedSlots.includes(slot.code) ? 'green' : 'slate'"
+                  :solid="false"
+                />
+              </li>
+            </ul>
+            <p v-if="inspection.collection.failureReason" class="mt-2 text-sm text-[rgb(var(--c-negative))]">
+              {{ inspection.collection.failureReason }}
+            </p>
+          </div>
+
+          <details v-if="previousEvidence(inspection).length > 0" class="mt-5">
+            <summary class="cursor-pointer text-[15px] font-medium text-brand-600">
+              Histórico de evidências ({{ previousEvidence(inspection).length }})
+            </summary>
+            <div class="mt-3 grid gap-4 sm:grid-cols-3 xl:grid-cols-6">
+              <figure v-for="(e, i) in previousEvidence(inspection)" :key="i">
+                <figcaption class="mb-1 text-xs text-ink-muted">
+                  {{ e.slotLabel }} · {{ e.superseded ? 'substituída' : e.late ? 'fora do prazo' : 'adicional' }}
+                </figcaption>
+                <button
+                  type="button"
+                  class="block w-full overflow-hidden rounded-card border border-line"
+                  @click="lightbox = { url: e.url, label: e.slotLabel }"
+                >
+                  <img :src="e.url" :alt="`${e.slotLabel} (${e.source})`" class="aspect-[4/3] w-full object-cover opacity-80" loading="lazy" />
+                </button>
+              </figure>
+            </div>
+          </details>
+
+          <div
             v-if="inspection.status === 'SUBMITTED' && auth.allows('inspections', 'review')"
             class="mt-6 flex flex-wrap gap-3"
           >
             <AppButton @click="review(inspection, 'APPROVE')">Aprovar vistoria</AppButton>
+            <AppButton
+              variant="secondary"
+              @click="correction = { inspection, slots: [], reason: '' }"
+            >
+              <template #icon><RotateCcw class="size-4" /></template>
+              Solicitar correção
+            </AppButton>
             <AppButton variant="danger-outline" @click="review(inspection, 'REJECT')">
               Reprovar
             </AppButton>
           </div>
 
           <div
-            v-if="inspection.delivery && inspection.delivery.status !== 'SENT'"
+            v-if="inspection.delivery && inspection.delivery.status !== 'SENT' && inspection.delivery.channel !== 'WHATSAPP'"
             class="mt-6 rounded-card border border-[rgb(var(--c-warning)/0.3)] bg-[rgb(var(--c-warning)/0.08)] p-4"
           >
             <p class="text-[15px] font-semibold text-ink">Link não entregue automaticamente</p>
@@ -234,6 +363,41 @@ onMounted(load);
 
     <AppModal :open="lightbox !== null" :title="lightbox?.label ?? ''" size="lg" @close="lightbox = null">
       <img v-if="lightbox" :src="lightbox.url" :alt="lightbox.label" class="w-full rounded-card" />
+    </AppModal>
+
+    <AppModal
+      :open="correction !== null"
+      title="Solicitar correção de fotos"
+      description="A vistoria volta para coleta apenas com os itens escolhidos. As fotos atuais ficam no histórico."
+      @close="correction = null"
+    >
+      <template v-if="correction">
+        <fieldset>
+          <legend class="text-[15px] font-semibold text-ink">O que precisa ser reenviado?</legend>
+          <div class="mt-3 grid gap-2 sm:grid-cols-2">
+            <label
+              v-for="slot in slotOptions(correction.inspection)"
+              :key="slot.code"
+              class="flex items-center gap-2 rounded-control border border-line px-3 py-2 text-[15px]"
+            >
+              <input
+                type="checkbox"
+                class="size-[18px] rounded border-line"
+                :checked="correction.slots.includes(slot.code)"
+                @change="toggleSlot(slot.code)"
+              />
+              {{ slot.label }}
+            </label>
+          </div>
+        </fieldset>
+        <FormField v-slot="field" label="Motivo (enviado ao cliente)" class="mt-5">
+          <AppTextarea :id="field.id" v-model="correction.reason" :rows="3" :maxlength="300" placeholder="Ex.: foto da frente escura, placa ilegível" />
+        </FormField>
+        <div class="mt-6 flex justify-end gap-3">
+          <AppButton variant="secondary" @click="correction = null">Cancelar</AppButton>
+          <AppButton :loading="correcting" @click="submitCorrection">Solicitar correção</AppButton>
+        </div>
+      </template>
     </AppModal>
 
     <RequestInspectionModal

@@ -58,6 +58,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/features/notifications/DispatchPage.vue'),
         meta: { module: 'notifications', title: 'Disparo de Mensagens' },
       },
+      {
+        path: 'messages',
+        name: 'messages',
+        component: () => import('@/features/messaging/MessagesPage.vue'),
+        meta: { module: 'notifications', title: 'Mensagens WhatsApp' },
+      },
 
       {
         path: 'vehicles',

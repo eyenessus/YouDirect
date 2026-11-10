@@ -23,6 +23,13 @@ import type {
   TransactionOrigin,
   VehicleStatus,
   FilePurpose,
+  CollectionMode,
+  CollectionStatus,
+  ConsentSource,
+  ErrorSource,
+  MessageKind,
+  MessageStatus,
+  InspectionWhatsappSettings,
 } from '@yudirect/contracts';
 
 /** Data pura de negócio no formato `YYYY-MM-DD`. */
@@ -46,6 +53,8 @@ export interface OrganizationDoc extends Base {
   settings: {
     freeSeats: number;
     extraSeatPriceCents: number;
+    /** Coleta de vistoria pelo WhatsApp (plano §4.1). Ausente = padrão. */
+    inspectionWhatsapp?: InspectionWhatsappSettings;
   };
 }
 
@@ -158,6 +167,8 @@ export interface DriverDoc extends Tenant {
   };
   idDocumentFileId: ObjectId | null;
   addressProofFileId: ObjectId | null;
+  /** Opt-in para mensagens de vistoria pelo WhatsApp (política da Meta). */
+  whatsappConsent?: DriverConsentEmbedded | null;
   status: DriverStatus;
   archivedAt: Date | null;
   createdBy: ObjectId | null;
@@ -225,9 +236,20 @@ export interface MaintenanceOrderDoc extends Tenant {
   version: number;
 }
 
+export interface DriverConsentEmbedded {
+  status: 'GRANTED' | 'REVOKED';
+  grantedAt: Date | null;
+  source: ConsentSource | null;
+  recordedBy: ObjectId | null;
+  revokedAt: Date | null;
+  revokedSource: 'OPERATOR' | 'WHATSAPP_STOP' | null;
+}
+
 export interface PhotoSlotDoc extends Tenant {
   code: string;
   label: string;
+  /** Texto enviado na coleta guiada para este ângulo. */
+  instruction?: string | null;
   order: number;
   active: boolean;
   isDefault: boolean;
@@ -250,6 +272,8 @@ export interface InspectionDoc extends Tenant {
   photos: Array<{ slotCode: string; slotLabel: string; fileId: ObjectId }>;
   notes: string | null;
   requestTokenHash: string | null;
+  /** Token do link público cifrado (reutilizado no botão do template). */
+  requestTokenEnc?: string | null;
   requestExpiresAt: Date | null;
   delivery: {
     channel: 'WHATSAPP' | 'EMAIL' | 'MANUAL';
@@ -260,6 +284,146 @@ export interface InspectionDoc extends Tenant {
   } | null;
   source: 'MANUAL' | 'SCHEDULED';
   createdBy: ObjectId | null;
+  /** Concorrência otimista (documentos antigos não têm o campo). */
+  version?: number;
+  /** Instante (UTC) do disparo automático da coleta pelo WhatsApp. */
+  scheduledSendAt?: Date | null;
+  collection?: InspectionCollection | null;
+  /** Evidências: somente acréscimo — `photos` é a visão atual derivada. */
+  photoEvidence?: PhotoEvidence[];
+  correctionRound?: number;
+  correctionRequests?: Array<{ slots: string[]; reason: string; requestedBy: ObjectId; at: Date }>;
+}
+
+export interface InspectionCollection {
+  mode: CollectionMode;
+  status: CollectionStatus;
+  /** Snapshot dos ângulos exigidos na rodada atual (ordem da coleta). */
+  requiredSlots: Array<{ code: string; label: string; order: number; instruction: string | null }>;
+  requireOdometer: boolean;
+  receivedSlots: string[];
+  round: number;
+  correlationId: string;
+  sessionId: string | null;
+  requestedAt: Date | null;
+  respondedAt: Date | null;
+  completedAt: Date | null;
+  remindersSent: number;
+  failureReason: string | null;
+  updatedAt: Date;
+}
+
+export interface PhotoEvidence {
+  slotCode: string | null;
+  slotLabel: string;
+  fileId: ObjectId;
+  source: 'WHATSAPP' | 'WEB' | 'OPERATOR';
+  receivedAt: Date;
+  externalMediaId: string | null;
+  sha256: string | null;
+  wamid: string | null;
+  round: number;
+  late: boolean;
+  supersededAt: Date | null;
+}
+
+export interface WhatsappMessageEvent {
+  at: Date;
+  type: string;
+  status: MessageStatus | null;
+  source: ErrorSource | 'SYSTEM';
+  detail: string | null;
+  eventId: string | null;
+}
+
+export interface WhatsappMessageDoc extends Tenant {
+  inspectionId: ObjectId | null;
+  driverId: ObjectId | null;
+  kind: MessageKind;
+  idempotencyKey: string;
+  correlationId: string;
+  templateName: string | null;
+  category: string | null;
+  status: MessageStatus;
+  /** Corpo exato enviado ao Whaply (cifrado: contém telefone e token). */
+  requestPayloadEnc: string | null;
+  requestHash: string | null;
+  whaplyRequestId: string | null;
+  sessionId: string | null;
+  wamid: string | null;
+  attempts: number;
+  nextAttemptAt: Date | null;
+  leaseUntil: Date | null;
+  lastError: { code: string; message: string; source: ErrorSource; at: Date } | null;
+  pricing: { billable: boolean | null; category: string | null; type: string | null } | null;
+  timestamps: {
+    intentAt: Date;
+    submittedAt: Date | null;
+    acceptedAt: Date | null;
+    sentAt: Date | null;
+    deliveredAt: Date | null;
+    readAt: Date | null;
+    failedAt: Date | null;
+  };
+  recipientName: string | null;
+  recipientPhone: string | null;
+  createdBy: ObjectId | null;
+  /** Reenvio manual: aponta para a mensagem original. */
+  manualOf: ObjectId | null;
+  events: WhatsappMessageEvent[];
+}
+
+export interface IntegrationInboxDoc {
+  _id: string; // eventId
+  organizationId: ObjectId | null;
+  type: string;
+  seq: number;
+  receivedAt: Date;
+  processedAt: Date | null;
+  attempts: number;
+  lastError: string | null;
+  payload: unknown;
+}
+
+export interface IntegrationNonceDoc {
+  _id: string; // keyId:nonce
+  expiresAt: Date;
+}
+
+export interface IntegrationCursorDoc {
+  _id: string; // 'whaply'
+  lastSeq: number;
+  updatedAt: Date;
+}
+
+export interface JobLeaseDoc {
+  _id: string; // nome do job
+  owner: string | null;
+  leaseUntil: Date;
+  lastRunAt: Date | null;
+}
+
+export interface MessagingRateDoc extends Tenant {
+  category: 'MARKETING' | 'UTILITY' | 'AUTHENTICATION' | 'SERVICE';
+  currency: 'BRL' | 'USD';
+  amountMicros: number;
+  effectiveFrom: IsoDate;
+  source: string;
+  recordedBy: ObjectId | null;
+}
+
+export interface UnmatchedMediaDoc extends Tenant {
+  eventId: string;
+  fileId: ObjectId;
+  wamid: string;
+  sha256: string;
+  reason: string;
+  receivedAt: Date;
+  status: 'PENDING' | 'ASSIGNED' | 'DISCARDED';
+  resolvedBy: ObjectId | null;
+  resolvedAt: Date | null;
+  assignedInspectionId: ObjectId | null;
+  assignedSlotCode: string | null;
 }
 
 export interface BankAccountDoc extends Tenant {

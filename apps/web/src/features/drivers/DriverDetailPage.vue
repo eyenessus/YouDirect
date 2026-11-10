@@ -25,6 +25,7 @@ import PageHeader from '@/components/layout/PageHeader.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSkeleton from '@/components/ui/AppSkeleton.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
+import WhatsappConsentCard from './WhatsappConsentCard.vue';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/ui';
@@ -38,9 +39,13 @@ const toasts = useToastStore();
 const driver = ref<Driver | null>(null);
 const loading = ref(true);
 
+async function reload() {
+  driver.value = await api.get<Driver>(`/drivers/${route.params.id}`);
+}
+
 onMounted(async () => {
   try {
-    driver.value = await api.get<Driver>(`/drivers/${route.params.id}`);
+    await reload();
   } catch {
     toasts.error('Motorista não encontrado');
     router.replace('/dashboard/drivers');
@@ -258,6 +263,8 @@ onMounted(async () => {
             </div>
           </dl>
         </section>
+
+        <WhatsappConsentCard :driver="driver" @updated="reload" />
       </div>
     </template>
   </div>

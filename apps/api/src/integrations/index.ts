@@ -7,6 +7,7 @@ import {
   type Env,
   type IntegrationStatus,
 } from '../config/env.js';
+import { createWhaplyClient, type WhaplyClient } from './whaply/client.js';
 
 /* ------------------------------------------------------------------ *
  * Adapters de integrações externas.
@@ -72,6 +73,8 @@ export interface Integrations {
   postalCode: PostalCodeProvider;
   trafficFines: TrafficFinesProvider;
   billing: BillingProvider;
+  /** Canal oficial de WhatsApp da FF Veículos via Whaply (vistoria guiada). */
+  whaply: WhaplyClient;
 }
 
 const UNAVAILABLE = (message: string): SendResult => ({
@@ -95,6 +98,8 @@ export function createIntegrations(env: Env): Integrations {
   const billing = billingStatus(env);
 
   return {
+    whaply: createWhaplyClient(env),
+
     whatsapp: {
       status: () => wa,
       manualLink: (to, body) => waMeLink(to, body),

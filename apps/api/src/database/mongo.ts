@@ -28,6 +28,13 @@ import type {
   SubscriptionDoc,
   UserDoc,
   VehicleDoc,
+  WhatsappMessageDoc,
+  IntegrationInboxDoc,
+  IntegrationNonceDoc,
+  IntegrationCursorDoc,
+  JobLeaseDoc,
+  MessagingRateDoc,
+  UnmatchedMediaDoc,
 } from './types.js';
 
 export interface Collections {
@@ -58,6 +65,13 @@ export interface Collections {
   auditLogs: Collection<AuditLogDoc>;
   counters: Collection<CounterDoc>;
   importDrafts: Collection<ImportDraftDoc>;
+  whatsappMessages: Collection<WhatsappMessageDoc>;
+  integrationInbox: Collection<IntegrationInboxDoc>;
+  integrationNonces: Collection<IntegrationNonceDoc>;
+  integrationCursors: Collection<IntegrationCursorDoc>;
+  jobLeases: Collection<JobLeaseDoc>;
+  messagingRates: Collection<MessagingRateDoc>;
+  unmatchedMedia: Collection<UnmatchedMediaDoc>;
 }
 
 export interface MongoContext {
@@ -97,6 +111,13 @@ function buildCollections(db: Db): Collections {
     auditLogs: db.collection<AuditLogDoc>('auditLogs'),
     counters: db.collection<CounterDoc>('counters'),
     importDrafts: db.collection<ImportDraftDoc>('importDrafts'),
+    whatsappMessages: db.collection<WhatsappMessageDoc>('whatsappMessages'),
+    integrationInbox: db.collection<IntegrationInboxDoc>('integrationInbox'),
+    integrationNonces: db.collection<IntegrationNonceDoc>('integrationNonces'),
+    integrationCursors: db.collection<IntegrationCursorDoc>('integrationCursors'),
+    jobLeases: db.collection<JobLeaseDoc>('jobLeases'),
+    messagingRates: db.collection<MessagingRateDoc>('messagingRates'),
+    unmatchedMedia: db.collection<UnmatchedMediaDoc>('unmatchedMedia'),
   };
 }
 

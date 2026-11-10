@@ -46,6 +46,25 @@ const envSchema = z.object({
   WHATSAPP_API_TOKEN: z.string().optional(),
   WHATSAPP_SENDER_ID: z.string().optional(),
 
+  /* Whaply (canal oficial WhatsApp da FF Veículos) — plano §5.1. */
+  WHAPLY_INTEGRATION_ENABLED: booleanish.default(false),
+  WHAPLY_API_URL: z.string().url().optional(),
+  /** Chave YuDirect → Whaply (assinamos os comandos). */
+  WHAPLY_OUTBOUND_KEY_ID: z.string().optional(),
+  WHAPLY_OUTBOUND_SECRET: z.string().min(32).optional(),
+  /** Chaves Whaply → YuDirect (verificamos os eventos); NEXT = rotação. */
+  WHAPLY_INBOUND_KEY_ID: z.string().optional(),
+  WHAPLY_INBOUND_SECRET: z.string().min(32).optional(),
+  WHAPLY_INBOUND_KEY_ID_NEXT: z.string().optional(),
+  WHAPLY_INBOUND_SECRET_NEXT: z.string().min(32).optional(),
+  WHAPLY_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).default(10000),
+  WHAPLY_TEMPLATE_REQUEST: z.string().default('yudirect_vistoria_solicitacao'),
+  WHAPLY_TEMPLATE_REMINDER: z.string().default('yudirect_vistoria_lembrete'),
+  WHAPLY_TEMPLATE_CORRECTION: z.string().default('yudirect_vistoria_correcao'),
+  WHAPLY_TEMPLATE_LANGUAGE: z.string().default('pt_BR'),
+  /** Intervalo dos jobs da integração (disparo, outbox, reconciliação). */
+  WHAPLY_JOBS_INTERVAL_SECONDS: z.coerce.number().int().min(5).max(3600).default(60),
+
   EMAIL_PROVIDER: z.string().optional(),
   EMAIL_API_URL: z.string().optional(),
   EMAIL_API_TOKEN: z.string().optional(),
@@ -109,6 +128,26 @@ export function whatsappStatus(env: Env): IntegrationStatus {
     message: connected
       ? 'Provedor de WhatsApp configurado.'
       : 'Provedor de WhatsApp não configurado — nenhuma mensagem é enviada automaticamente. Use o link manual (wa.me) por destinatário.',
+  };
+}
+
+export function whaplyStatus(env: Env): IntegrationStatus {
+  const configured = Boolean(
+    env.WHAPLY_API_URL &&
+      env.WHAPLY_OUTBOUND_KEY_ID &&
+      env.WHAPLY_OUTBOUND_SECRET &&
+      env.WHAPLY_INBOUND_KEY_ID &&
+      env.WHAPLY_INBOUND_SECRET,
+  );
+  const connected = configured && env.WHAPLY_INTEGRATION_ENABLED;
+  return {
+    name: connected ? 'whaply' : null,
+    connected,
+    message: connected
+      ? 'Coleta de vistoria pelo WhatsApp (Whaply) habilitada.'
+      : configured
+        ? 'Integração com o Whaply configurada, porém desligada (WHAPLY_INTEGRATION_ENABLED=false).'
+        : 'Integração com o Whaply não configurada — a vistoria usa o link web ou o envio manual.',
   };
 }
 

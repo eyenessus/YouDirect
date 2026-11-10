@@ -253,6 +253,7 @@ Pontos que merecem atenção em produção:
 | `SESSION_SECRET` | Mínimo 16 caracteres; troque o valor padrão |
 | `COOKIE_SECURE` | `true` atrás de HTTPS |
 | `CORS_ORIGINS` | Lista explícita de origens; também alimenta a checagem de CSRF |
+| `WHAPLY_*` | Coleta de vistoria pelo WhatsApp via Whaply (HMAC por direção). Desligado por padrão; ver `docs/architecture/yudirect-whaply-vistoria-plan.md` |
 | `STORAGE_DRIVER` | `mongo` (padrão): arquivos em Base64 na coleção `fileBlobs` (até ~10 MB cada); `local` grava em disco; `s3` exige bucket e credenciais |
 
 ---

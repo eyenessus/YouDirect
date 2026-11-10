@@ -41,6 +41,7 @@ export const navigation: NavItem[] = [
     children: [
       { label: 'Alertas', to: '/dashboard/notifications' },
       { label: 'Disparo de Mensagens', to: '/dashboard/dispatch' },
+      { label: 'Mensagens WhatsApp', to: '/dashboard/messages' },
     ],
   },
   {

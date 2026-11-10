@@ -104,6 +104,19 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
       partialFilterExpression: { requestTokenHash: { $type: 'string' } },
       name: 'uniq_request_token',
     },
+    // Disparo automático pelo WhatsApp (plano §7).
+    {
+      key: { 'collection.status': 1, scheduledSendAt: 1 },
+      partialFilterExpression: { 'collection.mode': 'WHATSAPP' },
+      name: 'by_collection_due',
+    },
+    // Uma única vistoria gerada por regra para a mesma locação e data.
+    {
+      key: { organizationId: 1, rentalId: 1, scheduledAt: 1 },
+      unique: true,
+      partialFilterExpression: { source: 'SCHEDULED' },
+      name: 'uniq_scheduled_inspection',
+    },
   ]);
 
   await c.bankAccounts.createIndexes([
@@ -202,5 +215,39 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
   await c.importDrafts.createIndexes([
     { key: { token: 1 }, unique: true, name: 'uniq_import_token' },
     { key: { expiresAt: 1 }, expireAfterSeconds: 0, name: 'ttl_import' },
+  ]);
+
+  /* ----------------- integração Whaply (plano §4.1) ---------------- */
+  await c.whatsappMessages.createIndexes([
+    { key: { organizationId: 1, idempotencyKey: 1 }, unique: true, name: 'uniq_idempotency' },
+    { key: { status: 1, nextAttemptAt: 1 }, name: 'by_status_next' },
+    { key: { inspectionId: 1, createdAt: 1 }, name: 'by_inspection' },
+    {
+      key: { wamid: 1 },
+      unique: true,
+      partialFilterExpression: { wamid: { $type: 'string' } },
+      name: 'uniq_wamid',
+    },
+    {
+      key: { whaplyRequestId: 1 },
+      unique: true,
+      partialFilterExpression: { whaplyRequestId: { $type: 'string' } },
+      name: 'uniq_whaply_request',
+    },
+    { key: { organizationId: 1, createdAt: -1 }, name: 'by_org_created' },
+  ]);
+  await c.integrationInbox.createIndexes([
+    { key: { seq: 1 }, name: 'by_seq' },
+    { key: { processedAt: 1, receivedAt: 1 }, name: 'by_pending' },
+  ]);
+  await c.integrationNonces.createIndexes([
+    { key: { expiresAt: 1 }, expireAfterSeconds: 0, name: 'ttl_nonce' },
+  ]);
+  await c.messagingRates.createIndexes([
+    { key: { organizationId: 1, category: 1, effectiveFrom: -1 }, name: 'by_category_effective' },
+  ]);
+  await c.unmatchedMedia.createIndexes([
+    { key: { eventId: 1 }, unique: true, name: 'uniq_event' },
+    { key: { organizationId: 1, status: 1, receivedAt: -1 }, name: 'by_org_status' },
   ]);
 }

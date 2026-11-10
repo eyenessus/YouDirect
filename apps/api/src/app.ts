@@ -25,6 +25,7 @@ import { registerReportRoutes } from './modules/reports/routes.js';
 import { registerNotificationRoutes } from './modules/notifications/routes.js';
 import { registerOrganizationRoutes } from './modules/organization/routes.js';
 import { registerFileRoutes } from './modules/files/routes.js';
+import { registerWhatsappRoutes } from './modules/whatsapp/routes.js';
 import { openApiDocument } from './openapi.js';
 
 export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
@@ -126,6 +127,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
       await registerReportRoutes(api);
       await registerNotificationRoutes(api);
       await registerOrganizationRoutes(api);
+      await registerWhatsappRoutes(api);
     },
     { prefix: '/api/v1' },
   );

@@ -439,6 +439,7 @@ export async function registerNotificationRoutes(app: FastifyInstance): Promise<
     const ctx = request.appCtx;
     return {
       whatsapp: ctx.integrations.whatsapp.status(),
+      whaply: ctx.integrations.whaply.status(),
       email: ctx.integrations.email.status(),
       postalCode: ctx.integrations.postalCode.status(),
       trafficFines: ctx.integrations.trafficFines.status(),
