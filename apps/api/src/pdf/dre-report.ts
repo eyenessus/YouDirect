@@ -108,7 +108,7 @@ export function buildDreDefinition(
     header: () => ({
       margin: [PAGE.marginLeft, 9.5, PAGE.marginRight, 0],
       columns: [
-        { image: logoDataUri, width: 96, height: 64, margin: [0, 4.5, 0, 0] },
+        { image: logoDataUri, width: 120, height: 29, margin: [0, 17, 0, 0] },
         {
           width: '*',
           stack: [
