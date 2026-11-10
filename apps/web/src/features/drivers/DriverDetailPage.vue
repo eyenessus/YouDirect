@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import {
   CalendarDays,
   CreditCard,
+  DollarSign,
   FileText,
   Mail,
   MapPin,
@@ -26,6 +27,7 @@ import AppButton from '@/components/ui/AppButton.vue';
 import AppSkeleton from '@/components/ui/AppSkeleton.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import WhatsappConsentCard from './WhatsappConsentCard.vue';
+import LaunchPaymentDialog from '@/features/finance/LaunchPaymentDialog.vue';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/ui';
@@ -38,6 +40,7 @@ const toasts = useToastStore();
 
 const driver = ref<Driver | null>(null);
 const loading = ref(true);
+const payOpen = ref(false);
 
 async function reload() {
   driver.value = await api.get<Driver>(`/drivers/${route.params.id}`);
@@ -67,6 +70,10 @@ onMounted(async () => {
         back-to="/dashboard/drivers"
       >
         <template #actions>
+          <AppButton v-if="auth.allows('finance', 'pay')" variant="secondary" @click="payOpen = true">
+            <template #icon><DollarSign class="size-4" /></template>
+            Lançar pagamento
+          </AppButton>
           <AppButton
             v-if="auth.allows('drivers', 'update')"
             @click="router.push(`/dashboard/drivers/${driver.id}/edit`)"
@@ -267,5 +274,13 @@ onMounted(async () => {
         <WhatsappConsentCard :driver="driver" @updated="reload" />
       </div>
     </template>
+
+    <LaunchPaymentDialog
+      v-if="driver"
+      :open="payOpen"
+      :driver-id="driver.id"
+      :title="`Lançar pagamento — ${driver.fullName}`"
+      @close="payOpen = false"
+    />
   </div>
 </template>

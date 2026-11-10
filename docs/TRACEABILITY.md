@@ -106,6 +106,8 @@ Legenda dos testes:
 | 91 | Contas a Receber — total pendente e filtros | `/dashboard/finance/accounts-receivable` · `ReceivablesPage.vue` | `GET /receivables` | api/ref |
 | 92 | Contas a Receber — tabela e contagem | *estado* (scroll) de 91 | idem | api/ref |
 | 93 | Menu com ação `Pagar` | *menu* de 91 | `POST /receivables/:id/payments` | api/flows T14 |
+| ext | Atalho "Lançar pagamento" (baixa) no detalhe do motorista e no menu da locação — extensão ao spec | `DriverDetailPage.vue`, `RentalListPage.vue` · `LaunchPaymentDialog.vue` | `GET /receivables?driverId=&rentalId=&openOnly=true` + `POST /receivables/:id/payments` | api/flows T14 |
+| ext | Categorias padrão de Contas a Pagar: IPVA, Licenciamento, Outro (upsert por slug) | `PayableFormPage.vue` | `GET /expense-categories` | api/flows T12/T14 |
 | PDF 1 | Relatório de manutenções — identificação, resumo, grupos, histórico | `apps/api/src/pdf/maintenance-report.ts` | `GET /vehicles/:id/maintenance/report.pdf` | pdf, api/ref |
 | PDF 2 | Detalhamento das OS, nota de canceladas, rodapé | idem | idem | pdf, api/ref |
 

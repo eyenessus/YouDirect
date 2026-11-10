@@ -14,7 +14,7 @@ import { requireAuthContext } from '../../plugins/auth.js';
 import { withTransaction } from '../../database/mongo.js';
 import { audit, nextNumber } from '../../services/common.js';
 import { describeFiles, requireFile } from '../../services/files.js';
-import { ensureRentalReceivable } from '../../services/finance.js';
+import { deriveReceivableStatus, ensureRentalReceivable } from '../../services/finance.js';
 import { postTransaction, defaultBankAccountId } from '../../services/ledger.js';
 import type { AppContext } from '../../context.js';
 import type { RentalDoc } from '../../database/types.js';
@@ -303,9 +303,27 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
             },
             { session },
           );
+          const prepaidReceivable = await ctx.mongo.collections.receivables.findOne(
+            { _id: receivableId },
+            { session },
+          );
+          const prepaidPaid = (prepaidReceivable?.paidAmountCents ?? 0) + body.periodicAmountCents;
           await ctx.mongo.collections.receivables.updateOne(
             { _id: receivableId },
-            { $inc: { paidAmountCents: body.periodicAmountCents, version: 1 }, $set: { updatedAt: now } },
+            {
+              $inc: { paidAmountCents: body.periodicAmountCents, version: 1 },
+              $set: {
+                updatedAt: now,
+                ...(prepaidReceivable
+                  ? {
+                      status: deriveReceivableStatus(
+                        { ...prepaidReceivable, paidAmountCents: prepaidPaid },
+                        today,
+                      ),
+                    }
+                  : {}),
+              },
+            },
             { session },
           );
         }
