@@ -4,8 +4,8 @@ Fonte: pedidos da conversa (baixa de pagamento do motorista, dashboard não atua
 
 | # | Requisito | Estado após esta auditoria | Evidência | Lacuna / observação |
 |---|---|---|---|---|
-| R1 | Dar baixa no pagamento do motorista em Locações > Consultar > motorista | **Atendido** | E2E `zz-auditoria-baixa` (4 cenários), `launch-payment.test.ts` | Atalho existe no detalhe do motorista e no menu ⋮ da locação |
-| R2 | Pagamento **semanal** com baixa por semana | **Atendido** (calculado sobre a conta única do contrato) | `payment-schedule.test.ts` (17), E2E | Não é possível quitar uma semana "do meio" pulando as anteriores (FIFO) — decisão A-FIN-02 |
+| R1 | Dar baixa no pagamento do motorista em Locações > Consultar > motorista | **Atendido, refeito conforme o fluxo real do Frota One** | E2E `zz-baixa-pelo-motorista` (10 cenários no Chrome), `rental-payments-ui.test.ts` | Caminho: nome do motorista > Lançar pagamento > página da locação (aba Pagamentos) |
+| R2 | Pagamento **semanal** | **Atendido** como lançamentos individuais (cada semana paga é um lançamento com recibo, categoria, data prevista e data do pagamento **informadas pelo dono**) | `rental-payments.test.ts` (26) | Substitui o cronograma calculado, que era proposta minha (o vídeo não o tem) |
 | R3 | Dashboard reflete o recebimento (uma vez) | **Atendido** | AUD-01/02/02b, E2E "uma vez" | Só mede **receita realizada** (por data de pagamento) |
 | R4 | Categorias IPVA, licenciamento e outros em Contas a Pagar | **Atendido** | AUD-11b, E2E categorias, `payment-settlement` | Upsert por slug para organizações existentes |
 | R5 | Financiamento parcelado (1/N), periodicidade mensal/trimestral/semestral/anual | **Atendido** (todas as parcelas na criação) | `payable-installments.test.ts` (10), E2E | Sem editar/cancelar a série inteira de uma vez |

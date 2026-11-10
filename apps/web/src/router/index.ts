@@ -139,6 +139,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/features/rentals/RentalFormPage.vue'),
         meta: { module: 'rentals', title: 'Editar Locação' },
       },
+      {
+        path: 'rentals/:id',
+        name: 'rental-detail',
+        component: () => import('@/features/rentals/RentalDetailPage.vue'),
+        meta: { module: 'rentals', title: 'Locação' },
+      },
 
       {
         path: 'maintenance',
