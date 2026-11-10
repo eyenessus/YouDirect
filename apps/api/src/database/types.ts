@@ -469,6 +469,13 @@ export interface PayableDoc extends Tenant {
   supplier: { name: string | null; nameFold: string | null; taxId: string | null };
   documentUrl: string | null;
   recurring: { enabled: boolean; seriesId: string | null; period: string | null };
+  /** Parcela de um parcelamento (financiamento, seguro, IPVA...). Ausente em contas avulsas. */
+  installment?: {
+    seriesId: string;
+    number: number;
+    total: number;
+    frequency: 'MONTHLY' | 'QUARTERLY' | 'SEMIANNUAL' | 'ANNUAL';
+  } | null;
   notes: string | null;
   status: PayableStatus;
   createdBy: ObjectId | null;

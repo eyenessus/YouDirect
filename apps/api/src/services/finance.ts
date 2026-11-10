@@ -1,7 +1,9 @@
 import { ObjectId, type ClientSession } from 'mongodb';
 import {
   businessDate,
+  installmentFrequencyMonths,
   rentalPeriodDays,
+  type InstallmentFrequency,
   type PaymentMethod,
   type ReceivableStatus,
   type PayableStatus,
@@ -38,6 +40,28 @@ export function deriveReceivableStatus(
   if (remaining === 0) return 'PAID';
   if (doc.dueDate < today) return 'OVERDUE';
   return doc.paidAmountCents > 0 ? 'PARTIAL' : 'OPEN';
+}
+
+/**
+ * Vencimentos de um parcelamento. Cada parcela é calculada a partir da DATA
+ * INICIAL (não da parcela anterior), então 31/01 → 28/02 → 31/03 mantém o dia
+ * original sempre que o mês permite.
+ */
+export function installmentDueDates(
+  firstDueDate: IsoDate,
+  count: number,
+  frequency: InstallmentFrequency,
+): IsoDate[] {
+  const [y, m, d] = firstDueDate.split('-').map(Number) as [number, number, number];
+  const step = installmentFrequencyMonths[frequency];
+  return Array.from({ length: count }, (_, i) => {
+    const total = m - 1 + i * step;
+    const year = y + Math.floor(total / 12);
+    const month = (total % 12) + 1;
+    const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const day = Math.min(d, lastDay);
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` as IsoDate;
+  });
 }
 
 export function derivePayableStatus(

@@ -1,8 +1,17 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { Plus } from 'lucide-vue-next';
-import type { BankAccount, ExpenseCategory, Vehicle } from '@yudirect/contracts';
+import {
+  formatCentsBRL,
+  installmentFrequencies,
+  installmentFrequencyLabels,
+  maxInstallments,
+  type BankAccount,
+  type ExpenseCategory,
+  type InstallmentFrequency,
+  type Vehicle,
+} from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppCheckbox from '@/components/ui/AppCheckbox.vue';
@@ -32,6 +41,9 @@ const form = reactive({
   supplierTaxId: '',
   documentUrl: '',
   recurring: false,
+  installmentsEnabled: false,
+  installmentCount: '12',
+  installmentFrequency: 'MONTHLY' as InstallmentFrequency,
   alreadyPaid: false,
   paidBankAccountId: '',
   notes: '',
@@ -39,6 +51,27 @@ const form = reactive({
 
 const errors = ref<Record<string, string>>({});
 const saving = ref(false);
+
+const frequencyOptions = installmentFrequencies.map((f) => ({
+  value: f,
+  label: installmentFrequencyLabels[f],
+}));
+const installmentCountNumber = computed(() => Math.trunc(Number(form.installmentCount)) || 0);
+const installmentsTotalCents = computed(() => form.amountCents * installmentCountNumber.value);
+
+// Recorrência (gera todo mês, sem fim) e parcelamento (N parcelas) não se combinam.
+watch(
+  () => form.installmentsEnabled,
+  (on) => {
+    if (on) form.recurring = false;
+  },
+);
+watch(
+  () => form.recurring,
+  (on) => {
+    if (on) form.installmentsEnabled = false;
+  },
+);
 const categoryModal = ref(false);
 const newCategory = ref('');
 const savingCategory = ref(false);
@@ -89,11 +122,16 @@ async function submit() {
       supplierTaxId: form.supplierTaxId || undefined,
       documentUrl: form.documentUrl || undefined,
       recurring: form.recurring,
+      installments: form.installmentsEnabled
+        ? { count: installmentCountNumber.value, frequency: form.installmentFrequency }
+        : undefined,
       alreadyPaid: form.alreadyPaid,
       paidBankAccountId: form.alreadyPaid ? form.paidBankAccountId : undefined,
       notes: form.notes || undefined,
     });
-    toasts.success('Conta a pagar criada');
+    toasts.success(
+      form.installmentsEnabled ? `${installmentCountNumber.value} parcelas criadas` : 'Conta a pagar criada',
+    );
     await router.push('/dashboard/finance/accounts-payable');
   } catch (err) {
     if (err instanceof ApiRequestError) {
@@ -156,11 +194,21 @@ onMounted(loadReferences);
           />
         </FormField>
 
-        <FormField v-slot="field" label="Valor" required :error="errors.amountCents">
+        <FormField
+          v-slot="field"
+          :label="form.installmentsEnabled ? 'Valor de cada parcela' : 'Valor'"
+          required
+          :error="errors.amountCents"
+        >
           <CurrencyInput :id="field.id" v-model="form.amountCents" :invalid="field.invalid" />
         </FormField>
 
-        <FormField v-slot="field" label="Data de Vencimento" required :error="errors.dueDate">
+        <FormField
+          v-slot="field"
+          :label="form.installmentsEnabled ? 'Vencimento da 1ª parcela' : 'Data de Vencimento'"
+          required
+          :error="errors.dueDate"
+        >
           <AppInput :id="field.id" v-model="form.dueDate" type="date" :invalid="field.invalid" />
         </FormField>
       </div>
@@ -197,7 +245,41 @@ onMounted(loadReferences);
           v-model="form.recurring"
           label="Conta Recorrente (gerar automaticamente todo mês)"
         />
-        <AppCheckbox v-model="form.alreadyPaid" label="Já foi paga (cadastrar como paga)" />
+        <AppCheckbox
+          v-model="form.installmentsEnabled"
+          label="Parcelado (financiamento, seguro, IPVA, licenciamento...)"
+        />
+        <AppCheckbox
+          v-model="form.alreadyPaid"
+          :label="form.installmentsEnabled ? 'A 1ª parcela já foi paga' : 'Já foi paga (cadastrar como paga)'"
+        />
+      </div>
+
+      <div v-if="form.installmentsEnabled" class="mt-5 rounded-card bg-surface-muted p-5">
+        <div class="grid gap-5 sm:grid-cols-2">
+          <FormField
+            v-slot="field"
+            label="Número de parcelas"
+            required
+            :hint="`De 2 a ${maxInstallments}`"
+            :error="errors['installments.count'] ?? errors.installments"
+          >
+            <AppInput :id="field.id" v-model="form.installmentCount" type="number" inputmode="numeric" />
+          </FormField>
+          <FormField
+            v-slot="field"
+            label="Periodicidade"
+            required
+            :error="errors['installments.frequency']"
+          >
+            <AppSelect :id="field.id" v-model="form.installmentFrequency" :options="frequencyOptions" />
+          </FormField>
+        </div>
+        <p v-if="installmentCountNumber >= 2 && form.amountCents > 0" class="mt-4 text-[15px] text-ink-soft">
+          {{ installmentCountNumber }} parcelas de {{ formatCentsBRL(form.amountCents) }} —
+          total de <span class="font-semibold text-ink">{{ formatCentsBRL(installmentsTotalCents) }}</span>.
+          Cada parcela será uma conta a pagar com baixa individual.
+        </p>
       </div>
 
       <div v-if="form.alreadyPaid" class="mt-5">

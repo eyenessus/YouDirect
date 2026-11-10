@@ -28,6 +28,7 @@ import { audit } from '../../services/common.js';
 import {
   derivePayableStatus,
   deriveReceivableStatus,
+  installmentDueDates,
   registerPayablePayment,
   registerReceivablePayment,
   remainingCents,
@@ -102,6 +103,7 @@ async function toPayableDTOs(
       documentUrl: doc.documentUrl,
       recurring: Boolean(doc.recurring?.enabled),
       recurringSeriesId: doc.recurring?.seriesId ?? null,
+      installment: doc.installment ?? null,
       notes: doc.notes,
       status: doc.status,
       createdAt: doc.createdAt.toISOString(),
@@ -278,34 +280,57 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
       }
 
       const now = new Date();
-      const doc: PayableDoc = {
-        _id: new ObjectId(),
-        organizationId: auth.organizationId,
-        description: body.description,
-        descriptionFold: foldAccents(body.description).toLowerCase(),
-        categoryId: category._id,
-        vehicleId: body.vehicleId ? toObjectId(body.vehicleId) : null,
-        amountCents: body.amountCents,
-        paidAmountCents: 0,
-        dueDate: body.dueDate,
-        supplier: {
-          name: body.supplierName ?? null,
-          nameFold: body.supplierName ? foldAccents(body.supplierName).toLowerCase() : null,
-          taxId: body.supplierTaxId ?? null,
-        },
-        documentUrl: body.documentUrl ?? null,
-        recurring: body.recurring
-          ? { enabled: true, seriesId: generateToken(10), period: body.dueDate.slice(0, 7) }
-          : { enabled: false, seriesId: null, period: null },
-        notes: body.notes ?? null,
-        status: 'PENDING',
-        createdBy: auth.userId,
-        createdAt: now,
-        updatedAt: now,
-        version: 1,
-      };
-      doc.status = derivePayableStatus(doc, today);
-      await ctx.mongo.collections.payables.insertOne(doc);
+      // Parcelamento: todas as parcelas nascem agora, ligadas por uma série.
+      // Sem parcelamento é uma única conta (comportamento anterior).
+      const plan = body.installments
+        ? {
+            seriesId: generateToken(10),
+            frequency: body.installments.frequency,
+            dueDates: installmentDueDates(body.dueDate, body.installments.count, body.installments.frequency),
+          }
+        : null;
+      const dueDates = plan ? plan.dueDates : [body.dueDate];
+      const docs: PayableDoc[] = dueDates.map((dueDate, index) => {
+        const item: PayableDoc = {
+          _id: new ObjectId(),
+          organizationId: auth.organizationId,
+          description: body.description,
+          descriptionFold: foldAccents(body.description).toLowerCase(),
+          categoryId: category._id,
+          vehicleId: body.vehicleId ? toObjectId(body.vehicleId) : null,
+          amountCents: body.amountCents,
+          paidAmountCents: 0,
+          dueDate,
+          supplier: {
+            name: body.supplierName ?? null,
+            nameFold: body.supplierName ? foldAccents(body.supplierName).toLowerCase() : null,
+            taxId: body.supplierTaxId ?? null,
+          },
+          documentUrl: body.documentUrl ?? null,
+          recurring: body.recurring
+            ? { enabled: true, seriesId: generateToken(10), period: dueDate.slice(0, 7) }
+            : { enabled: false, seriesId: null, period: null },
+          installment: plan
+            ? {
+                seriesId: plan.seriesId,
+                number: index + 1,
+                total: plan.dueDates.length,
+                frequency: plan.frequency,
+              }
+            : null,
+          notes: body.notes ?? null,
+          status: 'PENDING',
+          createdBy: auth.userId,
+          createdAt: now,
+          updatedAt: now,
+          version: 1,
+        };
+        item.status = derivePayableStatus(item, today);
+        return item;
+      });
+      await ctx.mongo.collections.payables.insertMany(docs);
+      // "Já paga" vale para a primeira parcela (a que o dono acabou de quitar).
+      const doc = docs[0]!;
 
       if (body.alreadyPaid) {
         const bankAccountId = body.paidBankAccountId
@@ -332,7 +357,11 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
         action: 'payable.created',
         entityType: 'payable',
         entityId: doc._id,
-        after: { amountCents: doc.amountCents, dueDate: doc.dueDate },
+        after: {
+          amountCents: doc.amountCents,
+          dueDate: doc.dueDate,
+          ...(plan ? { installments: docs.length, frequency: plan.frequency } : {}),
+        },
       });
 
       const fresh = await ctx.mongo.collections.payables.findOne({ _id: doc._id });

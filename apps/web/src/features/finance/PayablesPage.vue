@@ -5,6 +5,7 @@ import { DollarSign, Trash2 } from 'lucide-vue-next';
 import {
   formatCentsBRL,
   formatIsoDateBR,
+  installmentFrequencyLabels,
   maskCnpj,
   payableStatusLabels,
   payableStatuses,
@@ -190,6 +191,10 @@ onMounted(load);
       >
         <template #cell-description="{ row }">
           <span class="block font-semibold text-ink">{{ row.description }}</span>
+          <span v-if="row.installment" class="mt-0.5 block text-sm font-medium text-brand-600">
+            Parcela {{ row.installment.number }}/{{ row.installment.total }} ·
+            {{ installmentFrequencyLabels[row.installment.frequency] }}
+          </span>
           <span v-if="row.vehicle" class="mt-0.5 block text-sm text-ink-muted">
             Veículo: {{ row.vehicle.plate }}
           </span>

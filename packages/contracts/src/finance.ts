@@ -100,6 +100,25 @@ export const expenseCategoryCreateSchema = z.object({ label: nonEmptyString(60) 
 
 /* --------------------------- Contas a pagar ------------------------ */
 
+/** Periodicidade das parcelas de uma conta a pagar (financiamento, seguro, IPVA...). */
+export const installmentFrequencies = ['MONTHLY', 'QUARTERLY', 'SEMIANNUAL', 'ANNUAL'] as const;
+export const installmentFrequencySchema = z.enum(installmentFrequencies);
+export type InstallmentFrequency = z.infer<typeof installmentFrequencySchema>;
+export const installmentFrequencyLabels: Record<InstallmentFrequency, string> = {
+  MONTHLY: 'Mensal',
+  QUARTERLY: 'Trimestral',
+  SEMIANNUAL: 'Semestral',
+  ANNUAL: 'Anual',
+};
+/** Meses entre uma parcela e a seguinte. */
+export const installmentFrequencyMonths: Record<InstallmentFrequency, number> = {
+  MONTHLY: 1,
+  QUARTERLY: 3,
+  SEMIANNUAL: 6,
+  ANNUAL: 12,
+};
+export const maxInstallments = 120;
+
 export const payableSchema = z.object({
   id: objectIdSchema,
   description: z.string(),
@@ -114,13 +133,22 @@ export const payableSchema = z.object({
   documentUrl: z.string().nullable(),
   recurring: z.boolean(),
   recurringSeriesId: z.string().nullable(),
+  /** Parcela de um parcelamento (ex.: 3 de 48); null para conta avulsa. */
+  installment: z
+    .object({
+      seriesId: z.string(),
+      number: z.number().int(),
+      total: z.number().int(),
+      frequency: installmentFrequencySchema,
+    })
+    .nullable(),
   notes: z.string().nullable(),
   status: payableStatusSchema,
   createdAt: isoDateTimeSchema,
 });
 export type Payable = z.infer<typeof payableSchema>;
 
-export const payableCreateSchema = z.object({
+const payableCreateBase = z.object({
   categoryId: objectIdSchema,
   vehicleId: objectIdSchema.optional(),
   amountCents: amountCentsSchema.refine((v) => v > 0, 'Informe um valor maior que zero'),
@@ -136,15 +164,27 @@ export const payableCreateSchema = z.object({
     .optional()
     .or(z.literal('').transform(() => undefined)),
   recurring: z.boolean().default(false),
+  /** Parcelamento: gera todas as parcelas na criação. O valor informado é o de CADA parcela. */
+  installments: z
+    .object({
+      count: z.number().int().min(2, 'Informe ao menos 2 parcelas').max(maxInstallments),
+      frequency: installmentFrequencySchema,
+    })
+    .optional(),
   alreadyPaid: z.boolean().default(false),
   paidBankAccountId: objectIdSchema.optional(),
   notes: optionalString(2000),
 });
+
+export const payableCreateSchema = payableCreateBase.refine((v) => !(v.recurring && v.installments), {
+  message: 'Use recorrência ou parcelamento, não os dois',
+  path: ['installments'],
+});
 export type PayableCreate = z.infer<typeof payableCreateSchema>;
 
-export const payableUpdateSchema = payableCreateSchema
+export const payableUpdateSchema = payableCreateBase
   .partial()
-  .omit({ alreadyPaid: true, paidBankAccountId: true });
+  .omit({ alreadyPaid: true, paidBankAccountId: true, installments: true });
 
 export const payableListQuerySchema = z.object({
   q: z.string().trim().max(120).optional(),
