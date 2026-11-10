@@ -96,6 +96,42 @@ export const inspectionSchema = z.object({
     })
     .nullable(),
   createdAt: isoDateTimeSchema,
+  /** Coleta guiada pelo WhatsApp (ausente em vistorias antigas). */
+  collection: z
+    .object({
+      mode: z.enum(['WHATSAPP', 'WEB_LINK', 'MANUAL']),
+      status: z.string(),
+      statusLabel: z.string(),
+      round: z.number().int(),
+      requiredSlots: z.array(z.object({ code: z.string(), label: z.string() })),
+      receivedSlots: z.array(z.string()),
+      requireOdometer: z.boolean(),
+      scheduledSendAt: isoDateTimeSchema.nullable(),
+      requestedAt: isoDateTimeSchema.nullable(),
+      respondedAt: isoDateTimeSchema.nullable(),
+      completedAt: isoDateTimeSchema.nullable(),
+      failureReason: z.string().nullable(),
+    })
+    .nullable()
+    .optional(),
+  evidence: z
+    .array(
+      z.object({
+        slotCode: z.string().nullable(),
+        slotLabel: z.string(),
+        url: z.string(),
+        source: z.enum(['WHATSAPP', 'WEB', 'OPERATOR']),
+        receivedAt: isoDateTimeSchema,
+        round: z.number().int(),
+        late: z.boolean(),
+        superseded: z.boolean(),
+      }),
+    )
+    .optional(),
+  correctionRound: z.number().int().optional(),
+  corrections: z
+    .array(z.object({ slots: z.array(z.string()), reason: z.string(), at: isoDateTimeSchema }))
+    .optional(),
 });
 export type Inspection = z.infer<typeof inspectionSchema>;
 

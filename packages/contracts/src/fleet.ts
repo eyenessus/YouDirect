@@ -181,6 +181,17 @@ export const driverSchema = z.object({
   cnhCategory: z.string().nullable(),
   cnhExpiresAt: isoDateSchema.nullable(),
   cnhExpired: z.boolean(),
+  /** Opt-in para mensagens de vistoria pelo WhatsApp. */
+  whatsappConsent: z
+    .object({
+      status: z.enum(['GRANTED', 'REVOKED']),
+      grantedAt: isoDateTimeSchema.nullable(),
+      source: z.enum(['CONTRACT', 'IN_PERSON', 'WHATSAPP', 'OTHER']).nullable(),
+      revokedAt: isoDateTimeSchema.nullable(),
+      revokedSource: z.enum(['OPERATOR', 'WHATSAPP_STOP']).nullable(),
+    })
+    .nullable()
+    .optional(),
   address: addressSchema,
   idDocument: driverDocumentSchema.nullable(),
   addressProof: driverDocumentSchema.nullable(),

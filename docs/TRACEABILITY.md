@@ -106,6 +106,8 @@ Legenda dos testes:
 | 91 | Contas a Receber — total pendente e filtros | `/dashboard/finance/accounts-receivable` · `ReceivablesPage.vue` | `GET /receivables` | api/ref |
 | 92 | Contas a Receber — tabela e contagem | *estado* (scroll) de 91 | idem | api/ref |
 | 93 | Menu com ação `Pagar` | *menu* de 91 | `POST /receivables/:id/payments` | api/flows T14 |
+| ext | Atalho "Lançar pagamento" (baixa) no detalhe do motorista e no menu da locação — extensão ao spec | `DriverDetailPage.vue`, `RentalListPage.vue` · `LaunchPaymentDialog.vue` | `GET /receivables?driverId=&rentalId=&openOnly=true` + `POST /receivables/:id/payments` | api/flows T14 |
+| ext | Categorias padrão de Contas a Pagar: IPVA, Licenciamento, Outro (upsert por slug) | `PayableFormPage.vue` | `GET /expense-categories` | api/flows T12/T14 |
 | PDF 1 | Relatório de manutenções — identificação, resumo, grupos, histórico | `apps/api/src/pdf/maintenance-report.ts` | `GET /vehicles/:id/maintenance/report.pdf` | pdf, api/ref |
 | PDF 2 | Detalhamento das OS, nota de canceladas, rodapé | idem | idem | pdf, api/ref |
 
@@ -137,3 +139,42 @@ Legenda dos testes:
 | T20 | Capturas em 1917 px, claro/escuro, calibração métrica | `e2e/capture-screens.mjs`, `e2e/extract-reference-pages.mjs`, `e2e/measure-screens.mjs` + `docs/VISUAL-VERIFICATION.md` §4 |
 | T21 | 400/401/403/404/409/422, tenant crossover, idempotência | api/flows |
 | T22 | README reproduz o ambiente do zero | `README.md` |
+
+## Vistoria pelo WhatsApp (YuDirect ⇄ Whaply)
+
+Plano: `docs/architecture/yudirect-whaply-vistoria-plan.md`. Testes em
+`apps/api/src/__tests__/whatsapp-integration.test.ts` contra o simulador
+HTTP `apps/api/src/testing/fake-whaply.ts` (contrato v1 real: HMAC,
+idempotência, sequência de eventos e mídia por referência).
+
+| ID | Cenário | Cobertura |
+|---|---|---|
+| WA22 | Agendamento → disparo único (2 workers) → envio → status → fotos → KM → aguardando revisão → aprovação concorrente (1 vence) | api/whatsapp |
+| WA23/WA24 | Painel: resumo, filtros, "requer ação", detalhe com linha do tempo, máscara de telefone, 403 sem permissão | api/whatsapp + e2e |
+| WA25/WA27 | Fotos parciais: encerramento incompleto mantém PENDING e alerta | api/whatsapp |
+| WA26 | Custos estimados por categoria com tarifa de referência; nunca exibidos como cobrança | api/whatsapp + e2e |
+| WA27b | Foto duplicada (mesmo wamid) não duplica evidência | api/whatsapp |
+| WA28 | Mídia inválida ou corrompida (hash) não é associada | api/whatsapp |
+| WA29 | Ângulo não exigido vira evidência adicional | api/whatsapp |
+| WA30 | Foto após a aprovação vira evidência tardia, sem alterar a decisão | api/whatsapp |
+| WA31 | Whaply 503 + Retry-After → nova tentativa no horário | api/whatsapp |
+| WA32 | Lembrete único (2 workers) e expiração com CANCEL da sessão | api/whatsapp |
+| WA33 | Timeout com aceite posterior: retry com a mesma chave, sem duplicar | api/whatsapp |
+| WA34/WA35 | Evento duplicado idempotente; fora de ordem não regride | api/whatsapp |
+| WA34b | Mesmo telefone com coleta ativa: SESSION_BUSY aguarda sem consumir o limite | api/whatsapp |
+| WA36 | Processo caiu durante o POST: reconciliação reenfileira com a mesma chave | api/whatsapp |
+| WA37/WA37b | Cancelamento antes do disparo e entre intenção e envio | api/whatsapp |
+| WA38 | Reagendamento antes do disparo; recusado após o envio | api/whatsapp |
+| WA39 | Template não aprovado: falha definitiva, link manual, alerta, sem retry | api/whatsapp |
+| WA40 | Opt-out (SAIR) revoga consentimento e cancela pendências | api/whatsapp |
+| WA41/WA41b/WA41c | Sem consentimento / revogado / telefone diferente do cadastro | api/whatsapp + e2e |
+| WA42/WA42b | Rota de eventos: assinatura, chave, relógio, replay de nonce; integração desligada → 503 | api/whatsapp |
+| WA43 | Tipo de evento desconhecido aceito e ignorado (compatibilidade) | api/whatsapp |
+| WA44 | Foto sem vínculo: resolução manual auditada, 403 sem permissão | api/whatsapp |
+| WA45 | Correção: volta a PENDING, rodada nova, versiona evidências, ignora foto da rodada antiga | api/whatsapp + e2e |
+| WA46 | Aprovar/corrigir em estado inválido → 409; sem permissão → 403 | api/whatsapp |
+| WA47 | Mídia indisponível: inbox reprocessa depois | api/whatsapp |
+| WA48/WA48b | Callback perdido: replay por sequência; polling do estado | api/whatsapp |
+| WA49/WA49b | Reenvio manual (nova chave, auditado, sem duplicidade); reprocessamento de transporte (mesma chave) | api/whatsapp |
+| WA50 | Instruções da coleta (serviço) registradas por wamid para custos | api/whatsapp |
+| WA21 | Envio pelo link web rejeita arquivo de outra organização (IDOR corrigido) | api/whatsapp |

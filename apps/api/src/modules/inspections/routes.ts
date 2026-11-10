@@ -3,7 +3,6 @@ import { ObjectId } from 'mongodb';
 import {
   addDaysIso,
   businessDate,
-  DEFAULT_PHOTO_SLOTS,
   diffDaysIso,
   inspectionListQuerySchema,
   inspectionRequestSchema,
@@ -16,38 +15,25 @@ import {
   type InspectionVehicleCard,
   type PhotoSlot,
   type PublicInspection,
+  collectionStatusLabels,
 } from '@yudirect/contracts';
 import { badRequest, conflict, notFound } from '../../common/errors.js';
 import { generateToken, sha256, slugify, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
 import { audit } from '../../services/common.js';
-import { describeFiles, storeFile } from '../../services/files.js';
+import { describeFiles, requireFile, storeFile } from '../../services/files.js';
+import {
+  cancelCollectionForInspection,
+  ensureDefaultSlots,
+  formatDateTimeLocal,
+  getWhatsappSettings,
+  newCollection,
+  planCollection,
+  requiredSlotsSnapshot,
+} from '../../services/whatsapp-inspection.js';
 import { fileUrl } from '../../services/files.js';
 import type { AppContext } from '../../context.js';
 import type { InspectionDoc, PhotoSlotDoc } from '../../database/types.js';
-
-async function ensureDefaultSlots(ctx: AppContext, organizationId: ObjectId): Promise<PhotoSlotDoc[]> {
-  const existing = await ctx.mongo.collections.inspectionPhotoSlots
-    .find({ organizationId })
-    .sort({ order: 1 })
-    .toArray();
-  if (existing.length > 0) return existing;
-
-  const now = new Date();
-  const docs: PhotoSlotDoc[] = DEFAULT_PHOTO_SLOTS.map((slot, index) => ({
-    _id: new ObjectId(),
-    organizationId,
-    code: slot.code,
-    label: slot.label,
-    order: index,
-    active: true,
-    isDefault: true,
-    createdAt: now,
-    updatedAt: now,
-  }));
-  await ctx.mongo.collections.inspectionPhotoSlots.insertMany(docs);
-  return docs;
-}
 
 function toSlotDTO(doc: PhotoSlotDoc): PhotoSlot {
   return {
@@ -68,7 +54,11 @@ async function toInspectionDTOs(
   const vehicleIds = [...new Set(docs.map((d) => d.vehicleId.toHexString()))].map((s) => new ObjectId(s));
   const [vehicles, files] = await Promise.all([
     ctx.mongo.collections.vehicles.find({ organizationId, _id: { $in: vehicleIds } }).toArray(),
-    describeFiles(ctx, organizationId, docs.flatMap((d) => d.photos.map((p) => p.fileId))),
+    describeFiles(
+      ctx,
+      organizationId,
+      docs.flatMap((d) => [...d.photos.map((p) => p.fileId), ...(d.photoEvidence ?? []).map((e) => e.fileId)]),
+    ),
   ]);
   const vMap = new Map(vehicles.map((v) => [v._id.toHexString(), v]));
 
@@ -113,6 +103,41 @@ async function toInspectionDTOs(
           }
         : null,
       createdAt: doc.createdAt.toISOString(),
+      collection: doc.collection
+        ? {
+            mode: doc.collection.mode,
+            status: doc.collection.status,
+            statusLabel: collectionStatusLabels[doc.collection.status],
+            round: doc.collection.round,
+            requiredSlots: doc.collection.requiredSlots.map((s) => ({ code: s.code, label: s.label })),
+            receivedSlots: doc.collection.receivedSlots,
+            requireOdometer: doc.collection.requireOdometer,
+            scheduledSendAt: doc.scheduledSendAt?.toISOString() ?? null,
+            requestedAt: doc.collection.requestedAt?.toISOString() ?? null,
+            respondedAt: doc.collection.respondedAt?.toISOString() ?? null,
+            completedAt: doc.collection.completedAt?.toISOString() ?? null,
+            failureReason: doc.collection.failureReason,
+          }
+        : null,
+      evidence: (doc.photoEvidence ?? [])
+        .map((e) => {
+          const file = files.get(e.fileId.toHexString());
+          return file
+            ? {
+                slotCode: e.slotCode,
+                slotLabel: e.slotLabel,
+                url: file.url,
+                source: e.source,
+                receivedAt: e.receivedAt.toISOString(),
+                round: e.round,
+                late: e.late,
+                superseded: Boolean(e.supersededAt),
+              }
+            : null;
+        })
+        .filter((e): e is NonNullable<typeof e> => Boolean(e)),
+      correctionRound: doc.correctionRound ?? 0,
+      corrections: (doc.correctionRequests ?? []).map((c) => ({ slots: c.slots, reason: c.reason, at: c.at.toISOString() })),
     };
   });
 }
@@ -383,6 +408,16 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
         status: 'ACTIVE',
       });
 
+      const driver = rental
+        ? await ctx.mongo.collections.drivers.findOne({ _id: rental.driverId, organizationId: auth.organizationId })
+        : null;
+      const plan = planCollection(ctx, {
+        organization,
+        driver,
+        phone: body.phone,
+        scheduledAt: body.scheduledAt,
+      });
+
       const token = generateToken(24);
       const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000);
       const now = new Date();
@@ -405,18 +440,55 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
         photos: [],
         notes: body.notes ?? null,
         requestTokenHash: sha256(token),
+        requestTokenEnc: ctx.pii.encrypt(token),
         requestExpiresAt: expiresAt,
         delivery: null,
         source: 'MANUAL',
         createdBy: auth.userId,
         createdAt: now,
         updatedAt: now,
+        version: 0,
+        scheduledSendAt: plan.scheduledSendAt,
+        collection:
+          plan.status === 'NOT_SCHEDULED'
+            ? null
+            : newCollection(
+                plan,
+                await requiredSlotsSnapshot(ctx, auth.organizationId, getWhatsappSettings(organization)),
+              ),
+        photoEvidence: [],
+        correctionRound: 0,
       };
 
       const link = `${ctx.env.APP_URL.replace(/\/$/, '')}/vistoria/${token}`;
       const message =
         `Olá, ${body.responsibleName}! A ${organization?.name ?? 'locadora'} solicitou a vistoria do veículo ` +
         `${vehicle.brand} ${vehicle.model} (${vehicle.plate}). Envie as fotos por aqui: ${link}`;
+
+      if (plan.guided) {
+        // Coleta guiada: o disparo acontece no horário configurado, pelo
+        // job da integração (idempotente) — nada é enviado agora.
+        doc.delivery = {
+          channel: 'WHATSAPP',
+          status: 'PENDING',
+          message: `Solicitação agendada para ${formatDateTimeLocal(plan.scheduledSendAt!)}.`,
+          manualLink: link,
+          attempts: 0,
+        };
+        await ctx.mongo.collections.inspections.insertOne(doc);
+        await audit(ctx, {
+          organizationId: auth.organizationId,
+          actorId: auth.userId,
+          action: 'inspection.requested',
+          entityType: 'inspection',
+          entityId: doc._id,
+          after: { channel: 'WHATSAPP', scheduledSendAt: plan.scheduledSendAt },
+          correlationId: doc.collection?.correlationId ?? null,
+        });
+        reply.status(201);
+        const [dto] = await toInspectionDTOs(ctx, auth.organizationId, [doc]);
+        return { inspection: dto, link };
+      }
 
       const waStatus = ctx.integrations.whatsapp.status();
       const result = await ctx.integrations.whatsapp.send(
@@ -488,8 +560,10 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
       }
 
       const status = body.decision === 'APPROVE' ? 'APPROVED' : 'REJECTED';
-      await ctx.mongo.collections.inspections.updateOne(
-        { _id: id, organizationId: auth.organizationId },
+      // Atualização condicionada ao estado: duas decisões simultâneas não
+      // podem ambas vencer (corrida corrigida — plano §1.1).
+      const res = await ctx.mongo.collections.inspections.updateOne(
+        { _id: id, organizationId: auth.organizationId, status: 'SUBMITTED' },
         {
           $set: {
             status,
@@ -498,14 +572,21 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
             notes: body.notes ?? inspection.notes,
             updatedAt: new Date(),
           },
+          $inc: { version: 1 },
         },
       );
+      if (res.modifiedCount === 0) {
+        throw conflict('A vistoria foi decidida ou alterada por outra operação. Recarregue a página.');
+      }
       await audit(ctx, {
         organizationId: auth.organizationId,
         actorId: auth.userId,
         action: `inspection.${status.toLowerCase()}`,
         entityType: 'inspection',
         entityId: id,
+        before: { status: 'SUBMITTED' },
+        after: { status, notes: body.notes ?? null, round: inspection.correctionRound ?? 0 },
+        correlationId: inspection.collection?.correlationId ?? null,
       });
       return { ok: true, status };
     },
@@ -526,10 +607,21 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
       if (inspection.status === 'APPROVED') {
         throw conflict('Vistorias aprovadas não podem ser excluídas — cancele o registro se necessário.');
       }
-      await ctx.mongo.collections.inspections.updateOne(
-        { _id: id, organizationId: auth.organizationId },
-        { $set: { status: 'CANCELED', requestTokenHash: null, updatedAt: new Date() } },
+      const res = await ctx.mongo.collections.inspections.updateOne(
+        { _id: id, organizationId: auth.organizationId, status: { $nin: ['APPROVED', 'CANCELED'] } },
+        {
+          $set: {
+            status: 'CANCELED',
+            requestTokenHash: null,
+            requestTokenEnc: null,
+            ...(inspection.collection ? { 'collection.status': 'CANCELED', 'collection.updatedAt': new Date() } : {}),
+            updatedAt: new Date(),
+          },
+          $inc: { version: 1 },
+        },
       );
+      if (res.modifiedCount === 0) throw conflict('A vistoria já foi aprovada ou cancelada.');
+      if (inspection.collection) await cancelCollectionForInspection(ctx, inspection);
       await audit(ctx, {
         organizationId: auth.organizationId,
         actorId: auth.userId,
@@ -637,33 +729,76 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
         throw badRequest(`Envie todas as fotos solicitadas. Faltando: ${missing.map((s) => s.label).join(', ')}.`);
       }
 
-      const photos = body.photos.map((p) => ({
-        slotCode: p.slotCode,
-        slotLabel: slotMap.get(p.slotCode)?.label ?? p.slotCode,
-        fileId: toObjectId(p.fileId, 'fileId'),
-      }));
+      const unknownSlots = body.photos.filter((p) => !slotMap.has(p.slotCode));
+      if (unknownSlots.length > 0) throw badRequest('Foto enviada para um tipo de foto inexistente.');
 
-      await ctx.mongo.collections.inspections.updateOne(
-        { _id: inspection._id },
+      // Cada arquivo precisa existir, pertencer à mesma organização e ter
+      // sido enviado como foto de vistoria (corrige IDOR — plano §1.1).
+      const photos: InspectionDoc['photos'] = [];
+      for (const p of body.photos) {
+        const file = await requireFile(ctx, inspection.organizationId, toObjectId(p.fileId, 'fileId'), 'INSPECTION_PHOTO');
+        photos.push({ slotCode: p.slotCode, slotLabel: slotMap.get(p.slotCode)!.label, fileId: file._id });
+      }
+
+      const now = new Date();
+      const evidence = [
+        ...(inspection.photoEvidence ?? []).map((e) =>
+          e.slotCode && photos.some((p) => p.slotCode === e.slotCode) && !e.supersededAt ? { ...e, supersededAt: now } : e,
+        ),
+        ...photos.map((p) => ({
+          slotCode: p.slotCode,
+          slotLabel: p.slotLabel,
+          fileId: p.fileId,
+          source: 'WEB' as const,
+          receivedAt: now,
+          externalMediaId: null,
+          sha256: null,
+          wamid: null,
+          round: inspection.correctionRound ?? 0,
+          late: false,
+          supersededAt: null,
+        })),
+      ];
+
+      const res = await ctx.mongo.collections.inspections.updateOne(
+        { _id: inspection._id, status: 'PENDING', requestTokenHash: sha256(token) },
         {
           $set: {
             status: 'SUBMITTED',
-            submittedAt: new Date(),
+            submittedAt: now,
             odometerKm: body.odometerKm,
             photos,
+            photoEvidence: evidence,
             notes: body.notes ?? inspection.notes,
             requestTokenHash: null,
-            updatedAt: new Date(),
+            requestTokenEnc: null,
+            ...(inspection.collection
+              ? {
+                  'collection.status': 'COMPLETE',
+                  'collection.completedAt': now,
+                  'collection.receivedSlots': photos.map((p) => p.slotCode),
+                  'collection.updatedAt': now,
+                }
+              : {}),
+            updatedAt: now,
           },
+          $inc: { version: 1 },
         },
       );
+      if (res.modifiedCount === 0) throw conflict('Esta vistoria já foi enviada.');
+      if (inspection.collection?.sessionId) {
+        // O cliente concluiu pelo navegador: encerra a coleta no WhatsApp.
+        await ctx.integrations.whaply
+          .sessionCommand(inspection.collection.sessionId, { type: 'CANCEL', reason: 'submitted_via_web' })
+          .catch(() => undefined);
+      }
       await audit(ctx, {
         organizationId: inspection.organizationId,
         actorId: null,
         action: 'inspection.submitted',
         entityType: 'inspection',
         entityId: inspection._id,
-        after: { odometerKm: body.odometerKm, photos: photos.length },
+        after: { odometerKm: body.odometerKm, photos: photos.length, source: 'WEB' },
       });
       return { ok: true };
     },

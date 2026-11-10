@@ -176,6 +176,10 @@ export const receivableListQuerySchema = z.object({
   q: z.string().trim().max(120).optional(),
   status: receivableStatusSchema.optional(),
   paymentMethod: paymentMethodSchema.optional(),
+  driverId: objectIdSchema.optional(),
+  rentalId: objectIdSchema.optional(),
+  /** true = só contas com saldo a receber (exclui quitadas e canceladas). */
+  openOnly: z.enum(['true', 'false']).optional(),
   sort: z.enum(['createdAt', 'dueDate', 'amount', 'client']).default('createdAt'),
   cursor: z.string().max(200).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),

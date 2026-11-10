@@ -68,6 +68,15 @@ async function toDriverDTOs(
       cnhCategory: doc.cnh?.category ?? null,
       cnhExpiresAt: doc.cnh?.expiresAt ?? null,
       cnhExpired: Boolean(doc.cnh?.expiresAt && doc.cnh.expiresAt < today),
+      whatsappConsent: doc.whatsappConsent
+        ? {
+            status: doc.whatsappConsent.status,
+            grantedAt: doc.whatsappConsent.grantedAt?.toISOString() ?? null,
+            source: doc.whatsappConsent.source,
+            revokedAt: doc.whatsappConsent.revokedAt?.toISOString() ?? null,
+            revokedSource: doc.whatsappConsent.revokedSource,
+          }
+        : null,
       address: {
         postalCode: doc.address?.postalCode ?? null,
         street: doc.address?.street ?? null,

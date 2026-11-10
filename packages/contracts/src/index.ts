@@ -11,3 +11,4 @@ export * from './finance.js';
 export * from './reports.js';
 export * from './comms.js';
 export * from './org.js';
+export * from './whaply.js';

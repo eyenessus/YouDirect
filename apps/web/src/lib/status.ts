@@ -1,4 +1,6 @@
 import type {
+  CollectionStatus,
+  MessageStatus,
   DriverStatus,
   InspectionStatus,
   InvoiceStatus,
@@ -76,6 +78,33 @@ export const statusTone = {
     WARNING: 'amber',
     INFO: 'blue',
   } satisfies Record<NotificationSeverity, BadgeTone>,
+
+  message: {
+    INTENT_CREATED: 'slate',
+    RETRY_SCHEDULED: 'amber',
+    SUBMITTED_TO_WHAPLY: 'slate',
+    ACCEPTED_BY_WHAPLY: 'slate',
+    DEFERRED: 'amber',
+    ACCEPTED_BY_META: 'blue',
+    SENT: 'blue',
+    DELIVERED: 'green',
+    READ: 'green',
+    FAILED: 'red',
+    CANCELED: 'slate',
+  } satisfies Record<MessageStatus, BadgeTone>,
+
+  collection: {
+    NOT_SCHEDULED: 'slate',
+    SCHEDULED: 'slate',
+    BLOCKED_NO_CONSENT: 'amber',
+    REQUESTED: 'blue',
+    IN_PROGRESS: 'blue',
+    PARTIAL: 'amber',
+    COMPLETE: 'green',
+    EXPIRED: 'red',
+    FAILED: 'red',
+    CANCELED: 'slate',
+  } satisfies Record<CollectionStatus, BadgeTone>,
 } as const;
 
 /** Cor da borda lateral dos cartões de notificação. */

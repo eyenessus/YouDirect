@@ -39,14 +39,22 @@ import type { PayableDoc, ReceivableDoc } from '../../database/types.js';
 
 /* --------------------------- Categorias ---------------------------- */
 
-const DEFAULT_CATEGORIES = ['Financiamento', 'Seguro', 'Outro'];
+const DEFAULT_CATEGORIES = ['Financiamento', 'Seguro', 'IPVA', 'Licenciamento', 'Outro'];
 
+/**
+ * Garante as categorias padrão. Insere só as que faltam (por slug), então
+ * organizações existentes também recebem IPVA/Licenciamento sem duplicar e
+ * sem reativar categorias que o usuário desativou.
+ */
 export async function ensureDefaultCategories(ctx: AppContext, organizationId: ObjectId) {
-  const count = await ctx.mongo.collections.expenseCategories.countDocuments({ organizationId });
-  if (count > 0) return;
+  const col = ctx.mongo.collections.expenseCategories;
+  const existing = await col.find({ organizationId }, { projection: { slug: 1 } }).toArray();
+  const have = new Set(existing.map((c) => c.slug));
+  const missing = DEFAULT_CATEGORIES.filter((label) => !have.has(slugify(label)));
+  if (missing.length === 0) return;
   const now = new Date();
-  await ctx.mongo.collections.expenseCategories.insertMany(
-    DEFAULT_CATEGORIES.map((label) => ({
+  await col.insertMany(
+    missing.map((label) => ({
       _id: new ObjectId(),
       organizationId,
       label,
@@ -486,6 +494,9 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
       const filter: Record<string, unknown> = { organizationId };
       if (query.status) filter.status = query.status;
       if (query.paymentMethod) filter.paymentMethod = query.paymentMethod;
+      if (query.driverId) filter.driverId = new ObjectId(query.driverId);
+      if (query.rentalId) filter.rentalId = new ObjectId(query.rentalId);
+      if (query.openOnly === 'true' && !query.status) filter.status = { $nin: ['PAID', 'CANCELED'] };
       if (query.q) {
         const term = query.q.trim();
         const fold = new RegExp(escapeRegex(foldAccents(term).toLowerCase()), 'i');

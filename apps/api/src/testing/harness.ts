@@ -19,7 +19,7 @@ let sharedPromise: Promise<TestHarness> | null = null;
  * Sobe a API completa contra um MongoDB em memória com replica set
  * (transações habilitadas) e armazenamento local temporário.
  */
-export async function createHarness(): Promise<TestHarness> {
+export async function createHarness(overrides: Record<string, string> = {}): Promise<TestHarness> {
   const storageDir = await mkdtemp(join(tmpdir(), 'yudirect-test-'));
   resetEnvCache();
   const env = loadEnv({
@@ -33,6 +33,7 @@ export async function createHarness(): Promise<TestHarness> {
     JOBS_ENABLED: 'false',
     RATE_LIMIT_MAX: '100000',
     LOGIN_RATE_LIMIT_MAX: '100',
+    ...overrides,
   } as NodeJS.ProcessEnv);
 
   const ctx = await buildContext({ env });

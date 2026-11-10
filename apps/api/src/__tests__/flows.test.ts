@@ -707,6 +707,58 @@ describe('fluxos funcionais da API', () => {
       expect(retry.json().receivable.remainingCents).toBe(target.remainingCents - 10000);
     });
 
+    it('lista contas a receber em aberto do motorista e da locação (atalho de baixa)', async () => {
+      const all = await req(alpha.cookie).get('/api/v1/receivables?limit=50');
+      const sample = (
+        all.json().data as Array<{
+          driver: { id: string };
+          rental: { id: string } | null;
+          remainingCents: number;
+        }>
+      ).find((r) => r.remainingCents > 0 && r.rental)!;
+
+      const byDriver = await req(alpha.cookie).get(
+        `/api/v1/receivables?driverId=${sample.driver.id}&openOnly=true`,
+      );
+      expect(byDriver.statusCode).toBe(200);
+      const driverRows = byDriver.json().data as Array<{ driver: { id: string }; remainingCents: number }>;
+      expect(driverRows.length).toBeGreaterThan(0);
+      expect(driverRows.every((r) => r.driver.id === sample.driver.id && r.remainingCents > 0)).toBe(true);
+
+      const byRental = await req(alpha.cookie).get(
+        `/api/v1/receivables?rentalId=${sample.rental!.id}&openOnly=true`,
+      );
+      const rentalRows = byRental.json().data as Array<{ rental: { id: string } | null }>;
+      expect(rentalRows.length).toBeGreaterThan(0);
+      expect(rentalRows.every((r) => r.rental?.id === sample.rental!.id)).toBe(true);
+    });
+
+    it('dois recebimentos iguais com chaves diferentes são registrados separadamente', async () => {
+      const receivables = await req(alpha.cookie).get('/api/v1/receivables?limit=50');
+      const target = (receivables.json().data as Array<{ id: string; remainingCents: number }>).find(
+        (r) => r.remainingCents > 20000,
+      )!;
+      const body = { amountCents: 5000, paidAt: '2026-11-13', method: 'PIX', bankAccountId: accountId };
+      const a = await req(alpha.cookie).post(`/api/v1/receivables/${target.id}/payments`, body, {
+        'idempotency-key': 'receb-igual-1',
+      });
+      const b = await req(alpha.cookie).post(`/api/v1/receivables/${target.id}/payments`, body, {
+        'idempotency-key': 'receb-igual-2',
+      });
+      expect(a.statusCode).toBe(201);
+      expect(b.statusCode).toBe(201);
+      expect(b.json().receivable.remainingCents).toBe(target.remainingCents - 10000);
+    });
+
+    it('categorias padrão incluem IPVA, Licenciamento e Outro sem duplicar', async () => {
+      await req(alpha.cookie).get('/api/v1/expense-categories');
+      const res = await req(alpha.cookie).get('/api/v1/expense-categories');
+      const labels = (res.json().data as Array<{ label: string }>).map((c) => c.label);
+      for (const label of ['Financiamento', 'Seguro', 'IPVA', 'Licenciamento', 'Outro']) {
+        expect(labels.filter((l) => l === label)).toHaveLength(1);
+      }
+    });
+
     it('excluir conta paga gera estorno em vez de apagar o extrato', async () => {
       const before = await req(alpha.cookie).get(
         `/api/v1/bank-accounts/${accountId}/statement?from=2026-11-01&to=2026-11-30`,

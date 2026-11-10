@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Pencil, Trash2 } from 'lucide-vue-next';
+import { DollarSign, Pencil, Trash2 } from 'lucide-vue-next';
 import {
   formatCentsBRL,
   formatIsoDateBR,
@@ -15,6 +15,7 @@ import SearchInput from '@/components/ui/SearchInput.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import ActionMenu, { type ActionItem } from '@/components/ui/ActionMenu.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
+import LaunchPaymentDialog from '@/features/finance/LaunchPaymentDialog.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import { api, ApiRequestError } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
@@ -43,10 +44,15 @@ const total = ref(0);
 const confirmTarget = ref<Rental | null>(null);
 const deleting = ref(false);
 
-const actions: ActionItem[] = [
+const payTarget = ref<Rental | null>(null);
+
+const actions = computed<ActionItem[]>(() => [
   { key: 'edit', label: 'Editar', icon: Pencil },
+  ...(auth.allows('finance', 'pay')
+    ? [{ key: 'pay', label: 'Lançar pagamento', icon: DollarSign } satisfies ActionItem]
+    : []),
   { key: 'delete', label: 'Excluir', icon: Trash2, danger: true },
-];
+]);
 
 async function load() {
   loading.value = true;
@@ -65,6 +71,7 @@ async function load() {
 
 function onAction(key: string, rental: Rental) {
   if (key === 'edit') router.push(`/dashboard/rentals/${rental.id}/edit`);
+  else if (key === 'pay') payTarget.value = rental;
   else confirmTarget.value = rental;
 }
 
@@ -181,6 +188,13 @@ onMounted(load);
         Mostrando {{ rows.length }} de {{ total }} locações
       </p>
     </section>
+
+    <LaunchPaymentDialog
+      :open="payTarget !== null"
+      :rental-id="payTarget?.id"
+      :title="`Lançar pagamento — ${payTarget?.rentalNumber ?? ''}`"
+      @close="payTarget = null"
+    />
 
     <ConfirmDialog
       :open="confirmTarget !== null"

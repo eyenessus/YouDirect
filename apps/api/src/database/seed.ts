@@ -323,7 +323,7 @@ const PAYABLES: SeedPayable[] = [
   { description: 'FINANCIAMENTO HB20', category: 'Financiamento', plate: 'GCQ0E23', amount: brl(1489.55), due: '2026-09-08', supplier: 'BANCO PAN', paidAt: '2026-09-08' },
   { description: 'SEGURO MOBI', category: 'Seguro', plate: 'RVA9F74', amount: brl(174), due: '2026-09-20', supplier: 'CARSYSTEM', paidAt: '2026-09-20' },
   { description: 'SEGURO FIAT ARGO', category: 'Seguro', plate: 'RNA8D85', amount: brl(198.91), due: '2026-09-05', supplier: 'CARSYSTEM', paidAt: '2026-09-05' },
-  { description: 'IPVA 2026 - PARCELA 9', category: 'Outro', amount: brl(1056.83), due: '2026-09-25', supplier: 'SEFAZ SP', paidAt: '2026-09-25' },
+  { description: 'IPVA 2026 - PARCELA 9', category: 'IPVA', amount: brl(1056.83), due: '2026-09-25', supplier: 'SEFAZ SP', paidAt: '2026-09-25' },
   { description: 'ALUGUEL DO PÁTIO', category: 'Outro', amount: brl(2200), due: '2026-09-10', supplier: 'IMOBILIÁRIA CENTRO', paidAt: '2026-09-10' },
   { description: 'HONORÁRIOS CONTÁBEIS', category: 'Outro', amount: brl(1007.84), due: '2026-09-05', supplier: 'CONTABILIDADE ALFA', paidAt: '2026-09-05' },
   // Agosto — primeiro mês de operação (a frota foi cadastrada em 11/08/2026).

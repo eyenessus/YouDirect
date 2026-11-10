@@ -40,6 +40,9 @@ const form = reactive({
 });
 const errors = ref<Record<string, string>>({});
 const saving = ref(false);
+// Uma chave por abertura do modal: reenvios (duplo clique/rede) são
+// deduplicados, mas dois pagamentos iguais no mesmo dia continuam válidos.
+const attemptKey = ref('');
 
 const methodOptions = paymentMethods.map((m) => ({ value: m, label: paymentMethodLabels[m] }));
 
@@ -48,6 +51,7 @@ watch(
   async (open) => {
     if (!open || !props.target) return;
     errors.value = {};
+    attemptKey.value = `${props.kind}-${props.target.id}-${crypto.randomUUID()}`;
     form.amountCents = props.target.remainingCents;
     form.paidAt = new Date().toISOString().slice(0, 10);
     form.method = 'PIX';
@@ -78,7 +82,7 @@ async function submit() {
       },
       {
         headers: {
-          'idempotency-key': `${props.kind}-${props.target.id}-${form.amountCents}-${form.paidAt}`,
+          'idempotency-key': attemptKey.value,
         },
       },
     );
