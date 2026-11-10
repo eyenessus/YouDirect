@@ -88,7 +88,7 @@ export const portalInvoiceStatusLabels: Record<PortalInvoiceStatus, string> = {
 
 export const portalInvoiceSchema = z.object({
   key: z.string(),
-  kind: z.enum(['RENT', 'FINE', 'EXTRA_KM', 'DEPOSIT']),
+  kind: z.enum(['RENT', 'FINE', 'EXTRA_KM', 'DEPOSIT', 'DAMAGE']),
   description: z.string(),
   rentalNumber: z.string().nullable(),
   dueDate: isoDateSchema,

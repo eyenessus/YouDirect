@@ -198,13 +198,14 @@ export const notificationTypeLabels: Record<NotificationType, string> = {
 };
 
 /** Tipo da conta a receber. FINE = multa repassada ao motorista. */
-export const receivableKinds = ['RENT', 'DEPOSIT', 'OTHER', 'FINE'] as const;
+export const receivableKinds = ['RENT', 'DEPOSIT', 'OTHER', 'FINE', 'DAMAGE'] as const;
 export type ReceivableKind = (typeof receivableKinds)[number];
 export const receivableKindLabels: Record<ReceivableKind, string> = {
   RENT: 'Locação',
   DEPOSIT: 'Caução',
   OTHER: 'KM excedente',
   FINE: 'Multa',
+  DAMAGE: 'Avarias',
 };
 
 export const notificationSeverities = ['CRITICAL', 'WARNING', 'INFO'] as const;

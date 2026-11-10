@@ -496,7 +496,7 @@ export async function backfillRentalPaymentEntries(ctx: AppContext): Promise<{ c
     const receivable = await c.receivables.findOne({ _id: payment.sourceId, organizationId: payment.organizationId });
     if (!receivable?.rentalId) continue;
     // Multa repassada não é lançamento da aba Pagamentos da locação.
-    if (receivable.kind === 'FINE') continue;
+    if (receivable.kind === 'FINE' || receivable.kind === 'DAMAGE') continue;
     const { number, sequence } = await nextRentalReceipt(ctx, payment.organizationId, Number(payment.paidAt.slice(0, 4)));
     const now = new Date();
     await c.rentalPayments.insertOne({

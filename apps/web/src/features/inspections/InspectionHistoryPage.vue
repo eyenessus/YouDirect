@@ -13,6 +13,7 @@ import {
   XCircle,
 } from 'lucide-vue-next';
 import {
+  formatCentsBRL,
   formatIsoDateBR,
   formatKm,
   inspectionStatusLabels,
@@ -22,6 +23,7 @@ import {
   type Inspection,
 } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
+import InspectionDamagesModal from './InspectionDamagesModal.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppInput from '@/components/ui/AppInput.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
@@ -91,8 +93,14 @@ const busyId = ref<string | null>(null);
 async function review(inspection: Inspection, decision: 'APPROVE' | 'REJECT', notes?: string) {
   busyId.value = inspection.id;
   try {
-    await api.post(`/inspections/${inspection.id}/review`, { decision, notes: notes || undefined });
+    const res = await api.post<{ extraKm?: { status: string; km: number; amountCents: number } | null }>(
+      `/inspections/${inspection.id}/review`,
+      { decision, notes: notes || undefined },
+    );
     toasts.success(decision === 'APPROVE' ? 'Vistoria aprovada' : 'Vistoria reprovada');
+    if (res?.extraKm?.status === 'CHARGED') {
+      toasts.success(`KM excedente lançado: ${res.extraKm.km} km (${formatCentsBRL(res.extraKm.amountCents)})`);
+    }
     rejection.value = null;
     await load();
   } catch (err) {
@@ -104,6 +112,8 @@ async function review(inspection: Inspection, decision: 'APPROVE' | 'REJECT', no
 
 /* ------------------- reprovar (motivo obrigatório) ------------------ */
 const rejection = ref<{ inspection: Inspection; reason: string } | null>(null);
+/** Vistoria cujas avarias estão sendo cobradas. */
+const damageTarget = ref<Inspection | null>(null);
 
 function confirmRejection() {
   if (!rejection.value) return;
@@ -412,6 +422,13 @@ onMounted(load);
             </AppButton>
           </div>
 
+          <div
+            v-if="['SUBMITTED', 'APPROVED', 'REJECTED'].includes(inspection.status) && inspection.rentalId && auth.allows('inspections', 'review')"
+            class="mt-3"
+          >
+            <AppButton variant="ghost" @click="damageTarget = inspection">Cobrar avarias</AppButton>
+          </div>
+
           <div v-if="inspection.status === 'PENDING'" class="mt-6 flex flex-wrap gap-3">
             <AppButton
               v-if="auth.allows('inspections', 'request')"
@@ -550,6 +567,13 @@ onMounted(load);
       :vehicle="history?.vehicle ?? null"
       @close="requestOpen = false"
       @created="load"
+    />
+
+    <InspectionDamagesModal
+      :open="damageTarget !== null"
+      :inspection-id="damageTarget?.id ?? null"
+      :plate="history?.vehicle.plate ?? ''"
+      @close="damageTarget = null"
     />
   </div>
 </template>

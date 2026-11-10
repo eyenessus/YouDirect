@@ -499,6 +499,8 @@ export async function registerNotificationRoutes(app: FastifyInstance): Promise<
       email: ctx.integrations.email.status(),
       postalCode: ctx.integrations.postalCode.status(),
       trafficFines: ctx.integrations.trafficFines.status(),
+      pix: ctx.integrations.pix.status(),
+      signature: ctx.integrations.signature.status(),
       billing: ctx.integrations.billing.status(),
     };
   });

@@ -2,6 +2,10 @@ import type { FastifyBaseLogger } from 'fastify';
 import { businessDate } from '@yudirect/contracts';
 import type { AppContext } from '../context.js';
 import { runNotificationGenerators } from '../services/notifications.js';
+import { reconcilePixCharges } from '../services/pix.js';
+import { generateBillingReminders } from '../services/billing-reminders.js';
+import { recomputeLoyalty } from '../services/loyalty.js';
+import { reconcileSignatures } from '../services/contract-signature.js';
 import {
   extendOpenEndedReceivables,
   generateRecurringPayables,
@@ -34,6 +38,11 @@ export async function runScheduledJobs(ctx: AppContext, logger: FastifyBaseLogge
       // Locações sem término: abre a conta do período que começou (antes de recalcular status).
       const extended = await extendOpenEndedReceivables(ctx, organization._id, today);
       const statuses = await refreshOverdueStatuses(ctx, organization._id, today);
+      // Cobrança: Pix pendentes (webhook perdido) antes dos lembretes, para não cobrar quem já pagou.
+      const pix = await reconcilePixCharges(ctx, organization._id).catch(() => ({ paid: 0, expired: 0 }));
+      const reminders = await generateBillingReminders(ctx, organization._id).catch(() => ({ sent: 0, failed: 0, skipped: 0 }));
+      const loyalty = await recomputeLoyalty(ctx, organization._id, today).catch(() => 0);
+      const signatures = await reconcileSignatures(ctx, organization._id).catch(() => 0);
       logger.info(
         {
           organization: organization.name,
@@ -43,6 +52,11 @@ export async function runScheduledJobs(ctx: AppContext, logger: FastifyBaseLogge
           extendedRentalReceivables: extended,
           overdueReceivables: statuses.receivables,
           overduePayables: statuses.payables,
+          pixPaid: pix.paid,
+          pixExpired: pix.expired,
+          billingRemindersSent: reminders.sent,
+          loyaltyUpdated: loyalty,
+          signaturesUpdated: signatures,
         },
         'jobs executados',
       );

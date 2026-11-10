@@ -8,6 +8,7 @@ import AppInput from '@/components/ui/AppInput.vue';
 import AppSkeleton from '@/components/ui/AppSkeleton.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import WhatsappSettingsCard from './WhatsappSettingsCard.vue';
+import DamagePricesCard from './DamagePricesCard.vue';
 import { api, ApiRequestError } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/ui';
@@ -193,6 +194,8 @@ onMounted(load);
     </section>
 
     <WhatsappSettingsCard />
+
+    <DamagePricesCard />
 
     <ConfirmDialog
       :open="removeIndex !== null"

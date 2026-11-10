@@ -204,6 +204,32 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
     },
   ]);
 
+  await c.pixCharges.createIndexes([
+    { key: { provider: 1, providerPaymentId: 1 }, unique: true, name: 'uniq_provider_payment' },
+    { key: { organizationId: 1, scopeKey: 1, status: 1 }, name: 'by_scope' },
+    { key: { status: 1, createdAt: 1 }, name: 'by_status' },
+  ]);
+
+  await c.billingReminders.createIndexes([
+    { key: { organizationId: 1, invoiceKey: 1, bucket: 1 }, unique: true, name: 'uniq_invoice_bucket' },
+    { key: { createdAt: 1 }, expireAfterSeconds: 400 * 24 * 3600, name: 'ttl_400d' },
+  ]);
+
+  await c.damagePrices.createIndexes([{ key: { organizationId: 1, category: 1, name: 1 }, unique: true, name: 'uniq_org_damage' }]);
+
+  await c.inspectionDamages.createIndexes([
+    { key: { organizationId: 1, inspectionId: 1 }, unique: true, partialFilterExpression: { status: 'CHARGED' }, name: 'uniq_inspection_charged' },
+    { key: { organizationId: 1, rentalId: 1 }, name: 'by_rental' },
+  ]);
+
+  await c.depositSettlements.createIndexes([{ key: { organizationId: 1, rentalId: 1 }, unique: true, name: 'uniq_rental' }]);
+
+  await c.contractSignatures.createIndexes([
+    { key: { provider: 1, providerDocToken: 1 }, unique: true, name: 'uniq_provider_doc' },
+    { key: { organizationId: 1, rentalId: 1, createdAt: -1 }, name: 'by_rental' },
+    { key: { status: 1 }, name: 'by_status' },
+  ]);
+
   await c.trafficFines.createIndexes([
     { key: { organizationId: 1, fineNumber: 1 }, unique: true, name: 'uniq_org_fine_number' },
     {

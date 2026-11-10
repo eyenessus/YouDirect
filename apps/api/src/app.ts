@@ -15,6 +15,8 @@ import { authPlugin } from './plugins/auth.js';
 import { driverAuthPlugin } from './plugins/driver-auth.js';
 import { registerDriverPortalRoutes } from './modules/driver-portal/routes.js';
 import { registerPublicSiteRoutes } from './modules/public-site/routes.js';
+import { registerBillingRoutes } from './modules/billing/routes.js';
+import { registerOperationsRoutes } from './modules/operations/routes.js';
 import { errorsPlugin } from './plugins/errors.js';
 import { registerAuthRoutes } from './modules/auth/routes.js';
 import { registerVehicleRoutes } from './modules/vehicles/routes.js';
@@ -161,6 +163,8 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
       await registerFineRoutes(api);
       await registerDriverPortalRoutes(api);
       await registerPublicSiteRoutes(api);
+      await registerBillingRoutes(api);
+      await registerOperationsRoutes(api);
       await registerInspectionRoutes(api);
       await registerBankRoutes(api);
       await registerAccountRoutes(api);

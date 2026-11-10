@@ -102,6 +102,23 @@ const envSchema = z.object({
   BILLING_API_URL: z.string().optional(),
   BILLING_API_TOKEN: z.string().optional(),
 
+  /* Pix (Mercado Pago, API de pagamentos). Sem token => cobrança Pix indisponível. */
+  MERCADOPAGO_ACCESS_TOKEN: z.string().optional(),
+  /** Assinatura secreta dos webhooks (painel do Mercado Pago > Webhooks). Obrigatória para receber baixas. */
+  MERCADOPAGO_WEBHOOK_SECRET: z.string().optional(),
+  MERCADOPAGO_API_URL: z.string().url().default('https://api.mercadopago.com'),
+  /** E-mail do pagador quando o motorista não tem e-mail (exigido pela API). */
+  PIX_PAYER_FALLBACK_EMAIL: z.string().email().optional(),
+  PIX_EXPIRATION_MINUTES: z.coerce.number().int().min(30).max(43_200).default(1440),
+
+  /* Assinatura digital (ZapSign). Sem token => assinatura indisponível (PDF continua disponível). */
+  ZAPSIGN_API_TOKEN: z.string().optional(),
+  ZAPSIGN_API_URL: z.string().url().default('https://api.zapsign.com.br'),
+  /** Valor do cabeçalho Authorization ("Bearer <segredo>") configurado no webhook da ZapSign. */
+  ZAPSIGN_WEBHOOK_SECRET: z.string().optional(),
+  /** Validação da selfie: face-match-and-datavalid (selfie × base do governo pelo CPF), liveness-NXCD ou none. */
+  ZAPSIGN_SELFIE_VALIDATION: z.enum(['face-match-and-datavalid', 'liveness-NXCD', 'none']).default('face-match-and-datavalid'),
+
   JOBS_ENABLED: booleanish.default(true),
   JOBS_INTERVAL_MINUTES: z.coerce.number().int().min(1).max(1440).default(30),
 
@@ -179,6 +196,28 @@ export interface IntegrationStatus {
   name: string | null;
   connected: boolean;
   message: string;
+}
+
+export function pixStatus(env: Env): IntegrationStatus {
+  const connected = Boolean(env.MERCADOPAGO_ACCESS_TOKEN);
+  return {
+    name: connected ? 'mercadopago' : null,
+    connected,
+    message: connected
+      ? 'Cobrança Pix pelo Mercado Pago configurada.'
+      : 'Cobrança Pix não configurada (MERCADOPAGO_ACCESS_TOKEN). Nenhuma cobrança é gerada automaticamente.',
+  };
+}
+
+export function signatureStatus(env: Env): IntegrationStatus {
+  const connected = Boolean(env.ZAPSIGN_API_TOKEN);
+  return {
+    name: connected ? 'zapsign' : null,
+    connected,
+    message: connected
+      ? 'Assinatura digital pela ZapSign configurada.'
+      : 'Assinatura digital não configurada (ZAPSIGN_API_TOKEN). O contrato pode ser baixado em PDF e anexado assinado.',
+  };
 }
 
 export function whatsappStatus(env: Env): IntegrationStatus {

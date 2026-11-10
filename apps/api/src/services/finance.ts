@@ -328,6 +328,8 @@ export interface RegisterPaymentInput {
   bankAccountId: ObjectId;
   notes?: string | null;
   idempotencyKey?: string | null;
+  /** Origem especial do recebimento (ex.: PIX = baixa automática). */
+  origin?: 'PIX' | null;
 }
 
 export async function registerReceivablePayment(
@@ -403,6 +405,7 @@ export async function registerReceivablePayment(
         transactionId,
         idempotencyKey,
         notes: input.notes ?? null,
+        origin: input.origin ?? null,
         createdBy: input.actorId,
         createdAt: now,
         updatedAt: now,
@@ -447,6 +450,7 @@ export async function registerReceivablePayment(
 /** Texto da entrada no extrato bancário conforme o tipo da conta a receber. */
 export function receivableStatementDescription(receivable: Pick<ReceivableDoc, 'kind' | 'description'>): string {
   if (receivable.kind === 'FINE') return `Reembolso de multa - ${receivable.description.replace(/^Multa\s+/, '')}`.slice(0, 180);
+  if (receivable.kind === 'DAMAGE') return `Pagamento de avarias - ${receivable.description.replace(/^Avarias\s+/, '')}`.slice(0, 180);
   return `Pagamento da locação - Contrato ${receivable.description.replace(/^Locação\s+/, '')}`;
 }
 

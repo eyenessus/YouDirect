@@ -16,6 +16,7 @@ import AppTabs, { type TabItem } from '@/components/ui/AppTabs.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import RentalPaymentsTab from './RentalPaymentsTab.vue';
 import FinesPanel from '@/features/fines/FinesPanel.vue';
+import RentalOperationsTab from './RentalOperationsTab.vue';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/ui';
@@ -37,10 +38,11 @@ const tabs = computed<TabItem[]>(() => [
   { key: 'details', label: 'Detalhes' },
   ...(auth.allows('finance', 'read') ? [{ key: 'payments', label: 'Pagamentos' }] : []),
   ...(auth.allows('fines', 'read') ? [{ key: 'fines', label: 'Multas' }] : []),
+  { key: 'operations', label: 'Contrato, km e caução' },
 ]);
 
 const requested = computed(() =>
-  route.query.tab === 'payments' || route.query.tab === 'fines' ? String(route.query.tab) : 'details',
+  ['payments', 'fines', 'operations', 'deposit'].includes(String(route.query.tab)) ? (route.query.tab === 'deposit' ? 'operations' : String(route.query.tab)) : 'details',
 );
 const tab = ref<string>(requested.value);
 watch(requested, (v) => (tab.value = v));
@@ -81,6 +83,7 @@ onMounted(async () => {
 
       <RentalPaymentsTab v-if="activeTab === 'payments'" :rental-id="rental.id" />
       <FinesPanel v-else-if="activeTab === 'fines'" :rental-id="rental.id" title="Multas desta locação" />
+      <RentalOperationsTab v-else-if="activeTab === 'operations'" :rental-id="rental.id" :rental-number="rental.rentalNumber" />
 
       <div v-else class="grid gap-6 xl:grid-cols-2">
         <section class="fo-card p-7">

@@ -9,6 +9,8 @@ import {
   type IntegrationStatus,
 } from '../config/env.js';
 import { createWhaplyClient, type WhaplyClient } from './whaply/client.js';
+import { createPixProvider, type PixProvider } from './mercadopago.js';
+import { createSignatureProvider, type SignatureProvider } from './zapsign.js';
 
 /* ------------------------------------------------------------------ *
  * Adapters de integrações externas.
@@ -82,6 +84,10 @@ export interface Integrations {
   billing: BillingProvider;
   /** Canal oficial de WhatsApp da FF Veículos via Whaply (vistoria guiada). */
   whaply: WhaplyClient;
+  /** Cobrança Pix (Mercado Pago). */
+  pix: PixProvider;
+  /** Assinatura digital do contrato (ZapSign). */
+  signature: SignatureProvider;
 }
 
 /** Nenhuma chamada a provedor externo pode prender a requisição indefinidamente. */
@@ -109,6 +115,8 @@ export function createIntegrations(env: Env): Integrations {
 
   return {
     whaply: createWhaplyClient(env),
+    pix: createPixProvider(env),
+    signature: createSignatureProvider(env),
 
     whatsapp: {
       status: () => wa,

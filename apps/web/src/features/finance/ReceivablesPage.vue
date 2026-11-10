@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { DollarSign } from 'lucide-vue-next';
+import { DollarSign, QrCode } from 'lucide-vue-next';
 import {
   formatCentsBRL,
   formatIsoDateBR,
@@ -20,6 +20,7 @@ import StatusBadge from '@/components/ui/StatusBadge.vue';
 import ActionMenu, { type ActionItem } from '@/components/ui/ActionMenu.vue';
 import FormField from '@/components/ui/FormField.vue';
 import RegisterPaymentModal from './RegisterPaymentModal.vue';
+import StaffPixModal from './StaffPixModal.vue';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/ui';
@@ -60,7 +61,11 @@ const sortOptions = [
   { value: 'client', label: 'Cliente' },
 ];
 
-const actions: ActionItem[] = [{ key: 'pay', label: 'Pagar', icon: DollarSign }];
+const actions: ActionItem[] = [
+  { key: 'pay', label: 'Pagar', icon: DollarSign },
+  { key: 'pix', label: 'Cobrar por Pix', icon: QrCode },
+];
+const pixTarget = ref<Receivable | null>(null);
 
 async function load() {
   loading.value = true;
@@ -196,7 +201,7 @@ onMounted(load);
             v-if="auth.allows('finance', 'pay') && row.remainingCents > 0"
             :items="actions"
             :label="`Ações de ${row.description}`"
-            @select="payTarget = row"
+            @select="(key: string) => (key === 'pix' ? (pixTarget = row) : (payTarget = row))"
           />
         </template>
       </DataTable>
@@ -220,6 +225,15 @@ onMounted(load);
       "
       @close="payTarget = null"
       @saved="load"
+    />
+
+    <StaffPixModal
+      :target="
+        pixTarget
+          ? { id: pixTarget.id, description: pixTarget.description, driverName: pixTarget.driver.fullName, remainingCents: pixTarget.remainingCents }
+          : null
+      "
+      @close="pixTarget = null"
     />
   </div>
 </template>

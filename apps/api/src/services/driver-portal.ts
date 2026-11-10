@@ -271,7 +271,8 @@ export async function portalInvoices(ctx: AppContext, auth: DriverAuthContext, t
       }
       continue;
     }
-    const kind: PortalInvoice['kind'] = rec.kind === 'FINE' ? 'FINE' : rec.kind === 'DEPOSIT' ? 'DEPOSIT' : rec.kind === 'OTHER' ? 'EXTRA_KM' : 'RENT';
+    const kind: PortalInvoice['kind'] =
+      rec.kind === 'FINE' ? 'FINE' : rec.kind === 'DAMAGE' ? 'DAMAGE' : rec.kind === 'DEPOSIT' ? 'DEPOSIT' : rec.kind === 'OTHER' ? 'EXTRA_KM' : 'RENT';
     invoices.push({
       key: rec._id.toHexString(),
       kind,

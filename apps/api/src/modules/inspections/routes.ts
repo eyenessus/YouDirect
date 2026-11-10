@@ -19,6 +19,7 @@ import {
 import { badRequest, conflict, notFound } from '../../common/errors.js';
 import { sha256, slugify, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
+import { processKmReading } from '../../services/km-billing.js';
 import { audit } from '../../services/common.js';
 import { describeFiles, requireFile, storeFile } from '../../services/files.js';
 import { buildInspectionDoc, nextOccurrence } from '../../services/inspection-schedule.js';
@@ -550,7 +551,15 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
         after: { status, notes: body.notes ?? null, round: inspection.correctionRound ?? 0 },
         correlationId: inspection.collection?.correlationId ?? null,
       });
-      return { ok: true, status };
+      // Vistoria aprovada com hodômetro: cobra o km excedente automaticamente.
+      let extraKm: Awaited<ReturnType<typeof processKmReading>> | null = null;
+      if (status === 'APPROVED') {
+        extraKm = await processKmReading(ctx, { ...inspection, status: 'APPROVED' }, auth.userId).catch((err) => {
+          request.log.error({ err, inspectionId: id }, 'falha ao calcular km excedente');
+          return null;
+        });
+      }
+      return { ok: true, status, extraKm };
     },
   );
 

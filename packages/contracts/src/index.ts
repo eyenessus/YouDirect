@@ -10,6 +10,7 @@ export * from './inspections.js';
 export * from './finance.js';
 export * from './fines.js';
 export * from './portal.js';
+export * from './operations.js';
 export * from './reports.js';
 export * from './comms.js';
 export * from './org.js';

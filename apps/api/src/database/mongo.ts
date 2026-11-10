@@ -42,6 +42,12 @@ import type {
   DriverSessionDoc,
   MaintenanceRequestDoc,
   RentalLeadDoc,
+  PixChargeDoc,
+  BillingReminderDoc,
+  DamagePriceDoc,
+  InspectionDamageDoc,
+  DepositSettlementDoc,
+  ContractSignatureDoc,
 } from './types.js';
 
 export interface Collections {
@@ -70,6 +76,12 @@ export interface Collections {
   driverSessions: Collection<DriverSessionDoc>;
   maintenanceRequests: Collection<MaintenanceRequestDoc>;
   rentalLeads: Collection<RentalLeadDoc>;
+  pixCharges: Collection<PixChargeDoc>;
+  billingReminders: Collection<BillingReminderDoc>;
+  damagePrices: Collection<DamagePriceDoc>;
+  inspectionDamages: Collection<InspectionDamageDoc>;
+  depositSettlements: Collection<DepositSettlementDoc>;
+  contractSignatures: Collection<ContractSignatureDoc>;
   notifications: Collection<NotificationDoc>;
   messageTemplates: Collection<MessageTemplateDoc>;
   messageDispatches: Collection<MessageDispatchDoc>;
@@ -123,6 +135,12 @@ function buildCollections(db: Db): Collections {
     driverSessions: db.collection<DriverSessionDoc>('driverSessions'),
     maintenanceRequests: db.collection<MaintenanceRequestDoc>('maintenanceRequests'),
     rentalLeads: db.collection<RentalLeadDoc>('rentalLeads'),
+    pixCharges: db.collection<PixChargeDoc>('pixCharges'),
+    billingReminders: db.collection<BillingReminderDoc>('billingReminders'),
+    damagePrices: db.collection<DamagePriceDoc>('damagePrices'),
+    inspectionDamages: db.collection<InspectionDamageDoc>('inspectionDamages'),
+    depositSettlements: db.collection<DepositSettlementDoc>('depositSettlements'),
+    contractSignatures: db.collection<ContractSignatureDoc>('contractSignatures'),
     notifications: db.collection<NotificationDoc>('notifications'),
     messageTemplates: db.collection<MessageTemplateDoc>('messageTemplates'),
     messageDispatches: db.collection<MessageDispatchDoc>('messageDispatches'),

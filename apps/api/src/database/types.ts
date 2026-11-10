@@ -40,6 +40,11 @@ import type {
   MaintenanceRequestCategory,
   MaintenanceRequestStatus,
   RentalLeadStatus,
+  PixChargeStatus,
+  ContractSignatureStatus,
+  RentalKmPolicy,
+  BillingSettings,
+  LoyaltySettings,
 } from '@yudirect/contracts';
 
 /** Data pura de negócio no formato `YYYY-MM-DD`. */
@@ -75,6 +80,10 @@ export interface OrganizationDoc extends Base {
       emergencyPhone: string | null;
       requirements: string[];
     };
+    /** Lembretes de cobrança pelo WhatsApp. Ausente = padrão. */
+    billing?: BillingSettings;
+    /** Programa de fidelidade do motorista. Ausente = padrão. */
+    loyalty?: LoyaltySettings;
     /** Coleta de vistoria pelo WhatsApp (plano §4.1). Ausente = padrão. */
     inspectionWhatsapp?: InspectionWhatsappSettings;
   };
@@ -203,6 +212,8 @@ export interface DriverDoc extends Tenant {
   whatsappConsent?: DriverConsentEmbedded | null;
   /** LGPD: dados pessoais apagados (o histórico financeiro fica). */
   anonymizedAt?: Date | null;
+  /** Fidelidade (recalculada pelo job diário). */
+  loyalty?: { score: number; levelCode: string; computedAt: Date } | null;
   status: DriverStatus;
   archivedAt: Date | null;
   createdBy: ObjectId | null;
@@ -226,6 +237,17 @@ export interface RentalDoc extends Tenant {
   monthlyFranchiseKm: number | null;
   contractFileId: ObjectId | null;
   notes: string | null;
+  /** Franquia de km e preço do km excedente. */
+  kmPolicy?: RentalKmPolicy | null;
+  /** Estado da cobrança de km excedente (acumulado). */
+  kmBilling?: {
+    baselineOdometerKm: number | null;
+    lastOdometerKm: number | null;
+    lastReadingAt: IsoDate | null;
+    chargedKm: number;
+    chargedCents: number;
+    processedInspectionIds: ObjectId[];
+  } | null;
   status: RentalStatus;
   closedAt: Date | null;
   history: Array<{ at: Date; actorId: ObjectId | null; action: string; detail?: string }>;
@@ -535,6 +557,84 @@ export interface ReceivableDoc extends Tenant {
   version: number;
 }
 
+/** Cobrança Pix de uma conta a receber (ou de uma semana do contrato). */
+export interface PixChargeDoc extends Tenant {
+  receivableId: ObjectId;
+  driverId: ObjectId;
+  rentalId: ObjectId | null;
+  /** Fatura cobrada (chave estável): uma cobrança pendente por fatura e valor. */
+  scopeKey: string;
+  description: string;
+  amountCents: number;
+  provider: 'MERCADOPAGO';
+  providerPaymentId: string;
+  qrCode: string | null;
+  qrCodeBase64: string | null;
+  ticketUrl: string | null;
+  status: PixChargeStatus;
+  expiresAt: Date;
+  paidAt: Date | null;
+  paymentId: ObjectId | null;
+  /** Valor pago acima do saldo (a fatura já tinha sido quitada por outro meio). */
+  excessCents: number;
+  createdBy: ObjectId | null;
+}
+
+/** Lembrete de cobrança enviado (um por fatura e marco: D-2, D0, D+1...). */
+export interface BillingReminderDoc extends Tenant {
+  driverId: ObjectId;
+  invoiceKey: string;
+  dueDate: IsoDate;
+  bucket: string;
+  status: 'SENT' | 'FAILED';
+  error: string | null;
+}
+
+export interface DamagePriceDoc extends Tenant {
+  name: string;
+  category: string;
+  priceCents: number;
+  active: boolean;
+}
+
+export interface InspectionDamageDoc extends Tenant {
+  inspectionId: ObjectId;
+  rentalId: ObjectId;
+  driverId: ObjectId;
+  items: Array<{ damagePriceId: ObjectId; name: string; category: string; quantity: number; unitPriceCents: number; totalCents: number; note: string | null }>;
+  totalCents: number;
+  receivableId: ObjectId | null;
+  status: 'CHARGED' | 'CANCELED';
+  createdBy: ObjectId | null;
+}
+
+export interface DepositSettlementDoc extends Tenant {
+  rentalId: ObjectId;
+  driverId: ObjectId;
+  depositHeldCents: number;
+  appliedCents: number;
+  refundCents: number;
+  applications: Array<{ receivableId: ObjectId; paymentId: ObjectId; amountCents: number }>;
+  refundTransactionId: ObjectId | null;
+  notes: string | null;
+  createdBy: ObjectId | null;
+}
+
+export interface ContractSignatureDoc extends Tenant {
+  rentalId: ObjectId;
+  driverId: ObjectId;
+  provider: 'ZAPSIGN';
+  providerDocToken: string;
+  signerToken: string | null;
+  signUrl: string | null;
+  status: ContractSignatureStatus;
+  validationType: string | null;
+  identity: { selfie: boolean; document: boolean };
+  signedAt: Date | null;
+  signedFileId: ObjectId | null;
+  createdBy: ObjectId | null;
+}
+
 /** Link de acesso de uso único à Área do Motorista. */
 export interface DriverAccessTokenDoc extends Tenant {
   driverId: ObjectId;
@@ -654,6 +754,8 @@ export interface PaymentDoc extends Tenant {
   reversedAt?: Date | null;
   reversedReason?: string | null;
   reversalTransactionId?: ObjectId | null;
+  /** Origem especial: PIX (baixa automática) ou DEPOSIT (compensado com a caução, sem extrato). */
+  origin?: 'PIX' | 'DEPOSIT' | null;
 }
 
 /**

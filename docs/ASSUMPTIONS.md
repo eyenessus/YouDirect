@@ -196,6 +196,74 @@ pendentes. Ele pode pedir manutenção, o que avisa a equipe sem criar OS
   limite de pedidos por IP e sem duplicar o mesmo telefone em 24 h. Ao aprovar
   um pedido, o cadastro de motorista abre já preenchido.
 
+### A-PIX-01 — Cobrança Pix com baixa automática **[R]**
+
+**Como a cobrança é criada**
+- O Pix é criado pela API de pagamentos do Mercado Pago (`payment_method_id: pix`), com `X-Idempotency-Key`.
+- Cada fatura tem uma cobrança pendente por valor, que é reaproveitada enquanto não vence.
+- A "fatura" é uma semana do cronograma do contrato ou uma conta própria (multa, avaria, km excedente).
+
+**Quando a conta recebe baixa**
+- A baixa **nunca** confia só no webhook. O sistema consulta `GET /v1/payments/{id}` e só dá baixa com o status `approved`.
+- A chave de idempotência da baixa é `pix:<id do pagamento>`. Assim, webhooks repetidos e a conciliação geram uma baixa só.
+- O webhook é validado pela `x-signature`: HMAC-SHA256 do manifest `id;request-id;ts`, com tolerância de 15 min contra replay.
+- Sem `MERCADOPAGO_WEBHOOK_SECRET`, o webhook responde 503.
+- A conciliação do job e o acompanhamento da tela consultam o provedor quando o webhook não chega.
+
+**Pagamento acima do saldo**
+- Se a fatura já tiver sido paga em parte por outro meio, o sistema aplica só o saldo.
+- O excedente fica registrado (`excessCents`) e a equipe recebe um aviso, sem estorno automático.
+
+**Integração com o restante do sistema**
+- O pagamento entra no extrato e na aba Pagamentos da locação, com recibo INV.
+
+### A-PIX-02 — Régua de cobrança **[R]**
+- **Quando avisa:** 2 dias antes do vencimento, no dia, e 1 e 3 dias depois (configurável).
+- **Horário e duplicidade:** sai só das 9h às 20h e uma vez por fatura e marco (índice único).
+- **Quem recebe:** respeita o consentimento de WhatsApp do motorista.
+- **Sem provedor de WhatsApp:** nada é enviado nem registrado como enviado.
+- **Conteúdo:** a mensagem leva o link da Área do Motorista, onde o motorista paga por Pix.
+
+### A-KM-01 — KM excedente automático **[R]**
+- **Quando roda:** ao aprovar uma vistoria com hodômetro.
+- **Base:** o hodômetro da entrega ou, se não houver, a 1ª vistoria aprovada.
+- **Franquia:** semanal, proporcional aos dias desde o início (`franquia × dias ÷ 7`).
+- **O que cobra:** só a diferença ainda não cobrada, lançada como "KM excedente" na aba Pagamentos. A chave é `km:<vistoria>`.
+- **Leitura menor que a anterior:** é ignorada e não gera cobrança nem devolução.
+- **Locação encerrada:** não recebe lançamento automático.
+
+### A-AVA-01 — Tabela de avarias e caução **[R]**
+- **Tabela de avarias:** inspirada na "Régua de Avarias" da Localiza. Ela vem com preços de referência, que a locadora edita.
+- **Cobrança das avarias:**
+  - vira uma conta a receber do tipo `DAMAGE`, uma ativa por vistoria;
+  - não é cancelada junto com a locação;
+  - só pode ser cancelada sem pagamento.
+- **Fechamento da caução:**
+  - **Quando pode:** com a locação encerrada e a caução registrada no extrato (`RENTAL_DEPOSIT`).
+  - **Compensação:** compensa as contas em aberto da locação, em ordem de vencimento. A compensação é um pagamento sem extrato (o dinheiro já estava no caixa) e conta como receita.
+  - **Sobra:** é devolvida como saída no extrato.
+  - **Repetição:** uma vez por locação.
+
+### A-FID-01 — Fidelidade do motorista **[R]**
+- **Pontos:** estilo Zarp Acelera, com teto por critério:
+  - tempo de contrato: até 120;
+  - faturas pagas em dia menos atrasos: −60 a 80;
+  - vistorias no prazo nos últimos 90 dias: −45 a 40;
+  - multas nos últimos 180 dias: até −60.
+- **Níveis:** de Inicial a Especial, configuráveis pelo dono ou administrador.
+- **Desconto do nível:** é informativo. A locadora aplica no valor do contrato, não há desconto automático na fatura.
+- **Recálculo:** diário. Quando um motorista sobe de nível, a equipe recebe um aviso.
+
+### A-ASS-01 — Contrato e assinatura digital **[R]**
+- **Contrato:** é gerado em PDF a partir da locação. As cláusulas são genéricas e precisam ser revisadas pelo jurídico.
+- **Assinatura (ZapSign):**
+  - assinatura na tela, com `require_selfie_photo` e `require_document_photo` (CNH);
+  - com CPF, `selfie_validation_type = face-match-and-datavalid`: a selfie é comparada à base do governo;
+  - sem CPF, usa `liveness-NXCD` (prova de vida).
+- **Webhook:** a ZapSign não assina o webhook. Por isso ele exige `Authorization: Bearer <ZAPSIGN_WEBHOOK_SECRET>` e o estado é sempre reconsultado na API.
+- **Ao assinar:** o PDF assinado é guardado como contrato da locação.
+- **Sem provedor:** o PDF continua disponível para assinatura manual.
+
 ## 4. Dados de demonstração (seed)
 
 ### A-SEED-01 — Saldo de abertura da conta **[R]**
