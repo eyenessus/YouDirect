@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { Plus } from 'lucide-vue-next';
 import {
+  businessDate,
   formatCentsBRL,
   installmentFrequencies,
   installmentFrequencyLabels,
@@ -35,7 +36,7 @@ const form = reactive({
   categoryId: '',
   vehicleId: '',
   amountCents: 0,
-  dueDate: new Date().toISOString().slice(0, 10),
+  dueDate: businessDate(),
   description: '',
   supplierName: '',
   supplierTaxId: '',

@@ -341,6 +341,7 @@ export async function registerReceivablePayment(
     );
     if (!receivable) throw notFound('Conta a receber não encontrada.');
     if (receivable.status === 'CANCELED') throw conflict('Conta a receber cancelada.');
+    assertPaidAtNotFuture(input.paidAt, today);
 
     // Chave do cliente: escopo por conta (a mesma chave em contas diferentes
     // não colide). Sem chave: inclui a versão da conta — dois cliques
@@ -357,6 +358,7 @@ export async function registerReceivablePayment(
       { session },
     );
     if (duplicated) {
+      assertSameIdempotentRequest(duplicated, input);
       return { paymentId: duplicated._id, receivableId: receivable._id, alreadyProcessed: true };
     }
 
@@ -440,6 +442,115 @@ export async function registerReceivablePayment(
   });
 }
 
+/** Pagamento "realizado" não pode estar no futuro (inflaria meses que ainda não aconteceram). */
+function assertPaidAtNotFuture(paidAt: IsoDate, today: IsoDate): void {
+  if (paidAt > today) {
+    throw unprocessable('A data do pagamento não pode ser futura.', { paidAt });
+  }
+}
+
+/** Reaproveitar a mesma chave com outro valor/conta/data seria um sucesso falso: recusamos. */
+function assertSameIdempotentRequest(
+  existing: { amountCents: number; paidAt: IsoDate; sourceId: ObjectId },
+  input: RegisterPaymentInput,
+): void {
+  if (
+    existing.amountCents !== input.amountCents ||
+    existing.paidAt !== input.paidAt ||
+    !existing.sourceId.equals(input.sourceId)
+  ) {
+    throw conflict('Esta chave de idempotência já foi usada em outro pagamento. Gere uma nova tentativa.');
+  }
+}
+
+/**
+ * Estorno de um recebimento: o pagamento original é PRESERVADO (marcado como estornado),
+ * o extrato recebe a saída de estorno e a conta volta a ter o saldo em aberto.
+ * Repetir o estorno é idempotente (não duplica o efeito).
+ */
+export async function reverseReceivablePayment(
+  ctx: AppContext,
+  params: {
+    organizationId: ObjectId;
+    actorId: ObjectId | null;
+    receivableId: ObjectId;
+    paymentId: ObjectId;
+    reason: string;
+  },
+): Promise<{ alreadyReversed: boolean; receivableId: ObjectId }> {
+  const today = businessDate();
+  return withTransaction(ctx, async (session) => {
+    const payment = await ctx.mongo.collections.payments.findOne(
+      {
+        _id: params.paymentId,
+        organizationId: params.organizationId,
+        sourceType: 'RECEIVABLE',
+        sourceId: params.receivableId,
+      },
+      { session },
+    );
+    if (!payment) throw notFound('Recebimento não encontrado.');
+    const receivable = await ctx.mongo.collections.receivables.findOne(
+      { _id: params.receivableId, organizationId: params.organizationId },
+      { session },
+    );
+    if (!receivable) throw notFound('Conta a receber não encontrada.');
+    if (payment.reversedAt) return { alreadyReversed: true, receivableId: receivable._id };
+
+    let reversalTransactionId: ObjectId | null = null;
+    if (payment.transactionId) {
+      reversalTransactionId = await reverseTransaction(
+        ctx,
+        {
+          organizationId: params.organizationId,
+          transactionId: payment.transactionId,
+          occurredAt: today,
+          reason: params.reason,
+          actorId: params.actorId,
+        },
+        session,
+      );
+    }
+    const now = new Date();
+    await ctx.mongo.collections.payments.updateOne(
+      { _id: payment._id },
+      {
+        $set: {
+          reversedAt: now,
+          reversedReason: params.reason,
+          reversalTransactionId,
+          updatedAt: now,
+        },
+      },
+      { session },
+    );
+
+    const paidAmountCents = Math.max(receivable.paidAmountCents - payment.amountCents, 0);
+    const status = deriveReceivableStatus({ ...receivable, paidAmountCents }, today);
+    const res = await ctx.mongo.collections.receivables.updateOne(
+      { _id: receivable._id, version: receivable.version },
+      { $set: { paidAmountCents, status, updatedAt: now }, $inc: { version: 1 } },
+      { session },
+    );
+    if (res.matchedCount === 0) throw conflict('A conta foi alterada por outra operação. Tente novamente.');
+
+    await audit(
+      ctx,
+      {
+        organizationId: params.organizationId,
+        actorId: params.actorId,
+        action: 'receivable.payment.reversed',
+        entityType: 'receivable',
+        entityId: receivable._id,
+        before: { paidAmountCents: receivable.paidAmountCents, status: receivable.status },
+        after: { paidAmountCents, status, amountCents: payment.amountCents, reason: params.reason },
+      },
+      session,
+    );
+    return { alreadyReversed: false, receivableId: receivable._id };
+  });
+}
+
 export async function registerPayablePayment(
   ctx: AppContext,
   input: RegisterPaymentInput,
@@ -452,6 +563,7 @@ export async function registerPayablePayment(
     );
     if (!payable) throw notFound('Conta a pagar não encontrada.');
     if (payable.status === 'CANCELED') throw conflict('Conta a pagar cancelada.');
+    assertPaidAtNotFuture(input.paidAt, today);
 
     const idempotencyKey =
       input.idempotencyKey
@@ -465,6 +577,7 @@ export async function registerPayablePayment(
       { session },
     );
     if (duplicated) {
+      assertSameIdempotentRequest(duplicated, input);
       return { paymentId: duplicated._id, payableId: payable._id, alreadyProcessed: true };
     }
 
@@ -593,7 +706,21 @@ export async function reversePaymentsOf(
       { $set: { reversedAt: new Date(), reversalTransactionId: id, updatedAt: new Date() } },
       { session },
     );
-    if (id) reversed += 1;
+    if (id) {
+      await ctx.mongo.collections.payments.updateOne(
+        { _id: payment._id },
+        {
+          $set: {
+            reversedAt: new Date(),
+            reversedReason: params.reason,
+            reversalTransactionId: id,
+            updatedAt: new Date(),
+          },
+        },
+        { session },
+      );
+      reversed += 1;
+    }
   }
   return reversed;
 }

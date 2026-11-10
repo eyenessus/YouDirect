@@ -5,6 +5,7 @@ import { Banknote, Landmark, Pencil, Receipt } from 'lucide-vue-next';
 import {
   bankAccountTypeLabels,
   bankAccountTypes,
+  businessDate,
   formatCentsBRL,
   transactionDirectionLabels,
   transactionDirections,
@@ -38,7 +39,7 @@ const accountForm = reactive({
   institution: '',
   type: 'CHECKING',
   initialBalanceCents: 0,
-  initialBalanceDate: new Date().toISOString().slice(0, 10),
+  initialBalanceDate: businessDate(),
   isDefault: false,
   active: true,
 });
@@ -50,7 +51,7 @@ const manualForm = reactive({
   accountId: '',
   direction: 'OUT',
   amountCents: 0,
-  occurredAt: new Date().toISOString().slice(0, 10),
+  occurredAt: businessDate(),
   description: '',
 });
 const manualErrors = ref<Record<string, string>>({});
@@ -81,7 +82,7 @@ function openCreate() {
     institution: '',
     type: 'CHECKING',
     initialBalanceCents: 0,
-    initialBalanceDate: new Date().toISOString().slice(0, 10),
+    initialBalanceDate: businessDate(),
     isDefault: accounts.value.length === 0,
     active: true,
   });
@@ -142,7 +143,7 @@ function openManual() {
     accountId: accounts.value.find((a) => a.isDefault)?.id ?? accounts.value[0]?.id ?? '',
     direction: 'OUT',
     amountCents: 0,
-    occurredAt: new Date().toISOString().slice(0, 10),
+    occurredAt: businessDate(),
     description: '',
   });
   manualErrors.value = {};

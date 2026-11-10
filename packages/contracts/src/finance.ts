@@ -234,6 +234,10 @@ export const registerPaymentSchema = z.object({
 });
 export type RegisterPayment = z.infer<typeof registerPaymentSchema>;
 
+export const reversePaymentSchema = z.object({
+  reason: nonEmptyString(300),
+});
+
 export const paymentSchema = z.object({
   id: objectIdSchema,
   amountCents: z.number().int(),
