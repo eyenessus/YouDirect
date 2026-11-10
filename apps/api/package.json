@@ -31,7 +31,7 @@
     "fastify-plugin": "5.0.1",
     "mongodb": "6.12.0",
     "pdfmake": "0.2.15",
-    "zod": "3.24.1"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/node": "22.10.5",
