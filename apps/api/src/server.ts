@@ -1,9 +1,10 @@
 import { buildApp } from './app.js';
 import { buildContext } from './context.js';
-import { loadEnv } from './config/env.js';
+import { loadDotEnv, loadEnv } from './config/env.js';
 import { startScheduler } from './jobs/scheduler.js';
 
 async function main() {
+  loadDotEnv();
   const env = loadEnv();
   const ctx = await buildContext({ env });
   const app = await buildApp(ctx);

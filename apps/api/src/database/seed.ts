@@ -17,7 +17,7 @@ import {
   fullMatrix,
   type PaymentMethod,
 } from '@yudirect/contracts';
-import { loadEnv } from '../config/env.js';
+import { loadDotEnv, loadEnv } from '../config/env.js';
 import { buildContext, type AppContext } from '../context.js';
 import { foldAccents, hashPassword, lookupHash, slugify } from '../common/helpers.js';
 import type {
@@ -1155,6 +1155,7 @@ export async function seed(ctx: AppContext): Promise<void> {
 }
 
 async function main() {
+  loadDotEnv();
   const env = loadEnv();
   if (!env.MONGODB_URI) {
     console.error(
@@ -1173,7 +1174,7 @@ async function main() {
   process.exit(0);
 }
 
-const invokedDirectly = process.argv[1]?.replace(/\\/g, '/').endsWith('/database/seed.ts');
+const invokedDirectly = /\/database\/seed\.(ts|js)$/.test(process.argv[1]?.replace(/\\/g, '/') ?? '');
 if (invokedDirectly) {
   main().catch((err) => {
     console.error(err);

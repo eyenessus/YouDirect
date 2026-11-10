@@ -155,3 +155,19 @@ export function billingStatus(env: Env): IntegrationStatus {
       : 'Provedor de cobrança não conectado — links de pagamento só aparecem quando vierem do provedor real.',
   };
 }
+
+/**
+ * Carrega o `.env` da raiz do monorepo (ou da pasta atual) no
+ * `process.env`, sem sobrescrever variáveis já definidas no ambiente.
+ * Usado apenas pelos pontos de entrada (servidor e seed) — os testes
+ * passam o ambiente explicitamente e não são afetados.
+ */
+export function loadDotEnv(): void {
+  for (const path of ['.env', '../../.env']) {
+    try {
+      process.loadEnvFile(path);
+    } catch {
+      /* arquivo ausente: segue com o ambiente atual */
+    }
+  }
+}
