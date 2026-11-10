@@ -634,7 +634,7 @@ Cada fase é um PR por repositório, com testes da própria fase e critério de 
 | F5 — entrada pelo YuDirect | ✅ | Pull de mídia, evidências, SUBMITTED na conclusão, fotos sem vínculo |
 | F6 — revisão e correção | ✅ | `POST /inspections/:id/request-correction`, rodada nova, evidências versionadas |
 | F7 — painel | ✅ | `/dashboard/messages` (visão geral, histórico, custos, fotos sem vínculo) |
-| F8 — lembretes/expiração | ✅ parcial | Lembrete e expiração implementados; **geração automática de vistorias por `inspectionRule` ainda não** |
+| F8 — lembretes/expiração e geração por regra | ✅ | Lembrete e expiração; vistorias recorrentes geradas pela regra da locação em `apps/api/src/services/inspection-schedule.ts` (job das rotinas, índice único por locação+data) |
 | F9 — homologação | ✅ automatizada / ⏳ real | E2E entre sistemas (9) + Playwright (9); **piloto real com a Meta pendente** (templates a aprovar, chaves a configurar) |
 
 Desvios do plano, com justificativa:

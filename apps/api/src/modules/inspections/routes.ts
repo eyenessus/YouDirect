@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { ObjectId } from 'mongodb';
 import {
-  addDaysIso,
   businessDate,
   diffDaysIso,
   inspectionListQuerySchema,
@@ -18,18 +17,15 @@ import {
   collectionStatusLabels,
 } from '@yudirect/contracts';
 import { badRequest, conflict, notFound } from '../../common/errors.js';
-import { generateToken, sha256, slugify, toObjectId } from '../../common/helpers.js';
+import { sha256, slugify, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
 import { audit } from '../../services/common.js';
 import { describeFiles, requireFile, storeFile } from '../../services/files.js';
+import { buildInspectionDoc, nextOccurrence } from '../../services/inspection-schedule.js';
 import {
   cancelCollectionForInspection,
   ensureDefaultSlots,
   formatDateTimeLocal,
-  getWhatsappSettings,
-  newCollection,
-  planCollection,
-  requiredSlotsSnapshot,
 } from '../../services/whatsapp-inspection.js';
 import { fileUrl } from '../../services/files.js';
 import type { AppContext } from '../../context.js';
@@ -103,6 +99,7 @@ async function toInspectionDTOs(
           }
         : null,
       createdAt: doc.createdAt.toISOString(),
+      source: doc.source,
       collection: doc.collection
         ? {
             mode: doc.collection.mode,
@@ -310,8 +307,9 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
         const lastInspectionAt = approved[0]?.scheduledAt ?? null;
         const nextInspectionAt =
           pending.sort((a, b) => (a.dueDate > b.dueDate ? 1 : -1))[0]?.dueDate ??
-          (rental?.inspectionRule?.period && lastInspectionAt
-            ? addDaysIso(lastInspectionAt, rental.inspectionRule.period === 'WEEKLY' ? 7 : 30)
+          // Mesma regra do gerador automático (services/inspection-schedule.ts).
+          (rental?.inspectionRule?.period
+            ? nextOccurrence(rental.inspectionRule, rental.startDate, today, rental.endDate)
             : null);
         const onSchedule = !nextInspectionAt || diffDaysIso(nextInspectionAt, today) >= 0;
         if (status === 'late' && onSchedule) continue;
@@ -411,56 +409,20 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
       const driver = rental
         ? await ctx.mongo.collections.drivers.findOne({ _id: rental.driverId, organizationId: auth.organizationId })
         : null;
-      const plan = planCollection(ctx, {
+      const { doc, link, plan } = await buildInspectionDoc(ctx, {
         organization,
-        driver,
-        phone: body.phone,
-        scheduledAt: body.scheduledAt,
-      });
-
-      const token = generateToken(24);
-      const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000);
-      const now = new Date();
-      const doc: InspectionDoc = {
-        _id: new ObjectId(),
         organizationId: auth.organizationId,
         vehicleId,
-        rentalId: rental?._id ?? null,
-        driverId: rental?.driverId ?? null,
+        rental,
+        driver,
         responsibleName: body.responsibleName,
         phone: body.phone,
         email: body.email ?? null,
         scheduledAt: body.scheduledAt,
-        dueDate: addDaysIso(body.scheduledAt, 2),
-        submittedAt: null,
-        reviewedAt: null,
-        reviewerId: null,
-        status: 'PENDING',
-        odometerKm: null,
-        photos: [],
         notes: body.notes ?? null,
-        requestTokenHash: sha256(token),
-        requestTokenEnc: ctx.pii.encrypt(token),
-        requestExpiresAt: expiresAt,
-        delivery: null,
         source: 'MANUAL',
         createdBy: auth.userId,
-        createdAt: now,
-        updatedAt: now,
-        version: 0,
-        scheduledSendAt: plan.scheduledSendAt,
-        collection:
-          plan.status === 'NOT_SCHEDULED'
-            ? null
-            : newCollection(
-                plan,
-                await requiredSlotsSnapshot(ctx, auth.organizationId, getWhatsappSettings(organization)),
-              ),
-        photoEvidence: [],
-        correctionRound: 0,
-      };
-
-      const link = `${ctx.env.APP_URL.replace(/\/$/, '')}/vistoria/${token}`;
+      });
       const message =
         `Olá, ${body.responsibleName}! A ${organization?.name ?? 'locadora'} solicitou a vistoria do veículo ` +
         `${vehicle.brand} ${vehicle.model} (${vehicle.plate}). Envie as fotos por aqui: ${link}`;

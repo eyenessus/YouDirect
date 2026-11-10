@@ -10,6 +10,7 @@ import {
   sendPendingMessages,
 } from '../services/whatsapp-inspection.js';
 import { withLease } from './lease.js';
+import { generateScheduledInspections } from '../services/inspection-schedule.js';
 
 /**
  * Rotinas periódicas idempotentes.
@@ -24,12 +25,15 @@ export async function runScheduledJobs(ctx: AppContext, logger: FastifyBaseLogge
     try {
       const notifications = await runNotificationGenerators(ctx, organization._id, today);
       const recurring = await generateRecurringPayables(ctx, organization._id, today);
+      // Vistorias recorrentes pela regra da locação (idempotente por índice único).
+      const inspections = await generateScheduledInspections(ctx, organization._id, today);
       const statuses = await refreshOverdueStatuses(ctx, organization._id, today);
       logger.info(
         {
           organization: organization.name,
           notifications,
           recurringPayables: recurring,
+          scheduledInspections: inspections.created,
           overdueReceivables: statuses.receivables,
           overduePayables: statuses.payables,
         },

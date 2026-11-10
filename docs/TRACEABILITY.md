@@ -197,3 +197,23 @@ idempotência, sequência de eventos e mídia por referência).
 | WAU2 | Configuração da coleta persiste; canal desconectado exibido com honestidade | `e2e/whatsapp-vistoria.spec.ts` |
 | WAU3 | Painel: menu, aviso de canal, métricas = API, histórico vazio com filtros, custos (estimativa + tarifa válida/inválida), fotos sem vínculo | `e2e/whatsapp-vistoria.spec.ts` |
 | WAU4 | Solicitar correção: validação, fallback para link web sem canal, vistoria volta a Pendente | `e2e/whatsapp-vistoria.spec.ts` |
+
+### Vistorias recorrentes (regra da locação)
+
+Regra: `WEEKLY` a cada 7 dias e `MONTHLY` a cada 30 dias a partir do início
+da locação (a vistoria de retirada não é repetida); com dia da semana
+definido, vai para o próximo dia escolhido. Criadas com antecedência de
+2 dias pelo job das rotinas (`generateScheduledInspections`), sem gerar
+atrasados e sem passar do fim da locação.
+
+| ID | Cenário | Cobertura |
+|---|---|---|
+| WA51 | Uma única vistoria por ocorrência com dois workers e execuções repetidas; auditoria | api/inspection-schedule |
+| WA52 | Com consentimento: coleta pelo WhatsApp no horário configurado da data e envio ao Whaply | api/inspection-schedule |
+| WA53 | Sem consentimento: link manual + alerta, nada enviado | api/inspection-schedule |
+| WA54 | Gerada e cancelada não é recriada; semana seguinte gerada | api/inspection-schedule |
+| WA55 | Vistoria aberta próxima da data (ex.: manual) evita empilhar | api/inspection-schedule |
+| WA56 | Sem atrasados, sem passar do fim da locação, locação sem regra fora | api/inspection-schedule |
+| WA57 | Cartão do painel mostra a próxima data pela mesma regra | api/inspection-schedule |
+| WA58 | Histórico identifica a vistoria recorrente | api/inspection-schedule + UI |
+| — | Calendário: dia da semana, semanal/mensal, fim da locação, locação longa | api/inspection-schedule (unitário) |

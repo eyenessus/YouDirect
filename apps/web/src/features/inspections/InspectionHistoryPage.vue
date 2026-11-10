@@ -196,7 +196,7 @@ onMounted(load);
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-3">
               <h2 class="text-[22px] font-bold text-ink">
-                Vistoria Manual – {{ formatIsoDateBR(inspection.scheduledAt) }}
+                {{ inspection.source === 'SCHEDULED' ? 'Vistoria Recorrente' : 'Vistoria Manual' }} – {{ formatIsoDateBR(inspection.scheduledAt) }}
               </h2>
               <StatusBadge
                 :label="inspectionStatusLabels[inspection.status]"

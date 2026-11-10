@@ -96,6 +96,8 @@ export const inspectionSchema = z.object({
     })
     .nullable(),
   createdAt: isoDateTimeSchema,
+  /** MANUAL = solicitada pela equipe; SCHEDULED = gerada pela regra da locação. */
+  source: z.enum(['MANUAL', 'SCHEDULED']).optional(),
   /** Coleta guiada pelo WhatsApp (ausente em vistorias antigas). */
   collection: z
     .object({
