@@ -17,7 +17,7 @@ import {
   fullMatrix,
   type PaymentMethod,
 } from '@yudirect/contracts';
-import { loadDotEnv, loadEnv } from '../config/env.js';
+import { loadDotEnv, loadEnv, piiPepper, type Env } from '../config/env.js';
 import { buildContext, type AppContext } from '../context.js';
 import { foldAccents, hashPassword, lookupHash, slugify } from '../common/helpers.js';
 import type {
@@ -585,6 +585,15 @@ async function wipe(ctx: AppContext) {
     c.auditLogs.deleteMany({}),
     c.counters.deleteMany({}),
     c.importDrafts.deleteMany({}),
+    ctx.mongo.db.collection('fileBlobs').deleteMany({}),
+    c.whatsappMessages.deleteMany({}),
+    c.integrationInbox.deleteMany({}),
+    c.integrationNonces.deleteMany({}),
+    c.integrationCursors.deleteMany({}),
+    c.jobLeases.deleteMany({}),
+    c.messagingRates.deleteMany({}),
+    c.unmatchedMedia.deleteMany({}),
+    c.loginAttempts.deleteMany({}),
   ]);
 }
 
@@ -702,7 +711,7 @@ export async function seed(ctx: AppContext): Promise<void> {
       fullName: d.fullName,
       fullNameFold: foldAccents(d.fullName).toLowerCase(),
       cpfEncrypted: ctx.pii.encrypt(d.cpf),
-      cpfLookupHash: lookupHash(d.cpf, env.SESSION_SECRET),
+      cpfLookupHash: lookupHash(d.cpf, piiPepper(env)),
       cpfLast3: d.cpf.slice(-3),
       rgEncrypted: ctx.pii.encrypt(d.rg),
       birthDate: d.birthDate,
@@ -1154,6 +1163,15 @@ export async function seed(ctx: AppContext): Promise<void> {
   await runNotificationGenerators(ctx, organizationId, TODAY);
 }
 
+/** Motivos para NÃO apagar o banco (o seed começa com `wipe`). */
+export function seedRisks(env: Pick<Env, 'NODE_ENV' | 'MONGODB_URI'>, usersCount: number): string[] {
+  const risky: string[] = [];
+  if (env.NODE_ENV === 'production') risky.push('NODE_ENV=production');
+  if (/mongodb\.net|mongodb\+srv:/i.test(env.MONGODB_URI ?? '')) risky.push('URI de cluster remoto (Atlas)');
+  if (usersCount > 0) risky.push(`o banco já tem ${usersCount} usuário(s)`);
+  return risky;
+}
+
 async function main() {
   loadDotEnv();
   const env = loadEnv();
@@ -1163,7 +1181,22 @@ async function main() {
     );
     process.exit(1);
   }
+  // O seed APAGA todas as coleções antes de popular. Recusa qualquer banco
+  // que pareça real, a menos que a pessoa confirme explicitamente.
   const ctx = await buildContext({ env });
+  const risky = seedRisks(env, await ctx.mongo.collections.users.countDocuments());
+  if (risky.length > 0) {
+    const confirmed = process.env.SEED_FORCE === '1' && process.env.SEED_CONFIRM === env.MONGODB_DB;
+    if (!confirmed) {
+      console.error(
+        `Seed recusado: ${risky.join('; ')}.\n` +
+          `Ele apagaria TODOS os dados do banco "${env.MONGODB_DB}". Para um ambiente novo e vazio use scripts/bootstrap.ts.\n` +
+          `Se tiver certeza, rode com SEED_FORCE=1 SEED_CONFIRM=${env.MONGODB_DB}.`,
+      );
+      await ctx.mongo.close();
+      process.exit(1);
+    }
+  }
   await seed(ctx);
   console.log('Seed concluído.');
   console.log(`  Organização : ${ORG_NAME}`);

@@ -38,3 +38,4 @@ export const unprocessable = (message: string, details?: unknown) =>
   new AppError('UNPROCESSABLE', message, details);
 export const integrationUnavailable = (message: string, details?: unknown) =>
   new AppError('INTEGRATION_UNAVAILABLE', message, details);
+export const rateLimited = (message: string) => new AppError('RATE_LIMITED', message);

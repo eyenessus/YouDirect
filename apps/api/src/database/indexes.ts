@@ -212,6 +212,8 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
     { key: { organizationId: 1, entityType: 1, entityId: 1, occurredAt: -1 }, name: 'by_entity' },
   ]);
 
+  await c.loginAttempts.createIndexes([{ key: { expiresAt: 1 }, expireAfterSeconds: 0, name: 'ttl_login_attempt' }]);
+
   await c.importDrafts.createIndexes([
     { key: { token: 1 }, unique: true, name: 'uniq_import_token' },
     { key: { expiresAt: 1 }, expireAfterSeconds: 0, name: 'ttl_import' },

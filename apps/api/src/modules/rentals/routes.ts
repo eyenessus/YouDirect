@@ -10,7 +10,8 @@ import {
   type RentalPaymentSchedule,
 } from '@yudirect/contracts';
 import { conflict, notFound } from '../../common/errors.js';
-import { decodeCursor, encodeCursor, escapeRegex, foldAccents, toObjectId } from '../../common/helpers.js';
+import { cursorDate,
+  decodeCursor, encodeCursor, escapeRegex, foldAccents, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
 import { withTransaction } from '../../database/mongo.js';
 import { audit, nextNumber } from '../../services/common.js';
@@ -22,12 +23,14 @@ import {
   extendOpenEndedReceivable,
 } from '../../services/finance.js';
 import { postTransaction, defaultBankAccountId } from '../../services/ledger.js';
-import type { AppContext } from '../../context.js';
+import type { AppContext, AuthContext } from '../../context.js';
+import { cpfForViewer } from '../../common/pii-visibility.js';
 import type { RentalDoc } from '../../database/types.js';
 
 async function toRentalDTOs(
   ctx: AppContext,
   organizationId: ObjectId,
+  viewer: AuthContext | null,
   docs: RentalDoc[],
 ): Promise<Rental[]> {
   const vehicleIds = [...new Set(docs.map((d) => d.vehicleId.toHexString()))].map((s) => new ObjectId(s));
@@ -61,7 +64,7 @@ async function toRentalDTOs(
       driver: {
         id: doc.driverId.toHexString(),
         fullName: d?.fullName ?? '—',
-        cpf: d ? ctx.pii.decrypt(d.cpfEncrypted) : null,
+        cpf: d ? cpfForViewer(viewer, ctx.pii.decrypt(d.cpfEncrypted)) : null,
         phone: d?.phone ?? '',
       },
       startDate: doc.startDate,
@@ -130,8 +133,8 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
         filter.$and = [
           {
             $or: [
-              { createdAt: { $lt: new Date(cursor.createdAt) } },
-              { createdAt: new Date(cursor.createdAt), _id: { $lt: new ObjectId(cursor.id) } },
+              { createdAt: { $lt: cursorDate(cursor.createdAt) } },
+              { createdAt: cursorDate(cursor.createdAt), _id: { $lt: toObjectId(String(cursor.id), 'cursor') } },
             ],
           },
         ];
@@ -147,7 +150,7 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
       const total = await ctx.mongo.collections.rentals.countDocuments({ organizationId });
 
       return {
-        data: await toRentalDTOs(ctx, organizationId, page),
+        data: await toRentalDTOs(ctx, organizationId, request.auth, page),
         page: {
           nextCursor: hasMore
             ? encodeCursor({
@@ -170,7 +173,7 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
       const id = toObjectId((request.params as { id: string }).id);
       const doc = await ctx.mongo.collections.rentals.findOne({ _id: id, organizationId });
       if (!doc) throw notFound('Locação não encontrada.');
-      const [dto] = await toRentalDTOs(ctx, organizationId, [doc]);
+      const [dto] = await toRentalDTOs(ctx, organizationId, request.auth, [doc]);
       return dto;
     },
   );
@@ -411,7 +414,7 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
       });
 
       reply.status(201);
-      const [dto] = await toRentalDTOs(ctx, auth.organizationId, [result]);
+      const [dto] = await toRentalDTOs(ctx, auth.organizationId, request.auth, [result]);
       return dto;
     },
   );
@@ -481,7 +484,7 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
         before: current,
         after: updated,
       });
-      const [dto] = await toRentalDTOs(ctx, auth.organizationId, [updated]);
+      const [dto] = await toRentalDTOs(ctx, auth.organizationId, request.auth, [updated]);
       return dto;
     },
   );

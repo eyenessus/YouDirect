@@ -10,6 +10,8 @@ const booleanish = z
   .union([z.boolean(), z.string()])
   .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())));
 
+export const DEV_SESSION_SECRET = 'dev-only-session-secret-change-me';
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3333),
@@ -28,8 +30,22 @@ const envSchema = z.object({
 
   SESSION_COOKIE_NAME: z.string().default('yudirect_session'),
   SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(720).default(12),
-  SESSION_SECRET: z.string().min(16).default('dev-only-session-secret-change-me'),
+  SESSION_SECRET: z.string().min(16).default(DEV_SESSION_SECRET),
   COOKIE_SECURE: booleanish.default(false),
+
+  /*
+   * Criptografia de PII (CPF/RG) — independente do SESSION_SECRET.
+   * Sem PII_KEY, o formato legado (derivado de PII_LEGACY_SECRET ou do
+   * SESSION_SECRET) continua em uso. Ver scripts/rotate-pii.ts.
+   */
+  PII_KEY: z.string().min(32).optional(),
+  PII_KEY_ID: z.string().regex(/^[a-z0-9_-]{1,16}$/i).default('k1'),
+  PII_KEY_PREVIOUS: z.string().min(32).optional(),
+  PII_KEY_PREVIOUS_ID: z.string().regex(/^[a-z0-9_-]{1,16}$/i).optional(),
+  /** Segredo que cifrou os dados v1 (o SESSION_SECRET antigo, após rotacioná-lo). */
+  PII_LEGACY_SECRET: z.string().min(16).optional(),
+  /** Pepper do hash de busca de CPF. Padrão: segredo legado (compatível com os dados atuais). */
+  PII_PEPPER: z.string().min(16).optional(),
 
   STORAGE_DRIVER: z.enum(['mongo', 'local', 's3']).default('mongo'),
   STORAGE_LOCAL_DIR: z.string().default('./.storage'),
@@ -93,6 +109,32 @@ const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
+const LOCALHOST = /\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:|\/|$)/i;
+
+/**
+ * Em produção, recusa subir com padrões de desenvolvimento: um segredo de
+ * sessão conhecido permite forjar links de arquivo e expõe a chave de PII;
+ * URLs em localhost quebram convites, vistorias e a proteção CSRF.
+ */
+export function productionProblems(env: Env): string[] {
+  if (env.NODE_ENV !== 'production') return [];
+  const problems: string[] = [];
+  if (env.SESSION_SECRET === DEV_SESSION_SECRET || env.SESSION_SECRET.length < 32) {
+    problems.push('SESSION_SECRET: defina um segredo aleatório com 32+ caracteres (ex.: openssl rand -hex 32).');
+  }
+  if (!env.COOKIE_SECURE) problems.push('COOKIE_SECURE: deve ser true em produção (HTTPS).');
+  if (!env.MONGODB_URI) problems.push('MONGODB_URI: obrigatório em produção.');
+  if (LOCALHOST.test(env.APP_URL)) problems.push('APP_URL: aponta para localhost.');
+  if (LOCALHOST.test(env.API_PUBLIC_URL)) problems.push('API_PUBLIC_URL: aponta para localhost.');
+  if (corsOrigins(env).length === 0 || corsOrigins(env).every((o) => LOCALHOST.test(o))) {
+    problems.push('CORS_ORIGINS: inclua o domínio público (a proteção CSRF recusaria todo POST).');
+  }
+  if (env.PII_KEY && env.PII_KEY === env.SESSION_SECRET) {
+    problems.push('PII_KEY: não reutilize o SESSION_SECRET.');
+  }
+  return problems;
+}
+
 let cached: Env | null = null;
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
@@ -102,8 +144,21 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     const details = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('\n  ');
     throw new Error(`Configuração de ambiente inválida:\n  ${details}`);
   }
+  const problems = productionProblems(parsed.data);
+  if (problems.length > 0) {
+    throw new Error(`Configuração insegura para produção:\n  ${problems.join('\n  ')}`);
+  }
   cached = parsed.data;
   return cached;
+}
+
+/** Segredo do formato legado de PII e pepper do hash de CPF (compatíveis com os dados atuais). */
+export function piiLegacySecret(env: Env): string {
+  return env.PII_LEGACY_SECRET ?? env.SESSION_SECRET;
+}
+
+export function piiPepper(env: Env): string {
+  return env.PII_PEPPER ?? piiLegacySecret(env);
 }
 
 export function resetEnvCache(): void {

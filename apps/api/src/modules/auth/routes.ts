@@ -5,10 +5,12 @@ import {
   changePasswordRequestSchema,
   loginRequestSchema,
   notificationPreferencesRequestSchema,
+  passwordProblem,
   updateProfileRequestSchema,
   type MeResponse,
 } from '@yudirect/contracts';
-import { badRequest, conflict, forbidden, notFound, unauthorized } from '../../common/errors.js';
+import { badRequest, conflict, forbidden, notFound, rateLimited, unauthorized } from '../../common/errors.js';
+import type { AppContext } from '../../context.js';
 import {
   generateToken,
   hashPassword,
@@ -19,19 +21,58 @@ import {
 import { requireAuthContext } from '../../plugins/auth.js';
 import { audit } from '../../services/common.js';
 
-export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
-  const cookieName = (app as unknown as { appCtxEnvCookie?: string }).appCtxEnvCookie;
-  void cookieName;
+/* --------------------- bloqueio por conta (login) -------------------- *
+ * Complementa o limite por IP: 10 senhas erradas para o MESMO e-mail em
+ * 15 minutos bloqueiam esse e-mail por 15 minutos, venha de onde vier.
+ * Vale também para e-mails inexistentes — o bloqueio não revela se a conta
+ * existe.
+ * ------------------------------------------------------------------ */
+export const LOGIN_LOCK_THRESHOLD = 10;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_LOCK_MS = 15 * 60 * 1000;
 
+async function assertNotLocked(ctx: AppContext, email: string): Promise<void> {
+  const attempt = await ctx.mongo.collections.loginAttempts.findOne({ _id: email });
+  if (attempt?.lockedUntil && attempt.lockedUntil.getTime() > Date.now()) {
+    throw rateLimited('Muitas tentativas para este e-mail. Aguarde alguns minutos e tente novamente.');
+  }
+}
+
+async function registerFailure(ctx: AppContext, email: string): Promise<void> {
+  const now = new Date();
+  const c = ctx.mongo.collections.loginAttempts;
+  const current = await c.findOne({ _id: email });
+  const fresh = !current || now.getTime() - current.windowStart.getTime() > LOGIN_WINDOW_MS;
+  const failures = fresh ? 1 : current!.failures + 1;
+  const lockedUntil = failures >= LOGIN_LOCK_THRESHOLD ? new Date(now.getTime() + LOGIN_LOCK_MS) : null;
+  await c.updateOne(
+    { _id: email },
+    {
+      $set: {
+        failures: lockedUntil ? 0 : failures,
+        windowStart: fresh || lockedUntil ? now : current!.windowStart,
+        lockedUntil,
+        expiresAt: new Date(now.getTime() + LOGIN_WINDOW_MS + LOGIN_LOCK_MS),
+      },
+    },
+    { upsert: true },
+  );
+}
+
+export async function registerAuthRoutes(
+  app: FastifyInstance,
+  options: { loginRateLimit?: number } = {},
+): Promise<void> {
   /* ------------------------------- login --------------------------- */
   app.post(
     '/auth/login',
     {
-      config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+      config: { rateLimit: { max: options.loginRateLimit ?? 10, timeWindow: '1 minute' } },
     },
     async (request, reply) => {
       const ctx = request.appCtx;
       const body = loginRequestSchema.parse(request.body);
+      await assertNotLocked(ctx, body.email);
 
       const user = await ctx.mongo.collections.users.findOne({ emailLower: body.email });
       // Mensagem genérica: não revela se o e-mail existe.
@@ -39,10 +80,15 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       if (!user || user.status !== 'ACTIVE') {
         // custo constante aproximado
         await verifyPassword(body.password, 'scrypt$32768$8$2$AAAA$AAAA');
+        await registerFailure(ctx, body.email);
         throw invalid;
       }
       const ok = await verifyPassword(body.password, user.passwordHash);
-      if (!ok) throw invalid;
+      if (!ok) {
+        await registerFailure(ctx, body.email);
+        throw invalid;
+      }
+      await ctx.mongo.collections.loginAttempts.deleteOne({ _id: body.email });
 
       const memberships = await ctx.mongo.collections.memberships
         .find({ userId: user._id, status: 'ACTIVE' })
@@ -238,6 +284,8 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       name: invitation.name,
       email: invitation.emailLower,
       organizationName: organization?.name ?? '—',
+      // A tela pede "senha da sua conta" em vez de "crie uma senha".
+      existingAccount: (await ctx.mongo.collections.users.countDocuments({ emailLower: invitation.emailLower })) > 0,
       expiresAt: invitation.expiresAt.toISOString(),
     };
   });
@@ -256,7 +304,17 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
 
       const now = new Date();
       let user = await ctx.mongo.collections.users.findOne({ emailLower: invitation.emailLower });
-      if (!user) {
+      if (user) {
+        // Conta existente: quem aceita precisa provar que é o dono dela.
+        // Sem isso, quem recebeu o link (inclusive quem convidou) entraria
+        // como esse usuário.
+        if (user.status !== 'ACTIVE' || !(await verifyPassword(body.password, user.passwordHash))) {
+          await registerFailure(ctx, invitation.emailLower);
+          throw forbidden('Este e-mail já tem uma conta. Informe a senha dessa conta para aceitar o convite.');
+        }
+      } else {
+        const problem = passwordProblem(body.password);
+        if (problem) throw badRequest(problem, { fieldErrors: { password: problem } });
         const passwordHash = await hashPassword(body.password);
         const _id = new ObjectId();
         await ctx.mongo.collections.users.insertOne({
@@ -275,29 +333,48 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       }
       if (!user) throw conflict('Não foi possível criar o usuário do convite.');
 
-      await ctx.mongo.collections.memberships.updateOne(
-        { organizationId: invitation.organizationId, userId: user._id },
-        {
-          $set: {
-            role: 'MEMBER',
-            permissions: invitation.permissions,
-            status: 'ACTIVE',
-            updatedAt: now,
-          },
-          $setOnInsert: {
-            _id: new ObjectId(),
-            organizationId: invitation.organizationId,
-            userId: user._id,
-            createdAt: now,
-          },
-        },
-        { upsert: true },
-      );
-
-      await ctx.mongo.collections.invitations.updateOne(
-        { _id: invitation._id },
+      // Claim atômico: dois aceites simultâneos do mesmo link → um vence.
+      const claimed = await ctx.mongo.collections.invitations.findOneAndUpdate(
+        { _id: invitation._id, status: 'PENDING' },
         { $set: { status: 'ACCEPTED', acceptedAt: now, updatedAt: now } },
+        { returnDocument: 'after' },
       );
+      if (!claimed) throw notFound('Convite inválido ou já utilizado.');
+
+      const existing = await ctx.mongo.collections.memberships.findOne({
+        organizationId: invitation.organizationId,
+        userId: user._id,
+      });
+      if (existing && existing.role !== 'MEMBER') {
+        // OWNER/ADMIN nunca é rebaixado por um convite; só reativa.
+        await ctx.mongo.collections.memberships.updateOne(
+          { _id: existing._id },
+          { $set: { status: 'ACTIVE', updatedAt: now } },
+        );
+      } else {
+        await ctx.mongo.collections.memberships.updateOne(
+          { organizationId: invitation.organizationId, userId: user._id },
+          {
+            $set: { permissions: invitation.permissions, status: 'ACTIVE', updatedAt: now },
+            $setOnInsert: {
+              _id: new ObjectId(),
+              organizationId: invitation.organizationId,
+              userId: user._id,
+              role: 'MEMBER',
+              createdAt: now,
+            },
+          },
+          { upsert: true },
+        );
+      }
+      await audit(ctx, {
+        organizationId: invitation.organizationId,
+        actorId: user._id,
+        action: 'invitation.accepted',
+        entityType: 'invitation',
+        entityId: invitation._id,
+        after: { existingAccount: Boolean(existing) || undefined },
+      });
 
       const token = generateToken(32);
       const expiresAt = new Date(Date.now() + ctx.env.SESSION_TTL_HOURS * 3600 * 1000);

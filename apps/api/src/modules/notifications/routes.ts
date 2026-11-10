@@ -13,7 +13,8 @@ import {
   type Notification,
 } from '@yudirect/contracts';
 import { badRequest, conflict, notFound } from '../../common/errors.js';
-import { decodeCursor, encodeCursor, toObjectId } from '../../common/helpers.js';
+import { cursorDate,
+  decodeCursor, encodeCursor, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
 import { audit } from '../../services/common.js';
 import { runNotificationGenerators } from '../../services/notifications.js';
@@ -119,8 +120,8 @@ export async function registerNotificationRoutes(app: FastifyInstance): Promise<
       const cursor = decodeCursor<{ createdAt: string; id: string }>(query.cursor);
       if (cursor) {
         filter.$or = [
-          { createdAt: { $lt: new Date(cursor.createdAt) } },
-          { createdAt: new Date(cursor.createdAt), _id: { $lt: new ObjectId(cursor.id) } },
+          { createdAt: { $lt: cursorDate(cursor.createdAt) } },
+          { createdAt: cursorDate(cursor.createdAt), _id: { $lt: toObjectId(String(cursor.id), 'cursor') } },
         ];
       }
 

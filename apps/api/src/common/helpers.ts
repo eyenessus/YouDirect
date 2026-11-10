@@ -142,3 +142,36 @@ export function initialsOf(name: string): string {
 export function formatSequence(prefix: string, year: number, seq: number): string {
   return `${prefix}-${year}-${String(seq).padStart(4, '0')}`;
 }
+
+/* ------------------------------ Logs ------------------------------- */
+
+/**
+ * Remove credenciais de URLs antes de logar: tokens de vistoria pública e
+ * de convite (no caminho) e assinatura/token de query string.
+ */
+export function redactUrl(url: string): string {
+  return url
+    .replace(/(\/(?:inspection-public|invitations|vistoria|convite|redefinir-senha)\/)[^/?#]+/g, '$1[redacted]')
+    .replace(/([?&](?:sig|token|signature)=)[^&#]+/gi, '$1[redacted]');
+}
+
+/* ------------------------------- CSV ------------------------------- */
+
+/**
+ * Célula CSV segura: aspas escapadas e neutralização de "fórmula" — texto
+ * digitado pelo usuário começando com = + - @ (ou tab/CR) viraria fórmula
+ * ao abrir no Excel/Sheets (CSV injection).
+ */
+export function csvCell(value: string): string {
+  // Números (inclusive negativos, ex.: saldo "-150,00") não são fórmula.
+  const numeric = /^-?[\d.,]+$/.test(value);
+  const neutral = !numeric && /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return `"${neutral.replace(/"/g, '""')}"`;
+}
+
+/** Data vinda de cursor de paginação (cliente): inválida → 400, não 500. */
+export function cursorDate(value: unknown): Date {
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) throw badRequest('Cursor de paginação inválido.');
+  return date;
+}

@@ -36,7 +36,8 @@ import {
   reversePaymentsOf,
 } from '../../services/finance.js';
 import { defaultBankAccountId } from '../../services/ledger.js';
-import type { AppContext } from '../../context.js';
+import type { AppContext, AuthContext } from '../../context.js';
+import { cpfForViewer } from '../../common/pii-visibility.js';
 import type { PayableDoc, ReceivableDoc } from '../../database/types.js';
 
 /* --------------------------- Categorias ---------------------------- */
@@ -115,6 +116,7 @@ async function toPayableDTOs(
 async function toReceivableDTOs(
   ctx: AppContext,
   organizationId: ObjectId,
+  viewer: AuthContext | null,
   docs: ReceivableDoc[],
 ): Promise<Receivable[]> {
   const driverIds = [...new Set(docs.map((d) => d.driverId.toHexString()))].map((s) => new ObjectId(s));
@@ -138,7 +140,7 @@ async function toReceivableDTOs(
       driver: {
         id: doc.driverId.toHexString(),
         fullName: driver?.fullName ?? '—',
-        cpf: driver ? ctx.pii.decrypt(driver.cpfEncrypted) : null,
+        cpf: driver ? cpfForViewer(viewer, ctx.pii.decrypt(driver.cpfEncrypted)) : null,
       },
       grossAmountCents: doc.grossAmountCents,
       paidAmountCents: doc.paidAmountCents,
@@ -578,7 +580,7 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
         .toArray();
 
       return {
-        data: await toReceivableDTOs(ctx, organizationId, page),
+        data: await toReceivableDTOs(ctx, organizationId, request.auth, page),
         totalPendingCents: pendingAgg[0]?.pending ?? 0,
         page: { nextCursor: hasMore ? encodeCursor({ skip: skip + query.limit }) : null, total },
       };
@@ -598,7 +600,7 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
         .find({ organizationId, sourceType: 'RECEIVABLE', sourceId: id })
         .sort({ paidAt: 1 })
         .toArray();
-      const [dto] = await toReceivableDTOs(ctx, organizationId, [doc]);
+      const [dto] = await toReceivableDTOs(ctx, organizationId, request.auth, [doc]);
       return {
         ...dto,
         payments: payments.map((p) => ({
@@ -636,7 +638,7 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
       });
       reply.status(result.alreadyProcessed ? 200 : 201);
       const fresh = await ctx.mongo.collections.receivables.findOne({ _id: id });
-      const [dto] = await toReceivableDTOs(ctx, auth.organizationId, [fresh!]);
+      const [dto] = await toReceivableDTOs(ctx, auth.organizationId, request.auth, [fresh!]);
       return { payment: { id: result.paymentId.toHexString() }, receivable: dto };
     },
   );

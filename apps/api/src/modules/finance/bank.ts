@@ -13,7 +13,7 @@ import {
   type Statement,
 } from '@yudirect/contracts';
 import { conflict, notFound } from '../../common/errors.js';
-import { toObjectId } from '../../common/helpers.js';
+import { csvCell, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
 import { withTransaction } from '../../database/mongo.js';
 import { audit } from '../../services/common.js';
@@ -360,7 +360,7 @@ export async function registerBankRoutes(app: FastifyInstance): Promise<void> {
       });
       const statement = await buildStatement(ctx, organizationId, id, query.from, query.to);
 
-      const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+      const esc = csvCell;
       const lines = [
         ['Data', 'Descrição', 'Origem', 'Entrada', 'Saída', 'Saldo'].map(esc).join(';'),
         ...statement.transactions.map((t) =>

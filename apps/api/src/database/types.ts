@@ -609,3 +609,12 @@ export interface ImportDraftDoc {
   createdAt: Date;
   expiresAt: Date;
 }
+
+/** Tentativas de login por e-mail (bloqueio de conta, independente do IP). */
+export interface LoginAttemptDoc {
+  _id: string; // e-mail normalizado
+  failures: number;
+  windowStart: Date;
+  lockedUntil: Date | null;
+  expiresAt: Date;
+}

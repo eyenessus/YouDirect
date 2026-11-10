@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { MIN_PASSWORD_LENGTH } from '@yudirect/contracts';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppInput from '@/components/ui/AppInput.vue';
 import FormField from '@/components/ui/FormField.vue';
@@ -13,6 +14,8 @@ interface InvitePreview {
   email: string;
   organizationName: string;
   expiresAt: string;
+  /** O e-mail já tem conta: pede a senha DESSA conta (comprova a posse). */
+  existingAccount?: boolean;
 }
 
 const route = useRoute();
@@ -30,6 +33,7 @@ const confirmPassword = ref('');
 const submitting = ref(false);
 const fieldErrors = ref<Record<string, string>>({});
 const formError = ref('');
+const existing = computed(() => Boolean(preview.value?.existingAccount));
 
 onMounted(async () => {
   try {
@@ -52,7 +56,8 @@ async function submit() {
       token,
       name: name.value,
       password: password.value,
-      confirmPassword: confirmPassword.value,
+      // Conta existente: só a senha atual (não há confirmação de senha nova).
+      confirmPassword: existing.value ? password.value : confirmPassword.value,
     });
     await auth.load();
     await router.replace('/dashboard');
@@ -80,7 +85,7 @@ async function submit() {
       </div>
 
       <div class="fo-card p-7">
-        <p v-if="loading" class="text-[15px] text-ink-muted">Carregando convite…</p>
+        <p v-if="loading" class="text-[15px] text-ink-muted" aria-live="polite">Carregando convite…</p>
 
         <template v-else-if="loadError">
           <h1 class="text-2xl font-bold text-ink">Convite indisponível</h1>
@@ -93,7 +98,10 @@ async function submit() {
         <template v-else>
           <h1 class="text-2xl font-bold text-ink">Você foi convidado(a)</h1>
           <p class="mt-2 text-[15px] leading-relaxed text-ink-muted">
-            Crie sua senha para acessar o YuDirect da
+            <template v-if="existing">
+              Este e-mail já tem uma conta no YuDirect. Informe a senha dessa conta para entrar também na
+            </template>
+            <template v-else>Crie sua senha para acessar o YuDirect da</template>
             <strong class="text-ink">{{ preview?.organizationName }}</strong
             >.
           </p>
@@ -109,21 +117,22 @@ async function submit() {
 
             <FormField
               v-slot="field"
-              label="Senha"
+              :label="existing ? 'Senha da sua conta' : 'Senha'"
               required
-              hint="Mínimo 6 caracteres"
+              :hint="existing ? undefined : `Mínimo ${MIN_PASSWORD_LENGTH} caracteres; evite senhas óbvias`"
               :error="fieldErrors.password"
             >
               <AppInput
                 :id="field.id"
                 v-model="password"
                 type="password"
-                autocomplete="new-password"
+                :autocomplete="existing ? 'current-password' : 'new-password'"
                 :invalid="Boolean(fieldErrors.password)"
               />
             </FormField>
 
             <FormField
+              v-if="!existing"
               v-slot="field"
               label="Confirmar senha"
               required

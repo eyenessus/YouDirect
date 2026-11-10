@@ -10,7 +10,8 @@ import {
   type Driver,
   type PostalCodeLookup,
 } from '@yudirect/contracts';
-import { badRequest, conflict, notFound } from '../../common/errors.js';
+import { piiPepper } from '../../config/env.js';
+import { badRequest, conflict, integrationUnavailable, notFound } from '../../common/errors.js';
 import {
   decodeCursor,
   encodeCursor,
@@ -22,12 +23,14 @@ import {
 import { requireAuthContext } from '../../plugins/auth.js';
 import { audit } from '../../services/common.js';
 import { describeFiles, requireFile } from '../../services/files.js';
-import type { AppContext } from '../../context.js';
+import type { AppContext, AuthContext } from '../../context.js';
+import { cpfForViewer, rgForViewer } from '../../common/pii-visibility.js';
 import type { DriverDoc } from '../../database/types.js';
 
 async function toDriverDTOs(
   ctx: AppContext,
   organizationId: ObjectId,
+  viewer: AuthContext | null,
   docs: DriverDoc[],
 ): Promise<Driver[]> {
   const today = businessDate();
@@ -53,14 +56,14 @@ async function toDriverDTOs(
   }
 
   return docs.map((doc) => {
-    const cpf = ctx.pii.decrypt(doc.cpfEncrypted);
+    const cpf = cpfForViewer(viewer, ctx.pii.decrypt(doc.cpfEncrypted));
     const idFile = doc.idDocumentFileId ? files.get(doc.idDocumentFileId.toHexString()) : undefined;
     const addrFile = doc.addressProofFileId ? files.get(doc.addressProofFileId.toHexString()) : undefined;
     return {
       id: doc._id.toHexString(),
       fullName: doc.fullName,
       cpf,
-      rg: ctx.pii.decrypt(doc.rgEncrypted),
+      rg: rgForViewer(viewer, ctx.pii.decrypt(doc.rgEncrypted)),
       birthDate: doc.birthDate,
       email: doc.emailLower,
       phone: doc.phone,
@@ -131,7 +134,7 @@ export async function registerDriverRoutes(app: FastifyInstance): Promise<void> 
         ];
         if (digits.length >= 3) or.push({ phone: new RegExp(escapeRegex(digits)) });
         if (digits.length === 11 && isValidCpf(digits)) {
-          or.push({ cpfLookupHash: lookupHash(digits, ctx.env.SESSION_SECRET) });
+          or.push({ cpfLookupHash: lookupHash(digits, piiPepper(ctx.env)) });
         }
         filter.$or = or;
       }
@@ -142,7 +145,7 @@ export async function registerDriverRoutes(app: FastifyInstance): Promise<void> 
           {
             $or: [
               { fullNameFold: { $gt: cursor.name } },
-              { fullNameFold: cursor.name, _id: { $gt: new ObjectId(cursor.id) } },
+              { fullNameFold: cursor.name, _id: { $gt: toObjectId(String(cursor.id), 'cursor') } },
             ],
           },
         ];
@@ -158,7 +161,7 @@ export async function registerDriverRoutes(app: FastifyInstance): Promise<void> 
       const total = await ctx.mongo.collections.drivers.countDocuments({ organizationId, archivedAt: null });
 
       return {
-        data: await toDriverDTOs(ctx, organizationId, page),
+        data: await toDriverDTOs(ctx, organizationId, request.auth, page),
         page: {
           nextCursor: hasMore
             ? encodeCursor({
@@ -181,7 +184,7 @@ export async function registerDriverRoutes(app: FastifyInstance): Promise<void> 
       const id = toObjectId((request.params as { id: string }).id);
       const doc = await ctx.mongo.collections.drivers.findOne({ _id: id, organizationId });
       if (!doc) throw notFound('Motorista não encontrado.');
-      const [dto] = await toDriverDTOs(ctx, organizationId, [doc]);
+      const [dto] = await toDriverDTOs(ctx, organizationId, request.auth, [doc]);
       return dto;
     },
   );
@@ -213,7 +216,7 @@ export async function registerDriverRoutes(app: FastifyInstance): Promise<void> 
         fullName: body.fullName,
         fullNameFold: foldAccents(body.fullName).toLowerCase(),
         cpfEncrypted: body.cpf ? ctx.pii.encrypt(body.cpf) : null,
-        cpfLookupHash: body.cpf ? lookupHash(body.cpf, ctx.env.SESSION_SECRET) : null,
+        cpfLookupHash: body.cpf ? lookupHash(body.cpf, piiPepper(ctx.env)) : null,
         cpfLast3: body.cpf ? body.cpf.slice(-3) : null,
         rgEncrypted: body.rg ? ctx.pii.encrypt(body.rg) : null,
         birthDate: body.birthDate ?? null,
@@ -252,7 +255,7 @@ export async function registerDriverRoutes(app: FastifyInstance): Promise<void> 
         after: { fullName: doc.fullName, cpf: body.cpf ? maskCpf(body.cpf) : null },
       });
       reply.status(201);
-      const [dto] = await toDriverDTOs(ctx, auth.organizationId, [doc]);
+      const [dto] = await toDriverDTOs(ctx, auth.organizationId, request.auth, [doc]);
       return dto;
     },
   );
@@ -279,7 +282,7 @@ export async function registerDriverRoutes(app: FastifyInstance): Promise<void> 
       }
       if (body.cpf !== undefined) {
         set.cpfEncrypted = body.cpf ? ctx.pii.encrypt(body.cpf) : null;
-        set.cpfLookupHash = body.cpf ? lookupHash(body.cpf, ctx.env.SESSION_SECRET) : null;
+        set.cpfLookupHash = body.cpf ? lookupHash(body.cpf, piiPepper(ctx.env)) : null;
         set.cpfLast3 = body.cpf ? body.cpf.slice(-3) : null;
       }
       if (body.rg !== undefined) set.rgEncrypted = body.rg ? ctx.pii.encrypt(body.rg) : null;
@@ -326,7 +329,7 @@ export async function registerDriverRoutes(app: FastifyInstance): Promise<void> 
         entityType: 'driver',
         entityId: id,
       });
-      const [dto] = await toDriverDTOs(ctx, auth.organizationId, [updated]);
+      const [dto] = await toDriverDTOs(ctx, auth.organizationId, request.auth, [updated]);
       return dto;
     },
   );
@@ -388,7 +391,9 @@ export async function registerDriverRoutes(app: FastifyInstance): Promise<void> 
         };
         return payload;
       }
-      const address = await ctx.integrations.postalCode.lookup(cep);
+      const address = await ctx.integrations.postalCode.lookup(cep).catch(() => {
+        throw integrationUnavailable('O serviço de CEP não respondeu. Preencha o endereço manualmente.');
+      });
       const payload: PostalCodeLookup = {
         available: true,
         provider: status.name,

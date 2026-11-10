@@ -8,7 +8,8 @@ import {
   type TrafficFinesResponse,
 } from '@yudirect/contracts';
 import { badRequest, conflict, integrationUnavailable, notFound } from '../../common/errors.js';
-import { decodeCursor, encodeCursor, escapeRegex, toObjectId } from '../../common/helpers.js';
+import { cursorDate,
+  decodeCursor, encodeCursor, escapeRegex, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
 import { audit } from '../../services/common.js';
 import { requireFile } from '../../services/files.js';
@@ -39,8 +40,8 @@ export async function registerVehicleRoutes(app: FastifyInstance): Promise<void>
         filter.$and = [
           {
             $or: [
-              { createdAt: { $lt: new Date(cursor.createdAt) } },
-              { createdAt: new Date(cursor.createdAt), _id: { $lt: new ObjectId(cursor.id) } },
+              { createdAt: { $lt: cursorDate(cursor.createdAt) } },
+              { createdAt: cursorDate(cursor.createdAt), _id: { $lt: toObjectId(String(cursor.id), 'cursor') } },
             ],
           },
         ];

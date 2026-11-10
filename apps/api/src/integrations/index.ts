@@ -77,6 +77,9 @@ export interface Integrations {
   whaply: WhaplyClient;
 }
 
+/** Nenhuma chamada a provedor externo pode prender a requisição indefinidamente. */
+export const INTEGRATION_TIMEOUT_MS = 10_000;
+
 const UNAVAILABLE = (message: string): SendResult => ({
   delivered: false,
   providerMessageId: null,
@@ -114,6 +117,7 @@ export function createIntegrations(env: Env): Integrations {
         }
         try {
           const res = await fetch(env.WHATSAPP_API_URL!, {
+            signal: AbortSignal.timeout(INTEGRATION_TIMEOUT_MS),
             method: 'POST',
             headers: {
               'content-type': 'application/json',
@@ -154,6 +158,7 @@ export function createIntegrations(env: Env): Integrations {
         if (!mail.connected) return UNAVAILABLE(mail.message);
         try {
           const res = await fetch(env.EMAIL_API_URL!, {
+            signal: AbortSignal.timeout(INTEGRATION_TIMEOUT_MS),
             method: 'POST',
             headers: { 'content-type': 'application/json', authorization: `Bearer ${env.EMAIL_API_TOKEN}` },
             body: JSON.stringify({ from: env.EMAIL_FROM, to, subject, text: body }),
@@ -172,7 +177,7 @@ export function createIntegrations(env: Env): Integrations {
       async lookup(postalCode) {
         if (!cep.connected) return null;
         const url = env.POSTAL_CODE_PROVIDER_URL!.replace('{cep}', postalCode);
-        const res = await fetch(url, { headers: { accept: 'application/json' } });
+        const res = await fetch(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(INTEGRATION_TIMEOUT_MS) });
         if (!res.ok) return null;
         const data = (await res.json()) as Record<string, string>;
         if ((data as { erro?: unknown }).erro) return null;
@@ -195,6 +200,7 @@ export function createIntegrations(env: Env): Integrations {
         if (params.renavam) url.searchParams.set('renavam', params.renavam);
         if (params.state) url.searchParams.set('state', params.state);
         const res = await fetch(url, {
+            signal: AbortSignal.timeout(INTEGRATION_TIMEOUT_MS),
           headers: { authorization: `Bearer ${env.TRAFFIC_FINES_API_TOKEN}`, accept: 'application/json' },
         });
         if (!res.ok) throw new Error(`Serviço de multas retornou HTTP ${res.status}.`);
@@ -208,6 +214,7 @@ export function createIntegrations(env: Env): Integrations {
       async paymentLink(providerInvoiceId) {
         if (!billing.connected) return null;
         const res = await fetch(`${env.BILLING_API_URL}/invoices/${providerInvoiceId}`, {
+            signal: AbortSignal.timeout(INTEGRATION_TIMEOUT_MS),
           headers: { authorization: `Bearer ${env.BILLING_API_TOKEN}`, accept: 'application/json' },
         });
         if (!res.ok) return null;
