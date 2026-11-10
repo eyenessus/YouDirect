@@ -265,6 +265,58 @@ export async function extendOpenEndedReceivables(
   return extended;
 }
 
+/**
+ * Recalcula a conta a receber do contrato depois de uma edição (valor,
+ * datas, tipo) ou do encerramento da locação. O que já foi PAGO nunca é
+ * alterado:
+ *  - edição que deixaria o total abaixo do já pago → recusada (409);
+ *  - encerramento antecipado → o total cai para os períodos até o fim,
+ *    mas nunca abaixo do já pago (sobra fica registrada, sem estorno
+ *    automático).
+ * Locação sem data de fim conta os períodos já iniciados até `today`.
+ */
+export async function syncContractReceivable(
+  ctx: AppContext,
+  rental: RentalDoc,
+  options: { today?: IsoDate; session?: ClientSession; mode: 'edit' | 'close' },
+): Promise<{ changed: boolean; grossAmountCents: number | null }> {
+  const today = options.today ?? businessDate();
+  const receivable = await ctx.mongo.collections.receivables.findOne(
+    { organizationId: rental.organizationId, rentalId: rental._id, expectedPeriod: 'CONTRACT' },
+    { session: options.session },
+  );
+  if (!receivable || receivable.status === 'CANCELED') return { changed: false, grossAmountCents: null };
+
+  const periodDays = rentalPeriodDays[rental.rentalType];
+  const periods = rental.endDate
+    ? rentalPeriodCount(rental)
+    : Math.max(1, Math.floor(diffDaysIso(today, rental.startDate) / periodDays) + 1);
+  let gross = rental.periodicAmountCents * periods;
+  if (gross < receivable.paidAmountCents) {
+    if (options.mode === 'edit') {
+      throw conflict(
+        'Com esses valores o total do contrato ficaria abaixo do que já foi pago. Ajuste o valor ou registre um estorno antes.',
+      );
+    }
+    gross = receivable.paidAmountCents;
+  }
+  const dueDate = addDaysIso(rental.startDate, periodDays);
+  if (gross === receivable.grossAmountCents && dueDate === receivable.dueDate) {
+    return { changed: false, grossAmountCents: gross };
+  }
+  const next = { ...receivable, grossAmountCents: gross, dueDate };
+  const res = await ctx.mongo.collections.receivables.updateOne(
+    { _id: receivable._id, version: receivable.version },
+    {
+      $set: { grossAmountCents: gross, dueDate, status: deriveReceivableStatus(next, today), updatedAt: new Date() },
+      $inc: { version: 1 },
+    },
+    { session: options.session },
+  );
+  if (res.matchedCount === 0) throw conflict('A conta a receber foi alterada ao mesmo tempo. Tente novamente.');
+  return { changed: true, grossAmountCents: gross };
+}
+
 export interface RegisterPaymentInput {
   organizationId: ObjectId;
   actorId: ObjectId | null;
@@ -291,11 +343,15 @@ export async function registerReceivablePayment(
     if (receivable.status === 'CANCELED') throw conflict('Conta a receber cancelada.');
     assertPaidAtNotFuture(input.paidAt, today);
 
-    const idempotencyKey =
-      input.idempotencyKey ??
-      sha256(
-        `receivable:${input.sourceId.toHexString()}:${input.amountCents}:${input.paidAt}:${input.bankAccountId.toHexString()}`,
-      );
+    // Chave do cliente: escopo por conta (a mesma chave em contas diferentes
+    // não colide). Sem chave: inclui a versão da conta — dois cliques
+    // simultâneos viram um pagamento, mas duas parcelas iguais pagas no
+    // mesmo dia (legítimas, em momentos diferentes) não se fundem.
+    const idempotencyKey = input.idempotencyKey
+      ? `receivable:${input.sourceId.toHexString()}:${input.idempotencyKey}`
+      : sha256(
+          `receivable:${input.sourceId.toHexString()}:v${receivable.version}:${input.amountCents}:${input.paidAt}:${input.bankAccountId.toHexString()}`,
+        );
 
     const duplicated = await ctx.mongo.collections.payments.findOne(
       { organizationId: input.organizationId, idempotencyKey },
@@ -358,7 +414,7 @@ export async function registerReceivablePayment(
       { ...receivable, paidAmountCents },
       today,
     );
-    await ctx.mongo.collections.receivables.updateOne(
+    const updated = await ctx.mongo.collections.receivables.updateOne(
       { _id: receivable._id, version: receivable.version },
       {
         $set: { paidAmountCents, status, paymentMethod: input.method, updatedAt: now },
@@ -366,6 +422,7 @@ export async function registerReceivablePayment(
       },
       { session },
     );
+    if (updated.matchedCount === 0) throw conflict('A conta foi alterada ao mesmo tempo. Tente novamente.');
 
     await audit(
       ctx,
@@ -509,10 +566,11 @@ export async function registerPayablePayment(
     assertPaidAtNotFuture(input.paidAt, today);
 
     const idempotencyKey =
-      input.idempotencyKey ??
-      sha256(
-        `payable:${input.sourceId.toHexString()}:${input.amountCents}:${input.paidAt}:${input.bankAccountId.toHexString()}`,
-      );
+      input.idempotencyKey
+        ? `payable:${input.sourceId.toHexString()}:${input.idempotencyKey}`
+        : sha256(
+            `payable:${input.sourceId.toHexString()}:v${payable.version}:${input.amountCents}:${input.paidAt}:${input.bankAccountId.toHexString()}`,
+          );
 
     const duplicated = await ctx.mongo.collections.payments.findOne(
       { organizationId: input.organizationId, idempotencyKey },
@@ -572,11 +630,14 @@ export async function registerPayablePayment(
 
     const paidAmountCents = payable.paidAmountCents + input.amountCents;
     const status = derivePayableStatus({ ...payable, paidAmountCents }, today);
-    await ctx.mongo.collections.payables.updateOne(
+    const updated = await ctx.mongo.collections.payables.updateOne(
       { _id: payable._id, version: payable.version },
       { $set: { paidAmountCents, status, updatedAt: now }, $inc: { version: 1 } },
       { session },
     );
+    // Outro pagamento mudou a conta no meio: aborta (sem isso o lançamento
+    // bancário ficaria registrado e o valor pago, perdido).
+    if (updated.matchedCount === 0) throw conflict('A conta foi alterada ao mesmo tempo. Tente novamente.');
 
     await audit(
       ctx,
@@ -625,17 +686,25 @@ export async function reversePaymentsOf(
   const today = businessDate();
   let reversed = 0;
   for (const payment of payments) {
-    if (!payment.transactionId) continue;
-    const id = await reverseTransaction(
-      ctx,
-      {
-        organizationId: params.organizationId,
-        transactionId: payment.transactionId,
-        occurredAt: today,
-        reason: params.reason,
-        actorId: params.actorId,
-      },
-      session,
+    const id = payment.transactionId
+      ? await reverseTransaction(
+          ctx,
+          {
+            organizationId: params.organizationId,
+            transactionId: payment.transactionId,
+            occurredAt: today,
+            reason: params.reason,
+            actorId: params.actorId,
+          },
+          session,
+        )
+      : null;
+    // O pagamento também é marcado: sem isso a DRE e os relatórios
+    // continuariam somando um valor que o extrato já estornou.
+    await ctx.mongo.collections.payments.updateOne(
+      { _id: payment._id, reversedAt: null },
+      { $set: { reversedAt: new Date(), reversalTransactionId: id, updatedAt: new Date() } },
+      { session },
     );
     if (id) {
       await ctx.mongo.collections.payments.updateOne(
@@ -678,52 +747,86 @@ export async function generateRecurringPayables(
     })
     .toArray();
 
-  const seen = new Set<string>();
+  // Uma série = todas as ocorrências com o mesmo seriesId. A ocorrência
+  // MAIS RECENTE serve de modelo (valor/fornecedor editados valem daqui
+  // para frente) e define de onde continuar.
+  const latestBySeries = new Map<string, PayableDoc>();
+  for (const doc of templates) {
+    const seriesId = doc.recurring.seriesId!;
+    const prev = latestBySeries.get(seriesId);
+    const docPeriod = doc.recurring.period ?? doc.dueDate.slice(0, 7);
+    const prevPeriod = prev ? (prev.recurring.period ?? prev.dueDate.slice(0, 7)) : '';
+    if (!prev || docPeriod > prevPeriod) latestBySeries.set(seriesId, doc);
+  }
+
   let created = 0;
-  for (const template of templates) {
-    const seriesId = template.recurring.seriesId!;
-    if (seen.has(seriesId)) continue;
-    seen.add(seriesId);
-    if (template.recurring.period === period) continue;
+  for (const [seriesId, template] of latestBySeries) {
+    // Recupera meses perdidos (job parado, dyno dormindo): do mês seguinte
+    // à última ocorrência até o atual, no máximo 12 por execução.
+    const startPeriod = nextMonthKey(template.recurring.period ?? template.dueDate.slice(0, 7));
+    const periods: string[] = [];
+    for (let p = startPeriod; p <= period && periods.length < 12; p = nextMonthKey(p)) periods.push(p);
 
-    const already = await ctx.mongo.collections.payables.findOne({
-      organizationId,
-      'recurring.seriesId': seriesId,
-      'recurring.period': period,
-    });
-    if (already) continue;
-
-    const day = Number(template.dueDate.slice(8, 10));
-    const [y, m] = period.split('-').map(Number);
-    const lastDay = new Date(Date.UTC(y!, m!, 0)).getUTCDate();
-    const dueDate = `${period}-${String(Math.min(day, lastDay)).padStart(2, '0')}`;
-
-    const now = new Date();
-    try {
-      await ctx.mongo.collections.payables.insertOne({
-        _id: new ObjectId(),
+    for (const target of periods) {
+      const already = await ctx.mongo.collections.payables.findOne({
         organizationId,
-        description: template.description,
-        descriptionFold: template.descriptionFold,
-        categoryId: template.categoryId,
-        vehicleId: template.vehicleId,
-        amountCents: template.amountCents,
-        paidAmountCents: 0,
-        dueDate,
-        supplier: template.supplier,
-        documentUrl: null,
-        recurring: { enabled: true, seriesId, period },
-        notes: template.notes,
-        status: dueDate < today ? 'OVERDUE' : 'PENDING',
-        createdBy: null,
-        createdAt: now,
-        updatedAt: now,
-        version: 1,
+        'recurring.seriesId': seriesId,
+        'recurring.period': target,
       });
-      created += 1;
-    } catch (err) {
-      if ((err as { code?: number }).code !== 11000) throw err;
+      if (already) continue;
+
+      const day = Number(template.dueDate.slice(8, 10));
+      const [y, m] = target.split('-').map(Number);
+      const lastDay = new Date(Date.UTC(y!, m!, 0)).getUTCDate();
+      const dueDate = `${target}-${String(Math.min(day, lastDay)).padStart(2, '0')}`;
+
+      const now = new Date();
+      try {
+        await ctx.mongo.collections.payables.insertOne({
+          _id: new ObjectId(),
+          organizationId,
+          description: template.description,
+          descriptionFold: template.descriptionFold,
+          categoryId: template.categoryId,
+          vehicleId: template.vehicleId,
+          amountCents: template.amountCents,
+          paidAmountCents: 0,
+          dueDate,
+          supplier: template.supplier,
+          documentUrl: null,
+          recurring: { enabled: true, seriesId, period: target },
+          notes: template.notes,
+          status: dueDate < today ? 'OVERDUE' : 'PENDING',
+          createdBy: null,
+          createdAt: now,
+          updatedAt: now,
+          version: 1,
+        });
+        created += 1;
+      } catch (err) {
+        if ((err as { code?: number }).code !== 11000) throw err;
+      }
     }
   }
   return created;
+}
+
+function nextMonthKey(key: string): string {
+  const [y, m] = key.split('-').map(Number) as [number, number];
+  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+}
+
+/** Encerra a série recorrente inteira (nenhuma nova ocorrência será gerada). */
+export async function stopRecurringSeries(
+  ctx: AppContext,
+  organizationId: ObjectId,
+  seriesId: string,
+  session?: ClientSession,
+): Promise<number> {
+  const res = await ctx.mongo.collections.payables.updateMany(
+    { organizationId, 'recurring.seriesId': seriesId, 'recurring.enabled': true },
+    { $set: { 'recurring.enabled': false, updatedAt: new Date() } },
+    { session },
+  );
+  return res.modifiedCount;
 }

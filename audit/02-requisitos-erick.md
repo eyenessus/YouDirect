@@ -17,4 +17,4 @@ Fonte: pedidos da conversa (baixa de pagamento do motorista, dashboard não atua
 | R11 | Estornar/corrigir recebimento (R$ 800 → R$ 700) | **API pronta; UI pendente** | AUD-07b | Falta botão na interface (B-04) |
 | R12 | Responsável financeiro da despesa (empresa/proprietário/motorista) | **Não implementado** | — | Não há campo; PEND-04 |
 | R13 | Receita **prevista** × realizada; despesa **lançada** × paga | **Não implementado** nos indicadores | `03` | O dashboard só mostra o realizado; "a receber/a pagar 30 dias" é lista, não indicador de competência |
-| R14 | Encerrar locação sem novas cobranças indevidas | **Não atendido** | AUD-09 (`it.fails`) | PEND-02 |
+| R14 | Encerrar locação sem novas cobranças indevidas | **Atendido** (corrigido na `main`, validado) | AUD-09 | Confirmar a política (períodos inteiros até o encerramento) — PEND-02 |

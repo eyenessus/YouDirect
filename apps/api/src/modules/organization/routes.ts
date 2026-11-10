@@ -9,7 +9,7 @@ import {
   type Membership,
   type SubscriptionOverview,
 } from '@yudirect/contracts';
-import { conflict, notFound } from '../../common/errors.js';
+import { conflict, integrationUnavailable, notFound } from '../../common/errors.js';
 import { generateToken, sha256, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
 import { audit } from '../../services/common.js';
@@ -157,7 +157,8 @@ export async function registerOrganizationRoutes(app: FastifyInstance): Promise<
       reply.status(201);
       // O link só é devolvido na criação, para entrega manual quando não
       // há provedor de e-mail configurado. O token não é armazenado.
-      return toInvitationDTO(doc, ctx.env.APP_URL, token);
+      // Só quando o e-mail NÃO foi entregue (entrega manual pelo administrador).
+      return toInvitationDTO(doc, ctx.env.APP_URL, doc.delivery?.status === 'SENT' ? undefined : token);
     },
   );
 
@@ -342,7 +343,9 @@ export async function registerOrganizationRoutes(app: FastifyInstance): Promise<
           'Provedor de cobrança não conectado — não é possível gerar o link de pagamento ou a 2ª via.',
         );
       }
-      const url = await ctx.integrations.billing.paymentLink(invoice.providerInvoiceId);
+      const url = await ctx.integrations.billing.paymentLink(invoice.providerInvoiceId).catch(() => {
+        throw integrationUnavailable('O provedor de cobrança não respondeu. Tente novamente em instantes.');
+      });
       if (!url) throw conflict('O provedor não retornou um link para esta fatura.');
       await ctx.mongo.collections.billingInvoices.updateOne(
         { _id: id },

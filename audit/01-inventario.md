@@ -30,11 +30,11 @@ Legenda: **V** implementado e validado · **F** implementado com falha comprovad
 
 | Módulo | Funcionalidade | Implementação | Integrações | Testes existentes | Estado | Riscos |
 |---|---|---|---|---|---|---|
-| Auth | Login, sessão por cookie, logout, troca de senha, convites | `modules/auth` | — | flows T01/T19, E2E acesso | V | `SESSION_SECRET` padrão aceito em produção (R-01) |
+| Auth | Login, sessão por cookie, logout, troca de senha, convites | `modules/auth` | — | flows T01/T19, E2E acesso, `security-hardening` | V | trava de produção exige variáveis (PEND-03) |
 | Organização | Colaboradores, convites, permissões por módulo/ação | `modules/organization` | assinatura (provedor sem credencial no demo) | flows T02/T03, permissions.test (web) | V (permissões) / NV (cobrança real) | — |
 | Veículos | CRUD, fotos, importação XLSX/CSV, arquivar | `modules/vehicles` | consulta de multas (fontes externas) | flows T05, E2E | V (CRUD) / NV (multas reais) | arquivar tirava o custo do relatório por veículo (B-08, corrigido) |
 | Motoristas | CRUD, documentos, consentimento WhatsApp | `modules/drivers` | CEP | flows T06 | V | LGPD não auditada (R-08) |
-| Locações | Criar, editar, encerrar, excluir, conta a receber por contrato | `modules/rentals` | — | flows T07 + `payment-schedule` | **F** | encerrar não ajusta a cobrança (B-03, aberto) |
+| Locações | Criar, editar, encerrar, excluir, conta a receber por contrato | `modules/rentals` | — | flows T07 + `payment-schedule` + AUD-09 | V (B-03 corrigido na `main`) | política de encerramento a confirmar (PEND-02) |
 | Cronograma semanal | `GET /rentals/:id/payment-schedule` | `services/finance.ts` | — | payment-schedule (17) + E2E | V | cálculo derivado da conta única (A-FIN-02) |
 | Contas a receber | Listar, filtrar, baixar (parcial/total), estornar | `modules/finance/accounts.ts` | — | payment-settlement, audit, E2E | V após correções | UI de estorno inexistente (B-04) |
 | Contas a pagar | CRUD, categorias, recorrência, **parcelamento**, baixa, estorno | `modules/finance/accounts.ts` | — | flows T12/T14, payable-installments, audit | V após correções | veículo opcional (PEND-01); sem "responsável" (PEND-04) |
@@ -46,7 +46,7 @@ Legenda: **V** implementado e validado · **F** implementado com falha comprovad
 | WhatsApp (Whaply) | Coleta de vistoria, mensagens, custos | `modules/whatsapp`, `integrations/whaply` | Whaply (simulado nos testes) | whatsapp-integration, E2E | V no simulado / **NV** com provedor real | `e2e-whaply-cross` pulado (exige Whaply real) |
 | Notificações | CNH, manutenção, locações; modelos e disparo | `modules/notifications` | provedor de mensagens | flows | V | — |
 | Jobs | recorrência, status vencidos, vistorias, contas de locação sem término | `jobs/scheduler.ts` | — | AUD-13 (idempotência) | V | execução depende de `JOBS_ENABLED` |
-| Segurança transversal | CSRF por Origin, rate limit, helmet, isolamento por organização | `app.ts`, `plugins` | — | AUD-10, AUD-15 | V (isolamento/permissões) | segredos/produção (R-01) |
+| Segurança transversal | CSRF por Origin, rate limit, helmet, isolamento por organização, trava de config de produção | `app.ts`, `config/env.ts` | — | AUD-10, AUD-15, `security-hardening`, E2E headers | V | rollout das variáveis (PEND-03) |
 | Operação | Build, deploy (Heroku), backup, logs/monitoramento | `Procfile`/scripts | — | — | **NV** | backup/restauração e pipeline não auditados |
 
 ## Observações

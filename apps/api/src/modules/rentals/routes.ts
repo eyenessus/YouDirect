@@ -10,7 +10,8 @@ import {
   type RentalPaymentSchedule,
 } from '@yudirect/contracts';
 import { conflict, notFound } from '../../common/errors.js';
-import { decodeCursor, encodeCursor, escapeRegex, foldAccents, toObjectId } from '../../common/helpers.js';
+import { cursorDate,
+  decodeCursor, encodeCursor, escapeRegex, foldAccents, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
 import { withTransaction } from '../../database/mongo.js';
 import { audit, nextNumber } from '../../services/common.js';
@@ -20,14 +21,43 @@ import {
   deriveReceivableStatus,
   ensureRentalReceivable,
   extendOpenEndedReceivable,
+  syncContractReceivable,
 } from '../../services/finance.js';
 import { postTransaction, defaultBankAccountId } from '../../services/ledger.js';
-import type { AppContext } from '../../context.js';
+import type { AppContext, AuthContext } from '../../context.js';
+import { cpfForViewer } from '../../common/pii-visibility.js';
 import type { RentalDoc } from '../../database/types.js';
+import type { ClientSession } from 'mongodb';
+
+/** Locação ativa do mesmo veículo cujo período cruza com [startDate, endDate]. */
+async function findOverlappingRental(
+  ctx: AppContext,
+  p: {
+    organizationId: ObjectId;
+    vehicleId: ObjectId;
+    startDate: string;
+    endDate: string | null;
+    excludeId?: ObjectId;
+    session?: ClientSession;
+  },
+): Promise<RentalDoc | null> {
+  return ctx.mongo.collections.rentals.findOne(
+    {
+      organizationId: p.organizationId,
+      vehicleId: p.vehicleId,
+      status: 'ACTIVE',
+      ...(p.excludeId ? { _id: { $ne: p.excludeId } } : {}),
+      $or: [{ endDate: null }, { endDate: { $gte: p.startDate } }],
+      ...(p.endDate ? { startDate: { $lte: p.endDate } } : {}),
+    },
+    { session: p.session },
+  );
+}
 
 async function toRentalDTOs(
   ctx: AppContext,
   organizationId: ObjectId,
+  viewer: AuthContext | null,
   docs: RentalDoc[],
 ): Promise<Rental[]> {
   const vehicleIds = [...new Set(docs.map((d) => d.vehicleId.toHexString()))].map((s) => new ObjectId(s));
@@ -61,7 +91,7 @@ async function toRentalDTOs(
       driver: {
         id: doc.driverId.toHexString(),
         fullName: d?.fullName ?? '—',
-        cpf: d ? ctx.pii.decrypt(d.cpfEncrypted) : null,
+        cpf: d ? cpfForViewer(viewer, ctx.pii.decrypt(d.cpfEncrypted)) : null,
         phone: d?.phone ?? '',
       },
       startDate: doc.startDate,
@@ -130,8 +160,8 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
         filter.$and = [
           {
             $or: [
-              { createdAt: { $lt: new Date(cursor.createdAt) } },
-              { createdAt: new Date(cursor.createdAt), _id: { $lt: new ObjectId(cursor.id) } },
+              { createdAt: { $lt: cursorDate(cursor.createdAt) } },
+              { createdAt: cursorDate(cursor.createdAt), _id: { $lt: toObjectId(String(cursor.id), 'cursor') } },
             ],
           },
         ];
@@ -147,7 +177,7 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
       const total = await ctx.mongo.collections.rentals.countDocuments({ organizationId });
 
       return {
-        data: await toRentalDTOs(ctx, organizationId, page),
+        data: await toRentalDTOs(ctx, organizationId, request.auth, page),
         page: {
           nextCursor: hasMore
             ? encodeCursor({
@@ -170,7 +200,7 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
       const id = toObjectId((request.params as { id: string }).id);
       const doc = await ctx.mongo.collections.rentals.findOne({ _id: id, organizationId });
       if (!doc) throw notFound('Locação não encontrada.');
-      const [dto] = await toRentalDTOs(ctx, organizationId, [doc]);
+      const [dto] = await toRentalDTOs(ctx, organizationId, request.auth, [doc]);
       return dto;
     },
   );
@@ -242,16 +272,13 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
       if (!vehicle) throw notFound('Veículo não encontrado.');
       if (!driver) throw notFound('Motorista não encontrado.');
 
-      // Impede sobreposição de locação ativa para o mesmo veículo.
-      const overlapping = await ctx.mongo.collections.rentals.findOne({
+      // Impede sobreposição de locação ativa para o mesmo veículo (checagem
+      // rápida aqui; a definitiva é refeita dentro da transação).
+      const overlapping = await findOverlappingRental(ctx, {
         organizationId: auth.organizationId,
         vehicleId,
-        status: 'ACTIVE',
-        $or: [
-          { endDate: null },
-          { endDate: { $gte: body.startDate } },
-        ],
-        ...(body.endDate ? { startDate: { $lte: body.endDate } } : {}),
+        startDate: body.startDate,
+        endDate: body.endDate ?? null,
       });
       if (overlapping) {
         throw conflict(
@@ -265,6 +292,26 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
 
       const today = businessDate();
       const result = await withTransaction(ctx, async (session) => {
+        // Serializa por veículo: a escrita no documento do veículo faz duas
+        // criações simultâneas conflitarem (uma é refeita pelo retry da
+        // transação e então enxerga a outra na checagem abaixo).
+        await ctx.mongo.collections.vehicles.updateOne(
+          { _id: vehicleId, organizationId: auth.organizationId },
+          { $set: { updatedAt: new Date() } },
+          { session },
+        );
+        const overlappingInTx = await findOverlappingRental(ctx, {
+          organizationId: auth.organizationId,
+          vehicleId,
+          startDate: body.startDate,
+          endDate: body.endDate ?? null,
+          session,
+        });
+        if (overlappingInTx) {
+          throw conflict(
+            `O veículo ${vehicle.plate} já possui a locação ativa ${overlappingInTx.rentalNumber} no período informado.`,
+          );
+        }
         const year = Number(body.startDate.slice(0, 4));
         const { number, sequence } = await nextNumber(
           ctx,
@@ -411,7 +458,7 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
       });
 
       reply.status(201);
-      const [dto] = await toRentalDTOs(ctx, auth.organizationId, [result]);
+      const [dto] = await toRentalDTOs(ctx, auth.organizationId, request.auth, [result]);
       return dto;
     },
   );
@@ -430,12 +477,26 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
         organizationId: auth.organizationId,
       });
       if (!current) throw notFound('Locação não encontrada.');
+      if (current.status !== 'ACTIVE') {
+        throw conflict('Locação encerrada ou cancelada não pode ser editada.');
+      }
 
       const startDate = body.startDate ?? current.startDate;
       const endDate = body.endDate === undefined ? current.endDate : body.endDate ?? null;
       if (endDate && endDate < startDate) {
         throw conflict('A data de término deve ser igual ou posterior à data de início.');
       }
+      // "Já pago na assinatura" gera lançamento bancário na criação: mudar
+      // depois deixaria banco e conta a receber divergentes.
+      if (
+        (body.firstPeriodPrepaid !== undefined && body.firstPeriodPrepaid !== current.firstPeriodPrepaid) ||
+        (body.depositPrepaid !== undefined && body.depositPrepaid !== current.depositPrepaid)
+      ) {
+        throw conflict('Pagamento antecipado não pode ser alterado depois do cadastro. Registre o pagamento na conta a receber.');
+      }
+      const datesChanged = body.startDate !== undefined || body.endDate !== undefined;
+      const moneyChanged =
+        datesChanged || body.periodicAmountCents !== undefined || body.rentalType !== undefined;
 
       const set: Record<string, unknown> = { updatedAt: new Date() };
       if (body.startDate !== undefined) set.startDate = body.startDate;
@@ -460,18 +521,41 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
         set.contractFileId = file._id;
       }
 
-      const updated = await ctx.mongo.collections.rentals.findOneAndUpdate(
-        { _id: id, organizationId: auth.organizationId, version: current.version },
-        {
-          $set: set,
-          $inc: { version: 1 },
-          $push: {
-            history: { at: new Date(), actorId: auth.userId, action: 'updated' },
+      const updated = await withTransaction(ctx, async (session) => {
+        if (datesChanged) {
+          await ctx.mongo.collections.vehicles.updateOne(
+            { _id: current.vehicleId, organizationId: auth.organizationId },
+            { $set: { updatedAt: new Date() } },
+            { session },
+          );
+          const overlap = await findOverlappingRental(ctx, {
+            organizationId: auth.organizationId,
+            vehicleId: current.vehicleId,
+            startDate,
+            endDate,
+            excludeId: id,
+            session,
+          });
+          if (overlap) {
+            throw conflict(`O período informado cruza com a locação ativa ${overlap.rentalNumber} do mesmo veículo.`);
+          }
+        }
+        const doc = await ctx.mongo.collections.rentals.findOneAndUpdate(
+          { _id: id, organizationId: auth.organizationId, version: current.version, status: 'ACTIVE' },
+          {
+            $set: set,
+            $inc: { version: 1 },
+            $push: {
+              history: { at: new Date(), actorId: auth.userId, action: 'updated' },
+            },
           },
-        },
-        { returnDocument: 'after' },
-      );
-      if (!updated) throw conflict('A locação foi alterada por outro usuário. Recarregue e tente novamente.');
+          { returnDocument: 'after', session },
+        );
+        if (!doc) throw conflict('A locação foi alterada por outro usuário. Recarregue e tente novamente.');
+        // Valor, datas ou tipo mudaram: a conta a receber acompanha (o pago não muda).
+        if (moneyChanged) await syncContractReceivable(ctx, doc, { mode: 'edit', session });
+        return doc;
+      });
       await audit(ctx, {
         organizationId: auth.organizationId,
         actorId: auth.userId,
@@ -481,7 +565,7 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
         before: current,
         after: updated,
       });
-      const [dto] = await toRentalDTOs(ctx, auth.organizationId, [updated]);
+      const [dto] = await toRentalDTOs(ctx, auth.organizationId, request.auth, [updated]);
       return dto;
     },
   );
@@ -507,16 +591,21 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
 
       await withTransaction(ctx, async (session) => {
         const now = new Date();
-        await ctx.mongo.collections.rentals.updateOne(
-          { _id: id, organizationId: auth.organizationId },
+        // Condicionado a ACTIVE: dois encerramentos simultâneos → um vence.
+        const closed = await ctx.mongo.collections.rentals.findOneAndUpdate(
+          { _id: id, organizationId: auth.organizationId, status: 'ACTIVE' },
           {
             $set: { status: 'FINISHED', endDate: body.endDate, closedAt: now, updatedAt: now },
+            $inc: { version: 1 },
             $push: {
               history: { at: now, actorId: auth.userId, action: 'closed', detail: body.notes ?? undefined },
             },
           },
-          { session },
+          { returnDocument: 'after', session },
         );
+        if (!closed) throw conflict('A locação não está mais ativa.');
+        // Encerramento antecipado: o contrato passa a cobrar só até o fim real.
+        await syncContractReceivable(ctx, closed, { mode: 'close', session, today: body.endDate });
         const stillRented = await ctx.mongo.collections.rentals.countDocuments(
           { organizationId: auth.organizationId, vehicleId: rental.vehicleId, status: 'ACTIVE' },
           { session },

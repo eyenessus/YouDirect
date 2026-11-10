@@ -14,6 +14,9 @@ Todas em `audit/auditoria-financeira`, cada uma com teste de regressão. Nenhuma
 
 Ajustes de testes que a correção exigiu (não são mudança de produto): `flows.test.ts` usava datas de pagamento fixas no futuro (agora `businessDate()`); o AUD-14b passou a excluir estornados na conciliação.
 
+## Integração com a frente de endurecimento (`main`)
+A `origin/main` recebeu `fix(seguranca): fase 1` e `fix(financeiro): fase 2` enquanto esta auditoria corria. Conflitos resolvidos na mesclagem: `types.ts` (união dos campos `reversedAt/reversedReason/reversalTransactionId`), `analytics.ts` (as 7 agregações eram idênticas; ficou a versão da `main`) e um teste de formulário (ficou a versão da `main`). Ajustes pós-mesclagem: a rota de estorno passou a usar a nova assinatura de `toReceivableDTOs` (mascaramento de PII por visualizador); AUD-02d e AUD-09 atualizados para as regras novas. **Resolvidos pela `main`:** B-03 (`syncContractReceivable`) e R-01 (`productionProblems`).
+
 ## Funcionalidades entregues no mesmo ciclo (pedidos do cliente)
 Atalho de baixa no motorista/locação, cronograma semanal com "Dar baixa", parcelamento de contas a pagar (mensal/trimestral/semestral/anual), categorias IPVA/Licenciamento/Outro. Detalhes em `02` e `docs/TRACEABILITY.md`.
 
@@ -23,4 +26,4 @@ Atalho de baixa no motorista/locação, cronograma semanal com "Dar baixa", parc
 - Reverter o código **depois** de existirem pagamentos estornados faria o dashboard voltar a contá-los (o campo ficaria ignorado). Se precisar voltar atrás em produção, reverter junto com uma checagem manual de `payments.reversedAt`.
 
 ## Evidência final
-`npm run build` ✔ · `typecheck` 0 erros · `lint` 0 erros · contracts 29 · API 190 (+9 pulados) · web 54 · E2E 32/32. Detalhes em `05-testes-executados.md`.
+`npm run build` ✔ · `typecheck` 0 erros · `lint` 0 erros · contracts 29 · API 218 (+9 pulados) · web 54 · E2E 34/34 (código já mesclado com a `main`). Detalhes em `05-testes-executados.md`.

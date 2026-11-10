@@ -10,6 +10,7 @@ import type {
   ExpenseCategoryDoc,
   FileDoc,
   ImportDraftDoc,
+  LoginAttemptDoc,
   InspectionDoc,
   InvitationDoc,
   MaintenanceOrderDoc,
@@ -65,6 +66,7 @@ export interface Collections {
   auditLogs: Collection<AuditLogDoc>;
   counters: Collection<CounterDoc>;
   importDrafts: Collection<ImportDraftDoc>;
+  loginAttempts: Collection<LoginAttemptDoc>;
   whatsappMessages: Collection<WhatsappMessageDoc>;
   integrationInbox: Collection<IntegrationInboxDoc>;
   integrationNonces: Collection<IntegrationNonceDoc>;
@@ -111,6 +113,7 @@ function buildCollections(db: Db): Collections {
     auditLogs: db.collection<AuditLogDoc>('auditLogs'),
     counters: db.collection<CounterDoc>('counters'),
     importDrafts: db.collection<ImportDraftDoc>('importDrafts'),
+    loginAttempts: db.collection<LoginAttemptDoc>('loginAttempts'),
     whatsappMessages: db.collection<WhatsappMessageDoc>('whatsappMessages'),
     integrationInbox: db.collection<IntegrationInboxDoc>('integrationInbox'),
     integrationNonces: db.collection<IntegrationNonceDoc>('integrationNonces'),

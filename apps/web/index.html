@@ -7,19 +7,8 @@
     <meta name="description" content="YuDirect — gestão de frota, locações, manutenções, vistorias e financeiro." />
     <link rel="icon" type="image/png" href="/brand/yudirect-mark.png" />
     <title>YuDirect</title>
-    <script>
-      // Aplica o tema antes da primeira pintura para evitar flash.
-      (function () {
-        try {
-          var stored = localStorage.getItem('yudirect:theme');
-          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          var theme = stored === 'light' || stored === 'dark' ? stored : prefersDark ? 'dark' : 'light';
-          document.documentElement.setAttribute('data-theme', theme);
-        } catch (e) {
-          document.documentElement.setAttribute('data-theme', 'light');
-        }
-      })();
-    </script>
+    <!-- Bloqueante de propósito: aplica o tema antes da primeira pintura. -->
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="app"></div>

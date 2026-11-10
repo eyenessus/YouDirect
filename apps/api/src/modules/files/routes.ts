@@ -1,10 +1,34 @@
 import type { FastifyInstance } from 'fastify';
-import { filePurposeSchema } from '@yudirect/contracts';
+import { can, filePurposeSchema, type FilePurpose, type PermissionAction, type PermissionModule } from '@yudirect/contracts';
 import { badRequest, forbidden, notFound } from '../../common/errors.js';
 import { toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
 import { filePurposeRules, softDeleteFile, storeFile } from '../../services/files.js';
 import { verifyFileAccess } from '../../storage/index.js';
+
+/**
+ * Arquivos herdam a permissão do módulo dono deles: o documento de um
+ * motorista só é visto/alterado por quem pode ver/alterar motoristas.
+ */
+const PURPOSE_MODULE: Record<FilePurpose, PermissionModule> = {
+  VEHICLE_PHOTO: 'vehicles',
+  DRIVER_ID: 'drivers',
+  DRIVER_ADDRESS_PROOF: 'drivers',
+  RENTAL_CONTRACT: 'rentals',
+  MAINTENANCE_INVOICE: 'maintenance',
+  INSPECTION_PHOTO: 'inspections',
+};
+
+function assertFilePermission(
+  auth: ReturnType<typeof requireAuthContext>,
+  purpose: FilePurpose,
+  actions: PermissionAction[],
+): void {
+  const mod = PURPOSE_MODULE[purpose];
+  if (!actions.some((action) => can(auth.role, auth.permissions, mod, action))) {
+    throw forbidden('Você não tem permissão para este arquivo.');
+  }
+}
 
 export async function registerFileRoutes(app: FastifyInstance): Promise<void> {
   /* ------------------------------ upload --------------------------- */
@@ -22,6 +46,7 @@ export async function registerFileRoutes(app: FastifyInstance): Promise<void> {
         'Informe o campo "purpose" com uma finalidade válida (VEHICLE_PHOTO, DRIVER_ID, DRIVER_ADDRESS_PROOF, RENTAL_CONTRACT, MAINTENANCE_INVOICE, INSPECTION_PHOTO).',
       );
     }
+    assertFilePermission(auth, parsed.data, ['create', 'update']);
     const rules = filePurposeRules(parsed.data);
 
     const buffer = await file.toBuffer();
@@ -95,6 +120,7 @@ export async function registerFileRoutes(app: FastifyInstance): Promise<void> {
       status: 'ACTIVE',
     });
     if (!file) throw notFound('Arquivo não encontrado.');
+    assertFilePermission(auth, file.purpose, ['read']);
     const { fileUrl } = await import('../../services/files.js');
     return { url: fileUrl(ctx, id, auth.organizationId), contentType: file.contentType };
   });
@@ -108,6 +134,7 @@ export async function registerFileRoutes(app: FastifyInstance): Promise<void> {
       organizationId: auth.organizationId,
     });
     if (!file) throw notFound('Arquivo não encontrado.');
+    assertFilePermission(auth, file.purpose, ['delete', 'update']);
     await softDeleteFile(ctx, auth.organizationId, id);
     return { ok: true };
   });

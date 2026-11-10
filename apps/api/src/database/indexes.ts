@@ -191,6 +191,12 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
 
   await c.messageDispatches.createIndexes([
     { key: { organizationId: 1, createdAt: -1, _id: -1 }, name: 'by_org_created' },
+    {
+      key: { organizationId: 1, requestKey: 1 },
+      unique: true,
+      partialFilterExpression: { requestKey: { $type: 'string' } },
+      name: 'uniq_org_request_key',
+    },
   ]);
 
   await c.subscriptions.createIndexes([
@@ -211,6 +217,8 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
     { key: { organizationId: 1, occurredAt: -1 }, name: 'by_org_occurred' },
     { key: { organizationId: 1, entityType: 1, entityId: 1, occurredAt: -1 }, name: 'by_entity' },
   ]);
+
+  await c.loginAttempts.createIndexes([{ key: { expiresAt: 1 }, expireAfterSeconds: 0, name: 'ttl_login_attempt' }]);
 
   await c.importDrafts.createIndexes([
     { key: { token: 1 }, unique: true, name: 'uniq_import_token' },

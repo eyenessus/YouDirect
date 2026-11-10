@@ -554,6 +554,8 @@ export interface MessageDispatchDoc extends Tenant {
     idempotencyKey: string;
     updatedAt: Date;
   }>;
+  /** Idempotency-Key do pedido de disparo (repetição devolve o mesmo disparo). */
+  requestKey?: string | null;
   createdBy: ObjectId | null;
 }
 
@@ -611,5 +613,14 @@ export interface ImportDraftDoc {
   fileName: string;
   rows: unknown[];
   createdAt: Date;
+  expiresAt: Date;
+}
+
+/** Tentativas de login por e-mail (bloqueio de conta, independente do IP). */
+export interface LoginAttemptDoc {
+  _id: string; // e-mail normalizado
+  failures: number;
+  windowStart: Date;
+  lockedUntil: Date | null;
   expiresAt: Date;
 }

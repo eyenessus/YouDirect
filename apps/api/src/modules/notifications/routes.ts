@@ -13,7 +13,8 @@ import {
   type Notification,
 } from '@yudirect/contracts';
 import { badRequest, conflict, notFound } from '../../common/errors.js';
-import { decodeCursor, encodeCursor, toObjectId } from '../../common/helpers.js';
+import { cursorDate,
+  decodeCursor, encodeCursor, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
 import { audit } from '../../services/common.js';
 import { runNotificationGenerators } from '../../services/notifications.js';
@@ -119,8 +120,8 @@ export async function registerNotificationRoutes(app: FastifyInstance): Promise<
       const cursor = decodeCursor<{ createdAt: string; id: string }>(query.cursor);
       if (cursor) {
         filter.$or = [
-          { createdAt: { $lt: new Date(cursor.createdAt) } },
-          { createdAt: new Date(cursor.createdAt), _id: { $lt: new ObjectId(cursor.id) } },
+          { createdAt: { $lt: cursorDate(cursor.createdAt) } },
+          { createdAt: cursorDate(cursor.createdAt), _id: { $lt: toObjectId(String(cursor.id), 'cursor') } },
         ];
       }
 
@@ -310,31 +311,43 @@ export async function registerNotificationRoutes(app: FastifyInstance): Promise<
         .toArray();
       if (drivers.length === 0) throw badRequest('Nenhum motorista válido selecionado.');
 
+      // Quem revogou o consentimento (respondeu SAIR/PARAR no WhatsApp) nunca
+      // recebe disparo, mesmo com "consentimento confirmado" marcado.
+      const allowed = drivers.filter((d) => d.whatsappConsent?.status !== 'REVOKED');
+      const optedOut = drivers.length - allowed.length;
+      if (allowed.length === 0) {
+        throw conflict('Todos os motoristas selecionados revogaram o consentimento para mensagens.');
+      }
+
+      // Repetir o mesmo pedido (duplo clique, retry de rede) devolve o disparo já criado.
+      const headerKey = request.headers['idempotency-key'];
+      const requestKey = typeof headerKey === 'string' && headerKey.length <= 200 ? headerKey : null;
+      const findExisting = () =>
+        requestKey
+          ? ctx.mongo.collections.messageDispatches.findOne({ organizationId: auth.organizationId, requestKey })
+          : Promise.resolve(null);
+      const already = await findExisting();
+      if (already) return toDispatchDTO(already);
+
       const waStatus = ctx.integrations.whatsapp.status();
       const dispatchId = new ObjectId();
       const now = new Date();
 
-      const deliveries: MessageDispatchDoc['deliveries'] = [];
-      for (const driver of drivers) {
-        const renderedBody = renderMessage(body.body, {
+      const deliveries: MessageDispatchDoc['deliveries'] = allowed.map((driver) => ({
+        driverId: driver._id,
+        driverName: driver.fullName,
+        phone: driver.phone,
+        renderedBody: renderMessage(body.body, {
           driverName: driver.fullName,
           companyName: organization?.name ?? '',
-        });
-        const idempotencyKey = `${dispatchId.toHexString()}:${driver._id.toHexString()}`;
-        const result = await ctx.integrations.whatsapp.send(driver.phone, renderedBody, idempotencyKey);
-        deliveries.push({
-          driverId: driver._id,
-          driverName: driver.fullName,
-          phone: driver.phone,
-          renderedBody,
-          status: result.delivered ? 'SENT' : waStatus.connected ? 'FAILED' : 'UNAVAILABLE',
-          providerMessageId: result.providerMessageId,
-          error: result.error,
-          manualLink: result.manualLink,
-          idempotencyKey,
-          updatedAt: new Date(),
-        });
-      }
+        }),
+        status: 'PENDING',
+        providerMessageId: null,
+        error: null,
+        manualLink: null,
+        idempotencyKey: `${dispatchId.toHexString()}:${driver._id.toHexString()}`,
+        updatedAt: now,
+      }));
 
       const doc: MessageDispatchDoc = {
         _id: dispatchId,
@@ -344,18 +357,54 @@ export async function registerNotificationRoutes(app: FastifyInstance): Promise<
         providerName: waStatus.name,
         providerAvailable: waStatus.connected,
         deliveries,
+        requestKey,
         createdBy: auth.userId,
         createdAt: now,
         updatedAt: now,
       };
-      await ctx.mongo.collections.messageDispatches.insertOne(doc);
+      // Persiste ANTES de enviar: se o processo cair no meio, o disparo existe
+      // com os pendentes e pode ser reenviado (antes, tudo se perdia).
+      try {
+        await ctx.mongo.collections.messageDispatches.insertOne(doc);
+      } catch (err) {
+        const existing = (err as { code?: number }).code === 11000 ? await findExisting() : null;
+        if (existing) return toDispatchDTO(existing);
+        throw err;
+      }
+
+      for (const delivery of deliveries) {
+        const result = await ctx.integrations.whatsapp.send(
+          delivery.phone,
+          delivery.renderedBody,
+          delivery.idempotencyKey,
+        );
+        delivery.status = result.delivered ? 'SENT' : waStatus.connected ? 'FAILED' : 'UNAVAILABLE';
+        delivery.providerMessageId = result.providerMessageId;
+        delivery.error = result.error;
+        delivery.manualLink = result.manualLink;
+        delivery.updatedAt = new Date();
+        await ctx.mongo.collections.messageDispatches.updateOne(
+          { _id: dispatchId, 'deliveries.driverId': delivery.driverId },
+          {
+            $set: {
+              'deliveries.$.status': delivery.status,
+              'deliveries.$.providerMessageId': delivery.providerMessageId,
+              'deliveries.$.error': delivery.error,
+              'deliveries.$.manualLink': delivery.manualLink,
+              'deliveries.$.updatedAt': delivery.updatedAt,
+              updatedAt: delivery.updatedAt,
+            },
+          },
+        );
+      }
+
       await audit(ctx, {
         organizationId: auth.organizationId,
         actorId: auth.userId,
         action: 'dispatch.created',
         entityType: 'messageDispatch',
         entityId: dispatchId,
-        after: { recipients: deliveries.length, providerAvailable: waStatus.connected },
+        after: { recipients: deliveries.length, optedOut, providerAvailable: waStatus.connected },
       });
 
       reply.status(201);

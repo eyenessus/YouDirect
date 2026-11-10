@@ -3,22 +3,22 @@
 Ambiente: Windows 11, Node 24, MongoDB **em memória** (replica set, `mongodb-memory-server`), dados fictícios do seed. O harness (`testing/harness.ts`) e o `dev-demo.ts` forçam `MONGODB_URI=''`, ou seja, **nenhum teste usa banco real**.
 Datas: os testes usam `businessDate()` (fuso America/Sao_Paulo) e deltas (antes/depois), nunca valores absolutos que dependam do relógio.
 
-## Comandos e resultado final (código após as correções)
+## Comandos e resultado final (código após as correções **e após mesclar a `main`**)
 | Comando | Resultado |
 |---|---|
 | `npm run build` | OK (contracts, api, web) |
 | `npm run typecheck` | 0 erros |
 | `npm run lint` | **0 erros**, 13 avisos (todos anteriores à auditoria) |
 | `npm run test -w @yudirect/contracts` | **29 passaram** (eram 17; +12 de datas de calendário) |
-| `npm run test -w @yudirect/api` | **190 passaram, 9 pulados**, 8 arquivos (+1 arquivo pulado) |
+| `npm run test -w @yudirect/api` | **218 passaram, 9 pulados**, 10 arquivos (+1 arquivo pulado). Os 28 a mais vêm dos testes da frente de endurecimento (`finance-integrity`, `security-hardening`) |
 | `npm run test -w @yudirect/web` | **54 passaram**, 8 arquivos |
-| Playwright (`e2e/`), Chrome real, API+web em portas isoladas | **32 passaram** (1 setup + 31 testes; 6 novos em `zz-auditoria-baixa.spec.ts`) |
+| Playwright (`e2e/`), Chrome real, API+web em portas isoladas | **34 passaram** (inclui 7 desta frente: 6 em `zz-auditoria-baixa.spec.ts` e 1 em `zz-baixa-pelo-motorista.spec.ts`, mais `security-headers` da `main`) |
 
 Os 9 testes pulados são `e2e-whaply-cross.test.ts` (exigem o Whaply real; **não verificável** aqui).
 Nota operacional: na primeira tentativa o E2E falhou no login com "Origem não permitida" porque **outro processo (`dev-demo` de outra pasta, `frotaone-hardening`) ocupava a porta 3333** e o Playwright o reutilizou. Não é defeito do produto; o E2E final foi executado em portas próprias (3334/4174) e o processo alheio não foi tocado.
 
 ## Bateria de auditoria — `apps/api/src/__tests__/audit-financeiro.test.ts`
-Primeira execução (antes de qualquer correção): **28 testes, 21 passaram, 7 falharam**. Os 7 falharam por defeitos reais (colunas "Antes"). Depois das correções: **28/28** (AUD-09 é `it.fails`, defeito aberto).
+Primeira execução (antes de qualquer correção): **28 testes, 21 passaram, 7 falharam**. Os 7 falharam por defeitos reais (colunas "Antes"). Depois das correções e da mesclagem com a `main`: **28/28**.
 
 | Id | Cenário | Antes | Depois |
 |---|---|---|---|
@@ -26,7 +26,7 @@ Primeira execução (antes de qualquer correção): **28 testes, 21 passaram, 7 
 | AUD-02 | Pagamento duplicado (mesma chave): 1 recebimento | ✔ | ✔ |
 | AUD-02b | 10 cliques simultâneos, mesma chave → 1 recebimento | ✔ | ✔ |
 | AUD-02c | Mesma chave, **valor diferente** → não pode dar sucesso | ✘ (200) | ✔ (409) |
-| AUD-02d | Duas requisições iguais sem chave → tratadas como repetição (regra documentada) | ✔ | ✔ |
+| AUD-02d | Duas requisições iguais **sem chave**, em sequência → dois pagamentos legítimos (a `main` passou a incluir a versão da conta no hash; cliques simultâneos ainda se fundem) | ✔ (regra antiga: 200) | ✔ (regra nova: 201) |
 | AUD-03 | Parcial R$ 300 de R$ 800 → 500 pendentes, não quitada | ✔ | ✔ |
 | AUD-03b | Parciais não passam do saldo (422), sem crédito silencioso | ✔ | ✔ |
 | AUD-03c | 2 baixas simultâneas que somadas excedem o saldo: só 1 vence; Σ pagamentos = saldo | ✔ | ✔ |
@@ -37,7 +37,7 @@ Primeira execução (antes de qualquer correção): **28 testes, 21 passaram, 7 
 | AUD-07b | Estorno de recebimento: histórico preservado, receita −R$ 800, repetir não duplica | ✘ (404) | ✔ |
 | AUD-08 | Receita e despesa respeitam a data de liquidação, em meses diferentes | ✔ | ✔ |
 | AUD-08b | Pagamento com data futura recusado | ✘ (201) | ✔ (422) |
-| AUD-09 | Encerrar locação não deixa cobrança de períodos posteriores | ✘ (320000 permanece) | **✘ aberto** (`it.fails`, PEND-02) |
+| AUD-09 | Encerrar locação não deixa cobrança de períodos posteriores | ✘ (320000 permanece) | ✔ **corrigido na `main`** (`syncContractReceivable`); deixou de ser `it.fails` |
 | AUD-09b | Locação sem término, encerrada, não ganha semanas novas | ✔ | ✔ |
 | AUD-10 | Isolamento: empresa B não lê/altera receitas, despesas, locações, veículos, motoristas, categorias; dashboards da B zerados | ✔ | ✔ |
 | AUD-11 | 11 entradas inválidas na baixa (valor negativo/zero/decimal/texto, data inválida, método, banco) → 4xx, nunca 500 | ✘ (`2026-02-30` → 201) | ✔ |
@@ -64,6 +64,7 @@ Primeira execução (antes de qualquer correção): **28 testes, 21 passaram, 7 
 | `web/payable-form-installments.test.ts` | 3 | formulário parcelado, exclusão recorrência × parcelamento |
 | `web/payment-date-timezone.test.ts` | 2 | 23h30 em São Paulo continua sendo "hoje" (falha com o código antigo, comprovado) |
 | `e2e/zz-auditoria-baixa.spec.ts` | 6 | baixa pela UI, clique duplo, valor acima do saldo, categorias, financiamento parcelado |
+| `e2e/zz-baixa-pelo-motorista.spec.ts` | 1 | lista de locações → nome do motorista → Lançar pagamento (só as contas dele) → baixa persistida |
 
 ## Validações de sanidade (os testes pegam o defeito?)
 - Reintroduzido o FIFO invertido → 9 falhas; extensão de contratos sem término desligada → 1 falha; chave de idempotência constante no modal → 1 falha; data UTC no modal → 1 falha. Em todos os casos o código foi restaurado.

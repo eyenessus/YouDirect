@@ -233,15 +233,16 @@ describe('auditoria financeira', () => {
       expect([409, 422]).toContain(conflicting.statusCode);
     });
 
-    it('AUD-02d duas requisições iguais SEM chave de idempotência: comportamento documentado', async () => {
+    it('AUD-02d duas requisições iguais SEM chave, em momentos diferentes: são dois pagamentos legítimos (regra da main: a chave sem cliente inclui a versão da conta)', async () => {
       const f = await newFleet();
       const r = await newRental(f);
       const a = await receive(r.receivableId, 20000, null);
       const b = await receive(r.receivableId, 20000, null);
       expect(a.statusCode).toBe(201);
-      // regra atual: hash(conta+valor+data+banco) => a segunda é tratada como repetição.
-      expect(b.statusCode).toBe(200);
-      expect((await getReceivable(r.receivableId)).paidAmountCents).toBe(20000);
+      // regra atual: sem chave, o hash inclui a versão da conta; dois cliques SIMULTÂNEOS fundem, mas
+      // duas parcelas iguais pagas em sequência (legítimas) são registradas separadamente.
+      expect(b.statusCode).toBe(201);
+      expect((await getReceivable(r.receivableId)).paidAmountCents).toBe(40000);
     });
 
     it('AUD-03 pagamento parcial de R$ 300 em cobrança de R$ 800: 300 recebidos, 500 pendentes, não quitada', async () => {
@@ -429,9 +430,8 @@ describe('auditoria financeira', () => {
 
   /* ------------------------------- AUD-09 ------------------------------- */
   describe('Encerramento de locação', () => {
-    // DEFEITO ABERTO (PEND-02): depende de política de produto (cobrar o período corrente inteiro ou pró-rata?).
-    // `it.fails` mantém o defeito visível: quando for corrigido este teste passa a falhar e deve virar `it`.
-    it.fails('AUD-09 encerrar a locação não deixa cobranças de períodos posteriores ao encerramento', async () => {
+    // B-03: corrigido na `main` por `syncContractReceivable` (a conta passa a cobrar só os períodos iniciados até o encerramento).
+    it('AUD-09 encerrar a locação não deixa cobranças de períodos posteriores ao encerramento', async () => {
       const f = await newFleet();
       // 4 semanas contratadas (R$ 3.200), nada pago; encerra hoje, no início do 1º período
       const r = await newRental(f, { startDate: addDaysIso(today, -1), endDate: addDaysIso(today, 27) });

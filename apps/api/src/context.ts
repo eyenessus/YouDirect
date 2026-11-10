@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb';
 import type { PermissionMatrix, MembershipRole } from '@yudirect/contracts';
-import { loadEnv, type Env } from './config/env.js';
+import { loadEnv, piiLegacySecret, type Env } from './config/env.js';
 import { connectMongo, type MongoContext } from './database/mongo.js';
 import { ensureIndexes } from './database/indexes.js';
 import { createIntegrations, type Integrations } from './integrations/index.js';
@@ -37,6 +37,15 @@ export async function buildContext(options: BuildContextOptions = {}): Promise<A
     mongo,
     storage: createStorageDriver(env, mongo.db),
     integrations: createIntegrations(env),
-    pii: new PiiCipher(env.SESSION_SECRET),
+    pii: new PiiCipher({
+      legacySecret: piiLegacySecret(env),
+      current: env.PII_KEY ? { kid: env.PII_KEY_ID, secret: env.PII_KEY } : null,
+      previous:
+        env.PII_KEY_PREVIOUS && env.PII_KEY_PREVIOUS_ID
+          ? [{ kid: env.PII_KEY_PREVIOUS_ID, secret: env.PII_KEY_PREVIOUS }]
+          : [],
+      // Falha de decifração nunca é silenciosa (dado sumiria da interface).
+      onError: ({ kid, reason }) => console.error(`[pii] não foi possível decifrar dados da chave "${kid}": ${reason}`),
+    }),
   };
 }

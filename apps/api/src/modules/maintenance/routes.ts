@@ -435,7 +435,15 @@ export async function registerMaintenanceRoutes(app: FastifyInstance): Promise<v
         if (body.mileageKm !== undefined) set.mileageKm = body.mileageKm ?? null;
         if (body.notes !== undefined) set.notes = body.notes ?? null;
         if (body.paymentMethod !== undefined) set.paymentMethod = body.paymentMethod;
-        if (body.bankAccountId !== undefined) set.bankAccountId = toObjectId(body.bankAccountId);
+        if (body.bankAccountId !== undefined) {
+          // A conta precisa ser da mesma organização (antes aceitava qualquer id).
+          const account = await ctx.mongo.collections.bankAccounts.findOne(
+            { _id: toObjectId(body.bankAccountId, 'bankAccountId'), organizationId: auth.organizationId },
+            { session },
+          );
+          if (!account) throw notFound('Conta bancária não encontrada.');
+          set.bankAccountId = account._id;
+        }
         if (body.invoiceFileId !== undefined) {
           const file = await requireFile(
             ctx,
@@ -538,11 +546,14 @@ export async function registerMaintenanceRoutes(app: FastifyInstance): Promise<v
           next,
           session,
         );
-        await ctx.mongo.collections.maintenanceOrders.updateOne(
-          { _id: id, organizationId: auth.organizationId },
-          { $set: { status: 'COMPLETED', completedAt, ledgerTransactionId, updatedAt: now } },
+        // Condicionado ao estado lido: dois "concluir" simultâneos → um vence
+        // (o outro aborta a transação e o lançamento duplicado é desfeito).
+        const res = await ctx.mongo.collections.maintenanceOrders.updateOne(
+          { _id: id, organizationId: auth.organizationId, status: order.status, version: order.version },
+          { $set: { status: 'COMPLETED', completedAt, ledgerTransactionId, updatedAt: now }, $inc: { version: 1 } },
           { session },
         );
+        if (res.matchedCount === 0) throw conflict('A OS foi alterada por outro usuário. Recarregue e tente novamente.');
         await audit(
           ctx,
           {
@@ -588,9 +599,10 @@ export async function registerMaintenanceRoutes(app: FastifyInstance): Promise<v
             session,
           );
         }
-        await ctx.mongo.collections.maintenanceOrders.updateOne(
-          { _id: id, organizationId: auth.organizationId },
+        const res = await ctx.mongo.collections.maintenanceOrders.updateOne(
+          { _id: id, organizationId: auth.organizationId, status: order.status, version: order.version },
           {
+            $inc: { version: 1 },
             $set: {
               status: 'CANCELED',
               canceledAt: businessDate(),
@@ -600,6 +612,7 @@ export async function registerMaintenanceRoutes(app: FastifyInstance): Promise<v
           },
           { session },
         );
+        if (res.matchedCount === 0) throw conflict('A OS foi alterada por outro usuário. Recarregue e tente novamente.');
         await audit(
           ctx,
           {
@@ -643,10 +656,11 @@ export async function registerMaintenanceRoutes(app: FastifyInstance): Promise<v
             session,
           );
         }
-        await ctx.mongo.collections.maintenanceOrders.deleteOne(
-          { _id: id, organizationId: auth.organizationId },
+        const res = await ctx.mongo.collections.maintenanceOrders.deleteOne(
+          { _id: id, organizationId: auth.organizationId, version: order.version },
           { session },
         );
+        if (res.deletedCount === 0) throw conflict('A OS foi alterada por outro usuário. Recarregue e tente novamente.');
         await audit(
           ctx,
           {

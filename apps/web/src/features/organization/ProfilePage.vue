@@ -283,7 +283,7 @@ onMounted(load);
                   v-model="passwordForm.newPassword"
                   :type="show.next ? 'text' : 'password'"
                   class="pl-10 pr-10"
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Mínimo 8 caracteres"
                   autocomplete="new-password"
                   :invalid="field.invalid"
                 />

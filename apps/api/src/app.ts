@@ -27,6 +27,7 @@ import { registerOrganizationRoutes } from './modules/organization/routes.js';
 import { registerFileRoutes } from './modules/files/routes.js';
 import { registerWhatsappRoutes } from './modules/whatsapp/routes.js';
 import { openApiDocument } from './openapi.js';
+import { redactUrl } from './common/helpers.js';
 
 export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   const app = Fastify({
@@ -45,18 +46,45 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
         ],
         remove: true,
       },
+      // A URL pode carregar credenciais (token da vistoria pública, do
+      // convite, assinatura de arquivo): nunca vai inteira para o log.
+      serializers: {
+        req(request: { method: string; url: string; ip?: string; id?: string }) {
+          return { method: request.method, url: redactUrl(request.url), remoteAddress: request.ip, id: request.id };
+        },
+      },
       ...(ctx.env.NODE_ENV === 'development'
         ? { transport: { target: 'pino-pretty', options: { translateTime: 'HH:MM:ss', ignore: 'pid,hostname' } } }
         : {}),
     },
     genReqId: () => randomUUID(),
-    trustProxy: true,
+    // Exatamente UM proxy confiável (o roteador do Heroku). `true` faria o
+    // IP vir do X-Forwarded-For enviado pelo cliente — e o limite de
+    // tentativas de login seria contornado trocando o cabeçalho.
+    trustProxy: 1,
     bodyLimit: 2 * 1024 * 1024,
   });
 
+  const selfOrigins = [...new Set([ctx.env.APP_URL, ctx.env.API_PUBLIC_URL].map((u) => new URL(u).origin))];
   await app.register(helmet, {
-    contentSecurityPolicy: false,
-    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    contentSecurityPolicy: {
+      useDefaults: false,
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        // Vue aplica estilos inline (bindings :style) e o ECharts também.
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+        // Fotos vêm por URL assinada da própria API (que pode estar em outro domínio).
+        imgSrc: ["'self'", 'data:', 'blob:', ...selfOrigins],
+        connectSrc: ["'self'", ...selfOrigins],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+    crossOriginResourcePolicy: { policy: 'same-site' },
   });
 
   await app.register(cors, {
@@ -115,7 +143,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   await app.register(
     async (api) => {
       api.get('/openapi.json', async () => openApiDocument(ctx.env.API_PUBLIC_URL));
-      await registerAuthRoutes(api);
+      await registerAuthRoutes(api, { loginRateLimit: ctx.env.LOGIN_RATE_LIMIT_MAX });
       await registerFileRoutes(api);
       await registerVehicleRoutes(api);
       await registerDriverRoutes(api);
