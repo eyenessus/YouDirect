@@ -34,6 +34,11 @@ function duplicateKeyMessage(err: MongoServerError): string {
 
 export const errorsPlugin = fp(async function errorsPlugin(app: FastifyInstance) {
   app.setNotFoundHandler((request, reply) => {
+    // Rotas do front (Vue Router em modo history): devolve o index.html.
+    const sendFile = (reply as unknown as { sendFile?: (name: string) => unknown }).sendFile;
+    if (request.method === 'GET' && !request.url.startsWith('/api/') && typeof sendFile === 'function') {
+      return sendFile.call(reply, 'index.html');
+    }
     reply.status(404).send({
       error: {
         code: 'NOT_FOUND',

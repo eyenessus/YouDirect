@@ -4,6 +4,10 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
+import fastifyStatic from '@fastify/static';
+import { existsSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { corsOrigins } from './config/env.js';
 import type { AppContext } from './context.js';
@@ -72,6 +76,13 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
     timeWindow: ctx.env.RATE_LIMIT_WINDOW,
     keyGenerator: (request) => `${request.ip}:${request.routeOptions?.url ?? request.url}`,
   });
+
+  // Front compilado (apps/web/dist): servido pela própria API para que
+  // um único processo atenda app e API na mesma origem (ex.: Heroku).
+  const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../web/dist');
+  if (existsSync(resolve(webRoot, 'index.html'))) {
+    await app.register(fastifyStatic, { root: webRoot, wildcard: false, index: ['index.html'] });
+  }
 
   await app.register(errorsPlugin);
   await app.register(authPlugin, { ctx });
