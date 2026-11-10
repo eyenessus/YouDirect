@@ -619,3 +619,27 @@ Cada fase é um PR por repositório, com testes da própria fase e critério de 
 3. **Contrato:** script `npm run contracts:check` nos dois repositórios, comparando o hash dos schemas.
 4. **Homologação:** subir os dois apps de staging com o simulador da Meta e rodar a matriz WA22 a WA50. Validar no dashboard os estados, as fotos por ângulo, a aprovação e o custo estimado.
 5. **Piloto real:** com um número interno e 1 vistoria, conferir o wamid, os status `sent`, `delivered` e `read` com o `pricing`, as 5 fotos e a KM associadas, a aprovação auditada, e que nenhum outro fluxo da FF Veículos no Whaply foi alterado (conversa normal continua indo para o Cherry).
+
+---
+
+## 17. Status da implementação (10/11/2026)
+
+| Fase | Status | Evidência |
+|---|---|---|
+| F0 — base e correções | ✅ | Updates condicionados (review/submit/cancel), `requireFile` no envio web, lease no scheduler (`apps/api/src/jobs/lease.ts`) |
+| F1 — contratos e segurança | ✅ | `packages/contracts/src/whaply.ts`; HMAC v1 idêntico nos dois lados; nonce persistido |
+| F2 — saída pelo Whaply | ✅ | `PartnerMessagingService` (Whaply), `sendMetaCloud({ deferInternally: false })` |
+| F3 — saída pelo YuDirect | ✅ | `services/whatsapp-inspection.ts`, consentimento, configurações, outbox, reconciliação |
+| F4 — entrada pelo Whaply | ✅ | `InspectionCollectionGuard`, `MetaMediaDownloader`, `GET /media/:ref` |
+| F5 — entrada pelo YuDirect | ✅ | Pull de mídia, evidências, SUBMITTED na conclusão, fotos sem vínculo |
+| F6 — revisão e correção | ✅ | `POST /inspections/:id/request-correction`, rodada nova, evidências versionadas |
+| F7 — painel | ✅ | `/dashboard/messages` (visão geral, histórico, custos, fotos sem vínculo) |
+| F8 — lembretes/expiração | ✅ parcial | Lembrete e expiração implementados; **geração automática de vistorias por `inspectionRule` ainda não** |
+| F9 — homologação | ✅ automatizada / ⏳ real | E2E entre sistemas (9) + Playwright (9); **piloto real com a Meta pendente** (templates a aprovar, chaves a configurar) |
+
+Desvios do plano, com justificativa:
+- No Whaply, os workers usam **Mongo como fila** (claim atômico) em vez de novas filas BullMQ: mesma garantia, sem consumir o orçamento de conexões Redis.
+- A mídia temporária usa a coleção própria `partner_media` (TTL), não `MediaAsset`, para não misturar com imagens de catálogo.
+- O reconhecimento de atendimento humano do Cherry (memória Redis) não é consultado pelo guard da coleta; registrado como limite em `YUDIRECT_PARTNER_OPERACAO.md` §8.
+
+Defeitos encontrados pelo E2E entre sistemas e corrigidos: mídia lida com `lean()` voltava como `Binary` (bytes divergentes) e o `RemoteImageFetcher` descartava o cabeçalho `Authorization` na forma `get(URL, options)`.

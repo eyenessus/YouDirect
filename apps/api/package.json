@@ -14,7 +14,8 @@
     "seed": "tsx src/database/seed.ts",
     "openapi": "tsx src/scripts/export-openapi.ts",
     "report:verify": "tsx src/scripts/verify-report.ts",
-    "dev:demo": "npm run build && node dist/scripts/dev-demo.js"
+    "dev:demo": "npm run build && node dist/scripts/dev-demo.js",
+    "test:e2e:whaply": "vitest run src/__tests__/e2e-whaply-cross.test.ts"
   },
   "dependencies": {
     "@fastify/cookie": "11.0.2",

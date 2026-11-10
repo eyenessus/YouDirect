@@ -54,6 +54,9 @@ export default defineConfig({
           command: 'npm run dev:demo -w @yudirect/api',
           cwd: '..',
           url: 'http://localhost:3333/health',
+          // O front de teste roda em `vite preview` (4173): a API precisa aceitar essa origem
+          // (proteção CSRF por Origin) e gerar links públicos para ela.
+          env: { CORS_ORIGINS: 'http://localhost:5173,http://localhost:4173', APP_URL: 'http://localhost:4173' },
           reuseExistingServer: !process.env.CI,
           timeout: 300_000,
           stdout: 'pipe',

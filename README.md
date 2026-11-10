@@ -177,8 +177,11 @@ yudirect/
 ## Testes e verificação
 
 ```bash
-npm test          # 17 contracts + 66 API + 34 web = 117 testes
-npm run test:e2e  # 18 fluxos de ponta a ponta no navegador
+npm test          # contracts + API (inclui a coleta por WhatsApp contra o simulador do Whaply) + web
+npm run test:e2e  # Playwright: fluxos gerais + telas da vistoria por WhatsApp
+
+# E2E entre sistemas (opt-in): YuDirect real ⇄ Whaply real (harness), Meta simulada
+WHAPLY_E2E_DIR=/caminho/do/Whaply npm run test:e2e:whaply -w @yudirect/api
 ```
 
 Os testes da API sobem a aplicação **completa** (Fastify + MongoDB em memória
@@ -194,6 +197,13 @@ sem mocks de banco. Dois arquivos cobrem áreas diferentes:
   R$ 1.894,45, lucro de R$ 3.708,55, extrato fechando
   7.802,58 + 5.603,00 − 1.894,45 = 11.511,13, pendente de R$ 33.540,00,
   manutenções do EBR7G53 somando R$ 831,20, DRE e assinatura.
+- `whatsapp-integration.test.ts` — coleta de vistoria pelo WhatsApp contra um
+  simulador HTTP do Whaply que implementa o contrato v1 (assinatura,
+  idempotência, eventos com sequência, mídia por referência): disparo único,
+  retries, reconciliação, fotos por ângulo, correção, opt-out e painel.
+- `e2e-whaply-cross.test.ts` — o mesmo fluxo com o **código real do Whaply**
+  (`tests/e2e-harness/YuDirectPartnerHarness.ts` no repositório do Whaply)
+  conversando com o YuDirect por HTTP; só a Meta é simulada.
 
 ### Comparação com o golden master do PDF
 

@@ -178,3 +178,21 @@ idempotência, sequência de eventos e mídia por referência).
 | WA49/WA49b | Reenvio manual (nova chave, auditado, sem duplicidade); reprocessamento de transporte (mesma chave) | api/whatsapp |
 | WA50 | Instruções da coleta (serviço) registradas por wamid para custos | api/whatsapp |
 | WA21 | Envio pelo link web rejeita arquivo de outra organização (IDOR corrigido) | api/whatsapp |
+
+### E2E entre sistemas e de interface
+
+| ID | Cenário | Cobertura |
+|---|---|---|
+| WAX1 | Caminho completo com o código real dos dois lados: template pela conta da FF, status com pricing, botão assinado, 5 fotos + KM, bytes íntegros (sha256), aprovação humana; nenhum envio por outro tenant | `e2e-whaply-cross.test.ts` |
+| WAX2 | Resposta perdida + retry com a mesma chave: 1 único envio na Meta | `e2e-whaply-cross.test.ts` |
+| WAX3 | Template pausado no Whaply → falha definitiva e link manual no YuDirect | `e2e-whaply-cross.test.ts` |
+| WAX4 | Falha permanente da Meta (131026) chega com origem META | `e2e-whaply-cross.test.ts` |
+| WAX5 | YuDirect fora do ar: eventos acumulam e a reconciliação recupera por sequência | `e2e-whaply-cross.test.ts` |
+| WAX6 | SAIR revoga o consentimento no YuDirect | `e2e-whaply-cross.test.ts` |
+| WAX7 | Foto fora da coleta → "sem vínculo" → atribuição pela equipe | `e2e-whaply-cross.test.ts` |
+| WAX8 | Correção em nova rodada pelo template de correção, foto antiga vira histórico | `e2e-whaply-cross.test.ts` |
+| WAX9 | Chave errada → 401 SIGNATURE_INVALID, nada enviado | `e2e-whaply-cross.test.ts` |
+| WAU1 | Consentimento: registrar (origem) e revogar com confirmação | `e2e/whatsapp-vistoria.spec.ts` |
+| WAU2 | Configuração da coleta persiste; canal desconectado exibido com honestidade | `e2e/whatsapp-vistoria.spec.ts` |
+| WAU3 | Painel: menu, aviso de canal, métricas = API, histórico vazio com filtros, custos (estimativa + tarifa válida/inválida), fotos sem vínculo | `e2e/whatsapp-vistoria.spec.ts` |
+| WAU4 | Solicitar correção: validação, fallback para link web sem canal, vistoria volta a Pendente | `e2e/whatsapp-vistoria.spec.ts` |
