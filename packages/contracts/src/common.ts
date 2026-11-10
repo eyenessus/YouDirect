@@ -21,7 +21,11 @@ export const signedAmountCentsSchema = z.number().int();
 export const isoDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Data deve estar no formato AAAA-MM-DD')
-  .refine((v) => !Number.isNaN(Date.parse(`${v}T00:00:00.000Z`)), 'Data inválida');
+  .refine((v) => {
+    const parsed = new Date(`${v}T00:00:00.000Z`);
+    // Ida e volta: rejeita 2026-02-30, 2026-04-31 etc. (o JS "rola" para o mês seguinte).
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === v;
+  }, 'Data inválida');
 
 export const isoDateTimeSchema = z.string().datetime({ offset: true });
 

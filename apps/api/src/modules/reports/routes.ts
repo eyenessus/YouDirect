@@ -73,7 +73,8 @@ export async function registerReportRoutes(app: FastifyInstance): Promise<void> 
       const [currentByVehicle, previousByVehicle, vehicleDocs] = await Promise.all([
         totalsByVehicle(ctx, organizationId, current.from, current.to),
         totalsByVehicle(ctx, organizationId, previous.from, previous.to),
-        ctx.mongo.collections.vehicles.find({ organizationId, archivedAt: null }).toArray(),
+        // inclui arquivados: o custo/receita deles continua nos totais e precisa de rótulo no ranking
+        ctx.mongo.collections.vehicles.find({ organizationId }).toArray(),
       ]);
       const vMap = new Map(vehicleDocs.map((v) => [v._id.toHexString(), v]));
 
@@ -171,7 +172,7 @@ export async function registerReportRoutes(app: FastifyInstance): Promise<void> 
           periodTotals(ctx, organizationId, prevWindow.from, prevWindow.to),
           expensesByCategory(ctx, organizationId, period.from, period.to),
           totalsByVehicle(ctx, organizationId, period.from, period.to),
-          ctx.mongo.collections.vehicles.find({ organizationId, archivedAt: null }).toArray(),
+          ctx.mongo.collections.vehicles.find({ organizationId }).toArray(),
           organizationCashTotal(ctx, organizationId),
         ]);
 
@@ -357,8 +358,9 @@ export async function registerReportRoutes(app: FastifyInstance): Promise<void> 
             return monthRange(prev.year, prev.month);
           })();
 
-      const vehicleFilter: Record<string, unknown> = { organizationId, archivedAt: null };
-      const vehicles = await ctx.mongo.collections.vehicles.find(vehicleFilter).sort({ plate: 1 }).toArray();
+      // Veículos arquivados SÓ entram se tiveram receita/despesa no período: o dinheiro já
+      // se movimentou e o total por veículo precisa continuar batendo com o total geral.
+      const allVehicles = await ctx.mongo.collections.vehicles.find({ organizationId }).sort({ plate: 1 }).toArray();
       const selectedId = query.vehicleId ? toObjectId(query.vehicleId, 'vehicleId').toHexString() : null;
 
       const [currentTotals, prevTotals] = await Promise.all([
@@ -366,6 +368,11 @@ export async function registerReportRoutes(app: FastifyInstance): Promise<void> 
         totalsByVehicle(ctx, organizationId, prevWindow.from, prevWindow.to),
       ]);
 
+      const hadMovement = (id: string) => {
+        const e = currentTotals.get(id);
+        return Boolean(e && (e.revenueCents !== 0 || e.expensesCents !== 0));
+      };
+      const vehicles = allVehicles.filter((v) => !v.archivedAt || hadMovement(v._id.toHexString()));
       const selectedVehicles = selectedId
         ? vehicles.filter((v) => v._id.toHexString() === selectedId)
         : vehicles;
@@ -376,7 +383,7 @@ export async function registerReportRoutes(app: FastifyInstance): Promise<void> 
         const profit = entry.revenueCents - entry.expensesCents;
         return {
           vehicleId: key,
-          vehicle: `${v.brand} ${v.model}${v.year ? ` ${v.year}` : ''}`.trim(),
+          vehicle: `${v.brand} ${v.model}${v.year ? ` ${v.year}` : ''}${v.archivedAt ? ' (arquivado)' : ''}`.trim(),
           plate: v.plate,
           revenueCents: entry.revenueCents,
           expensesCents: entry.expensesCents,

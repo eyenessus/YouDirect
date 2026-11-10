@@ -62,7 +62,8 @@ describe('PayableFormPage — parcelamento', () => {
     wrapper.findComponent(CurrencyInput).vm.$emit('update:modelValue', 150000);
     await flushPromises();
     // 12 parcelas (padrão) de R$ 1.500,00 = R$ 18.000,00
-    const text = wrapper.text().replace(/ /g, ' ');
+    // \s cobre o espaco nao separavel que o Intl pt-BR usa entre "R$" e o valor
+    const text = wrapper.text().replace(/\s+/g, ' ');
     expect(text).toContain('12 parcelas de R$ 1.500,00');
     expect(text).toContain('R$ 18.000,00');
   });

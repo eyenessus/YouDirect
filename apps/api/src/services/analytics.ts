@@ -34,7 +34,7 @@ export async function revenueInPeriod(
       {
         $match: {
           organizationId,
-          sourceType: 'RECEIVABLE',
+          reversedAt: null, sourceType: 'RECEIVABLE',
           paidAt: { $gte: from, $lte: to },
         },
       },
@@ -53,7 +53,7 @@ export async function expensesInPeriod(
   const [payables, maintenance] = await Promise.all([
     ctx.mongo.collections.payments
       .aggregate<{ total: number }>([
-        { $match: { organizationId, sourceType: 'PAYABLE', paidAt: { $gte: from, $lte: to } } },
+        { $match: { organizationId, reversedAt: null, sourceType: 'PAYABLE', paidAt: { $gte: from, $lte: to } } },
         { $group: { _id: null, total: { $sum: '$amountCents' } } },
       ])
       .toArray(),
@@ -95,7 +95,7 @@ export async function expensesByCategory(
 ): Promise<Array<{ label: string; amountCents: number }>> {
   const rows = await ctx.mongo.collections.payments
     .aggregate<{ _id: ObjectId | null; total: number }>([
-      { $match: { organizationId, sourceType: 'PAYABLE', paidAt: { $gte: from, $lte: to } } },
+      { $match: { organizationId, reversedAt: null, sourceType: 'PAYABLE', paidAt: { $gte: from, $lte: to } } },
       {
         $lookup: {
           from: 'payables',
@@ -167,7 +167,7 @@ export async function totalsByVehicle(
 
   const revenue = await ctx.mongo.collections.payments
     .aggregate<{ _id: ObjectId; total: number }>([
-      { $match: { organizationId, sourceType: 'RECEIVABLE', paidAt: { $gte: from, $lte: to } } },
+      { $match: { organizationId, reversedAt: null, sourceType: 'RECEIVABLE', paidAt: { $gte: from, $lte: to } } },
       { $lookup: { from: 'receivables', localField: 'sourceId', foreignField: '_id', as: 'receivable' } },
       { $unwind: '$receivable' },
       { $match: { 'receivable.rentalId': { $ne: null } } },
@@ -180,7 +180,7 @@ export async function totalsByVehicle(
 
   const payableExpenses = await ctx.mongo.collections.payments
     .aggregate<{ _id: ObjectId; total: number }>([
-      { $match: { organizationId, sourceType: 'PAYABLE', paidAt: { $gte: from, $lte: to } } },
+      { $match: { organizationId, reversedAt: null, sourceType: 'PAYABLE', paidAt: { $gte: from, $lte: to } } },
       { $lookup: { from: 'payables', localField: 'sourceId', foreignField: '_id', as: 'payable' } },
       { $unwind: '$payable' },
       { $match: { 'payable.vehicleId': { $ne: null } } },
@@ -220,13 +220,13 @@ export async function monthlySeries(
 
   const revenue = await ctx.mongo.collections.payments
     .aggregate<{ _id: string; total: number }>([
-      { $match: { organizationId, sourceType: 'RECEIVABLE', paidAt: { $gte: from, $lte: to } } },
+      { $match: { organizationId, reversedAt: null, sourceType: 'RECEIVABLE', paidAt: { $gte: from, $lte: to } } },
       { $group: { _id: { $substrBytes: ['$paidAt', 0, 7] }, total: { $sum: '$amountCents' } } },
     ])
     .toArray();
   const payableExpense = await ctx.mongo.collections.payments
     .aggregate<{ _id: string; total: number }>([
-      { $match: { organizationId, sourceType: 'PAYABLE', paidAt: { $gte: from, $lte: to } } },
+      { $match: { organizationId, reversedAt: null, sourceType: 'PAYABLE', paidAt: { $gte: from, $lte: to } } },
       { $group: { _id: { $substrBytes: ['$paidAt', 0, 7] }, total: { $sum: '$amountCents' } } },
     ])
     .toArray();

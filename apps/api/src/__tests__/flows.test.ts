@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ObjectId } from 'mongodb';
-import { fullMatrix } from '@yudirect/contracts';
+import { businessDate, fullMatrix } from '@yudirect/contracts';
 import { createHarness, sessionCookie, type TestHarness } from '../testing/harness.js';
 import { hashPassword } from '../common/helpers.js';
 
@@ -675,7 +675,7 @@ describe('fluxos funcionais da API', () => {
       const id = created.json().id;
       const res = await req(alpha.cookie).post(`/api/v1/payables/${id}/payments`, {
         amountCents: 15000,
-        paidAt: '2026-11-11',
+        paidAt: businessDate(),
         method: 'CASH',
         bankAccountId: accountId,
       });
@@ -692,7 +692,7 @@ describe('fluxos funcionais da API', () => {
       const headers = { 'idempotency-key': 'receb-teste-1' };
       const first = await req(alpha.cookie).post(
         `/api/v1/receivables/${target.id}/payments`,
-        { amountCents: 10000, paidAt: '2026-11-12', method: 'PIX', bankAccountId: accountId },
+        { amountCents: 10000, paidAt: businessDate(), method: 'PIX', bankAccountId: accountId },
         headers,
       );
       expect(first.statusCode).toBe(201);
@@ -700,7 +700,7 @@ describe('fluxos funcionais da API', () => {
 
       const retry = await req(alpha.cookie).post(
         `/api/v1/receivables/${target.id}/payments`,
-        { amountCents: 10000, paidAt: '2026-11-12', method: 'PIX', bankAccountId: accountId },
+        { amountCents: 10000, paidAt: businessDate(), method: 'PIX', bankAccountId: accountId },
         headers,
       );
       expect(retry.statusCode).toBe(200);
@@ -738,7 +738,7 @@ describe('fluxos funcionais da API', () => {
       const target = (receivables.json().data as Array<{ id: string; remainingCents: number }>).find(
         (r) => r.remainingCents > 20000,
       )!;
-      const body = { amountCents: 5000, paidAt: '2026-11-13', method: 'PIX', bankAccountId: accountId };
+      const body = { amountCents: 5000, paidAt: businessDate(), method: 'PIX', bankAccountId: accountId };
       const a = await req(alpha.cookie).post(`/api/v1/receivables/${target.id}/payments`, body, {
         'idempotency-key': 'receb-igual-1',
       });
