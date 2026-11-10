@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue';
 import {
+  businessDate,
   formatCentsBRL,
   paymentMethodLabels,
   paymentMethods,
@@ -37,7 +38,7 @@ const toasts = useToastStore();
 const accounts = ref<BankAccount[]>([]);
 const form = reactive({
   amountCents: 0,
-  paidAt: new Date().toISOString().slice(0, 10),
+  paidAt: businessDate(),
   method: 'PIX',
   bankAccountId: '',
   notes: '',
@@ -57,7 +58,7 @@ watch(
     errors.value = {};
     attemptKey.value = `${props.kind}-${props.target.id}-${crypto.randomUUID()}`;
     form.amountCents = props.suggestedAmountCents ?? props.target.remainingCents;
-    form.paidAt = new Date().toISOString().slice(0, 10);
+    form.paidAt = businessDate();
     form.method = 'PIX';
     form.notes = '';
     const res = await api.get<{ data: BankAccount[] }>('/bank-accounts');

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isoDateSchema,
   computeMaintenanceTotalCents,
   computePartsCostCents,
   formatCentsBRL,
@@ -159,5 +160,18 @@ describe('aritmética do extrato (referência pág. 85)', () => {
     const inflow = 560300;
     const outflow = 189445;
     expect(opening + inflow - outflow).toBe(1151113);
+  });
+});
+
+describe('isoDateSchema — datas de calendário reais (auditoria)', () => {
+  it.each(['2026-02-30', '2026-04-31', '2026-13-01', '2026-00-10', '2026-11-00', '2027-02-29', '10/11/2026', ''])(
+    'rejeita %s',
+    (value) => {
+      expect(isoDateSchema.safeParse(value).success).toBe(false);
+    },
+  );
+
+  it.each(['2026-11-10', '2028-02-29', '2026-12-31', '2026-01-01'])('aceita %s', (value) => {
+    expect(isoDateSchema.safeParse(value).success).toBe(true);
   });
 });

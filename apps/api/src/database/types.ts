@@ -512,8 +512,9 @@ export interface PaymentDoc extends Tenant {
   idempotencyKey: string | null;
   notes: string | null;
   createdBy: ObjectId | null;
-  /** Estornado (conta excluída/cancelada): sai de todos os relatórios. */
+  /** Estorno: o pagamento é preservado no histórico, mas não conta mais em saldos/dashboards. */
   reversedAt?: Date | null;
+  reversedReason?: string | null;
   reversalTransactionId?: ObjectId | null;
 }
 

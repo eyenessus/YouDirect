@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Plus } from 'lucide-vue-next';
 import {
+  businessDate,
   formatCentsBRL,
   installmentFrequencies,
   installmentFrequencyLabels,
@@ -24,7 +25,6 @@ import CurrencyInput from '@/components/ui/CurrencyInput.vue';
 import FormField from '@/components/ui/FormField.vue';
 import { api, ApiRequestError } from '@/lib/api';
 import { useToastStore } from '@/stores/ui';
-import { todayLocalIso } from '@/lib/dates';
 
 const router = useRouter();
 const route = useRoute();
@@ -41,7 +41,7 @@ const form = reactive({
   categoryId: '',
   vehicleId: '',
   amountCents: 0,
-  dueDate: todayLocalIso(),
+  dueDate: businessDate(),
   description: '',
   supplierName: '',
   supplierTaxId: '',

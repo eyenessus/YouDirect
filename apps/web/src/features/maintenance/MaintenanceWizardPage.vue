@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ArrowLeft, ArrowRight, Plus, Trash2 } from 'lucide-vue-next';
 import {
+  businessDate,
   computeMaintenanceTotalCents,
   computePartsCostCents,
   formatCentsBRL,
@@ -27,7 +28,6 @@ import FileDropzone from '@/components/ui/FileDropzone.vue';
 import FormField from '@/components/ui/FormField.vue';
 import { api, ApiRequestError, type UploadedFileResponse } from '@/lib/api';
 import { useToastStore } from '@/stores/ui';
-import { todayLocalIso } from '@/lib/dates';
 
 interface PartRow {
   uid: number;
@@ -61,7 +61,7 @@ const furthest = ref(0);
 
 const form = reactive({
   type: 'CORRECTIVE' as MaintenanceType,
-  performedAt: todayLocalIso(),
+  performedAt: businessDate(),
   description: '',
   laborCostCents: 0,
   mileageKm: '',

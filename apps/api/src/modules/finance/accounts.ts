@@ -8,6 +8,7 @@ import {
   payableUpdateSchema,
   receivableListQuerySchema,
   registerPaymentSchema,
+  reversePaymentSchema,
   type ExpenseCategory,
   type Payable,
   type Receivable,
@@ -33,6 +34,7 @@ import {
   registerPayablePayment,
   registerReceivablePayment,
   remainingCents,
+  reverseReceivablePayment,
   reversePaymentsOf,
   stopRecurringSeries,
 } from '../../services/finance.js';
@@ -664,6 +666,9 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
           method: p.method,
           bankAccountId: p.bankAccountId?.toHexString() ?? null,
           createdAt: p.createdAt.toISOString(),
+          reversed: Boolean(p.reversedAt),
+          reversedAt: p.reversedAt ? p.reversedAt.toISOString() : null,
+          reversedReason: p.reversedReason ?? null,
         })),
       };
     },
@@ -694,6 +699,29 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
       const fresh = await ctx.mongo.collections.receivables.findOne({ _id: id });
       const [dto] = await toReceivableDTOs(ctx, auth.organizationId, request.auth, [fresh!]);
       return { payment: { id: result.paymentId.toHexString() }, receivable: dto };
+    },
+  );
+
+  /** Estorno de recebimento: preserva o histórico e devolve o saldo à conta (ação sensível: finance.delete). */
+  app.post(
+    '/receivables/:id/payments/:paymentId/reverse',
+    { onRequest: [app.requireAuth, app.requirePermission('finance', 'delete')] },
+    async (request, reply) => {
+      const ctx = request.appCtx;
+      const auth = requireAuthContext(request);
+      const params = request.params as { id: string; paymentId: string };
+      const body = reversePaymentSchema.parse(request.body);
+      const result = await reverseReceivablePayment(ctx, {
+        organizationId: auth.organizationId,
+        actorId: auth.userId,
+        receivableId: toObjectId(params.id),
+        paymentId: toObjectId(params.paymentId, 'paymentId'),
+        reason: body.reason,
+      });
+      reply.status(200);
+      const fresh = await ctx.mongo.collections.receivables.findOne({ _id: result.receivableId });
+      const [dto] = await toReceivableDTOs(ctx, auth.organizationId, request.auth, [fresh!]);
+      return { alreadyReversed: result.alreadyReversed, receivable: dto };
     },
   );
 
