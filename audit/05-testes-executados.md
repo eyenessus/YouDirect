@@ -56,15 +56,17 @@ Primeira execução (antes de qualquer correção): **28 testes, 21 passaram, 7 
 ## Outras suítes novas desta frente
 | Arquivo | Testes | O que cobre |
 |---|---|---|
-| `api/payment-schedule.test.ts` | 17 | cronograma semanal: FIFO, última semana, atraso, 1ª semana adiantada, caução fora, contrato sem término, dashboards |
+| `api/rental-payments.test.ts` | 26 | pagamentos da locação: recibos INV, Pagamento da Locação × KM Excedente, pendente × pago, Marcar como pago, Editar, Excluir/estorno, cartões, extrato, dashboards, idempotência, validações, isolamento, permissões |
+| `api/payment-schedule.test.ts` | 17 | cálculo do cronograma semanal (API mantida; sem uso na tela) |
 | `api/payable-installments.test.ts` | 10 | datas mensal/trimestral/semestral/anual, 29/02, 12 parcelas, baixa por parcela, "já paga" só na 1ª, validações |
 | `api/payment-settlement.test.ts` | 9 | baixa → conta, extrato e os dois dashboards, filtros por motorista/locação, categorias |
-| `web/payment-schedule-dialog.test.ts` | 8 | tabela de semanas, "Dar baixa" com valor acumulado, valor livre |
+| `web/rental-payments-ui.test.ts` | 21 | formulário (datas vazias, "Já foi pago?"), aba Pagamentos (cartões, lista, busca, menu ⋮, permissões), botão Lançar pagamento do motorista |
+| `web/rental-detail-page.test.ts` | 6 | abas da página da locação, `?tab=payments`, permissão |
 | `web/launch-payment.test.ts` | 7 | diálogo e chave de idempotência por abertura do modal |
 | `web/payable-form-installments.test.ts` | 3 | formulário parcelado, exclusão recorrência × parcelamento |
 | `web/payment-date-timezone.test.ts` | 2 | 23h30 em São Paulo continua sendo "hoje" (falha com o código antigo, comprovado) |
 | `e2e/zz-auditoria-baixa.spec.ts` | 6 | baixa pela UI, clique duplo, valor acima do saldo, categorias, financiamento parcelado |
-| `e2e/zz-baixa-pelo-motorista.spec.ts` | 1 | lista de locações → nome do motorista → Lançar pagamento (só as contas dele) → baixa persistida |
+| `e2e/zz-baixa-pelo-motorista.spec.ts` | 10 | lista de locações → nome do motorista → Lançar pagamento → página da locação; datas vazias; KM excedente pago; pendente; Marcar como pago; clique duplo; busca; excluir pago (estorno) e pendente |
 
 ## Validações de sanidade (os testes pegam o defeito?)
 - Reintroduzido o FIFO invertido → 9 falhas; extensão de contratos sem término desligada → 1 falha; chave de idempotência constante no modal → 1 falha; data UTC no modal → 1 falha. Em todos os casos o código foi restaurado.

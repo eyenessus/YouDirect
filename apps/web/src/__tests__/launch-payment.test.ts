@@ -15,7 +15,6 @@ vi.mock('@/lib/api', () => ({
   },
 }));
 
-import LaunchPaymentDialog from '@/features/finance/LaunchPaymentDialog.vue';
 import RegisterPaymentModal from '@/features/finance/RegisterPaymentModal.vue';
 
 /** O modal real usa Teleport/foco; aqui só interessa o conteúdo quando aberto. */
@@ -29,91 +28,11 @@ const AppModalStub = defineComponent({
 });
 const stubs = { AppModal: AppModalStub };
 
-const receivable = (over: Record<string, unknown> = {}) => ({
-  id: 'r1',
-  description: 'Locação LOC-2026-001',
-  rental: { id: 'rent1', rentalNumber: 'LOC-2026-001' },
-  driver: { id: 'd1', fullName: 'Fulano', cpf: null },
-  grossAmountCents: 100000,
-  paidAmountCents: 0,
-  remainingCents: 100000,
-  dueDate: '2026-11-20',
-  paymentMethod: null,
-  status: 'OPEN',
-  createdAt: '2026-11-01T00:00:00.000Z',
-  ...over,
-});
-
 beforeEach(() => {
   setActivePinia(createPinia());
   get.mockReset();
   post.mockReset();
   post.mockResolvedValue({});
-});
-
-describe('LaunchPaymentDialog', () => {
-  it('busca só as contas em aberto do motorista ao abrir', async () => {
-    get.mockResolvedValue({ data: [receivable()] });
-    const wrapper = mount(LaunchPaymentDialog, {
-      props: { open: false, driverId: 'd1' },
-      global: { stubs },
-    });
-    await wrapper.setProps({ open: true });
-    await flushPromises();
-
-    const call = get.mock.calls.find(([url]) => url === '/receivables')!;
-    expect(call[1].query).toMatchObject({ driverId: 'd1', openOnly: 'true' });
-    expect(wrapper.text()).toContain('Locação LOC-2026-001');
-    expect(wrapper.text()).toContain('Pagar valor livre');
-  });
-
-  it('busca por locação quando recebe rentalId', async () => {
-    get.mockResolvedValue({ data: [receivable()] });
-    const wrapper = mount(LaunchPaymentDialog, {
-      props: { open: false, rentalId: 'rent1' },
-      global: { stubs },
-    });
-    await wrapper.setProps({ open: true });
-    await flushPromises();
-    const call = get.mock.calls.find(([url]) => url === '/receivables')!;
-    expect(call[1].query.rentalId).toBe('rent1');
-    expect(call[1].query.driverId).toBeUndefined();
-  });
-
-  it('não lista contas já quitadas e mostra aviso quando não há nada a receber', async () => {
-    get.mockResolvedValue({ data: [receivable({ remainingCents: 0, status: 'PAID' })] });
-    const wrapper = mount(LaunchPaymentDialog, {
-      props: { open: false, driverId: 'd1' },
-      global: { stubs },
-    });
-    await wrapper.setProps({ open: true });
-    await flushPromises();
-    expect(wrapper.text()).toContain('Nenhuma conta a receber em aberto');
-    expect(wrapper.text()).not.toContain('Locação LOC-2026-001');
-  });
-
-  it('"Pagar" abre o modal de recebimento com a conta escolhida e o saldo pendente', async () => {
-    get.mockResolvedValue({ data: [receivable({ remainingCents: 65000 })] });
-    const wrapper = mount(LaunchPaymentDialog, {
-      props: { open: false, driverId: 'd1' },
-      global: { stubs },
-    });
-    await wrapper.setProps({ open: true });
-    await flushPromises();
-
-    const payButton = wrapper.findAll('button').find((b) => b.text() === 'Pagar valor livre')!;
-    await payButton.trigger('click');
-    await flushPromises();
-
-    const modal = wrapper.findComponent(RegisterPaymentModal);
-    expect(modal.props('open')).toBe(true);
-    expect(modal.props('kind')).toBe('receivable');
-    expect(modal.props('target')).toEqual({
-      id: 'r1',
-      description: 'Locação LOC-2026-001',
-      remainingCents: 65000,
-    });
-  });
 });
 
 describe('RegisterPaymentModal — chave de idempotência', () => {

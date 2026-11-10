@@ -1,5 +1,6 @@
 import type { AppContext } from '../context.js';
 import { withLease } from '../jobs/lease.js';
+import { backfillRentalPaymentEntries } from '../services/rental-payments.js';
 
 /* ------------------------------------------------------------------ *
  * Migrações de DADOS (o esquema é aditivo e os índices são criados por
@@ -33,6 +34,14 @@ export const MIGRATIONS: Migration[] = [
         marked += res.modifiedCount;
       }
       return { marked };
+    },
+  },
+  {
+    id: '2026-11-10-rental-payment-entries',
+    description:
+      'Cria lançamentos (aba Pagamentos da locação, com recibo INV) para os recebimentos de locação que já existiam.',
+    async run(ctx) {
+      return backfillRentalPaymentEntries(ctx);
     },
   },
 ];

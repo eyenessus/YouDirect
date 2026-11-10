@@ -21,13 +21,14 @@ import {
   maskPhone,
   maskPostalCode,
   type Driver,
+  type Rental,
 } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSkeleton from '@/components/ui/AppSkeleton.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import WhatsappConsentCard from './WhatsappConsentCard.vue';
-import LaunchPaymentDialog from '@/features/finance/LaunchPaymentDialog.vue';
+import AppModal from '@/components/ui/AppModal.vue';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/ui';
@@ -40,7 +41,30 @@ const toasts = useToastStore();
 
 const driver = ref<Driver | null>(null);
 const loading = ref(true);
-const payOpen = ref(false);
+const chooserOpen = ref(false);
+const activeRentals = ref<Rental[]>([]);
+const openingPayments = ref(false);
+
+const paymentsLink = (rentalId: string) => ({ path: `/dashboard/rentals/${rentalId}`, query: { tab: 'payments' } });
+
+/** Lançar pagamento: leva à locação ATIVA do motorista (aba Pagamentos). */
+async function openPayments() {
+  if (!driver.value) return;
+  openingPayments.value = true;
+  try {
+    const res = await api.get<{ data: Rental[] }>('/rentals', {
+      query: { driverId: driver.value.id, status: 'ACTIVE', limit: 50 },
+    });
+    activeRentals.value = res.data;
+    if (res.data.length === 1) await router.push(paymentsLink(res.data[0]!.id));
+    else if (res.data.length > 1) chooserOpen.value = true;
+    else toasts.warning('Motorista sem locação ativa', 'Cadastre uma locação para lançar pagamentos.');
+  } catch {
+    toasts.error('Não foi possível abrir os pagamentos');
+  } finally {
+    openingPayments.value = false;
+  }
+}
 
 async function reload() {
   driver.value = await api.get<Driver>(`/drivers/${route.params.id}`);
@@ -70,7 +94,7 @@ onMounted(async () => {
         back-to="/dashboard/drivers"
       >
         <template #actions>
-          <AppButton v-if="auth.allows('finance', 'pay')" variant="secondary" @click="payOpen = true">
+          <AppButton v-if="auth.allows('finance', 'pay')" variant="secondary" :loading="openingPayments" @click="openPayments">
             <template #icon><DollarSign class="size-4" /></template>
             Lançar pagamento
           </AppButton>
@@ -275,12 +299,20 @@ onMounted(async () => {
       </div>
     </template>
 
-    <LaunchPaymentDialog
-      v-if="driver"
-      :open="payOpen"
-      :driver-id="driver.id"
-      :title="`Lançar pagamento — ${driver.fullName}`"
-      @close="payOpen = false"
-    />
+    <AppModal :open="chooserOpen" :title="`Lançar pagamento — ${driver?.fullName ?? ''}`" @close="chooserOpen = false">
+      <p class="mb-4 text-[15px] text-ink-soft">Este motorista tem mais de uma locação ativa. Escolha a locação:</p>
+      <ul class="divide-y divide-line">
+        <li v-for="r in activeRentals" :key="r.id" class="flex items-center justify-between gap-4 py-3">
+          <div>
+            <p class="font-semibold text-ink">{{ r.rentalNumber }}</p>
+            <p class="text-sm text-ink-muted">{{ r.vehicle.plate }} · {{ r.vehicle.brand }} {{ r.vehicle.model }}</p>
+          </div>
+          <AppButton @click="router.push(paymentsLink(r.id))">Abrir pagamentos</AppButton>
+        </li>
+      </ul>
+      <template #footer>
+        <AppButton variant="secondary" @click="chooserOpen = false">Fechar</AppButton>
+      </template>
+    </AppModal>
   </div>
 </template>
