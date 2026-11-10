@@ -64,7 +64,7 @@ describe('LaunchPaymentDialog', () => {
     const call = get.mock.calls.find(([url]) => url === '/receivables')!;
     expect(call[1].query).toMatchObject({ driverId: 'd1', openOnly: 'true' });
     expect(wrapper.text()).toContain('Locação LOC-2026-001');
-    expect(wrapper.text()).toContain('Pagar');
+    expect(wrapper.text()).toContain('Pagar valor livre');
   });
 
   it('busca por locação quando recebe rentalId', async () => {
@@ -101,7 +101,7 @@ describe('LaunchPaymentDialog', () => {
     await wrapper.setProps({ open: true });
     await flushPromises();
 
-    const payButton = wrapper.findAll('button').find((b) => b.text() === 'Pagar')!;
+    const payButton = wrapper.findAll('button').find((b) => b.text() === 'Pagar valor livre')!;
     await payButton.trigger('click');
     await flushPromises();
 

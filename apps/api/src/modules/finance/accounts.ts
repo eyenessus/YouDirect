@@ -28,6 +28,7 @@ import { audit } from '../../services/common.js';
 import {
   derivePayableStatus,
   deriveReceivableStatus,
+  extendOpenEndedReceivables,
   installmentDueDates,
   registerPayablePayment,
   registerReceivablePayment,
@@ -648,6 +649,7 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
       const ctx = request.appCtx;
       const { organizationId } = requireAuthContext(request);
       const today = businessDate();
+      await extendOpenEndedReceivables(ctx, organizationId, today);
       const receivables = await ctx.mongo.collections.receivables
         .find({ organizationId, status: { $nin: ['PAID', 'CANCELED'] } })
         .toArray();

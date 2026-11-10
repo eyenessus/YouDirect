@@ -2,7 +2,11 @@ import type { FastifyBaseLogger } from 'fastify';
 import { businessDate } from '@yudirect/contracts';
 import type { AppContext } from '../context.js';
 import { runNotificationGenerators } from '../services/notifications.js';
-import { generateRecurringPayables, refreshOverdueStatuses } from '../services/finance.js';
+import {
+  extendOpenEndedReceivables,
+  generateRecurringPayables,
+  refreshOverdueStatuses,
+} from '../services/finance.js';
 import {
   dispatchDueInspections,
   reconcileMessages,
@@ -27,6 +31,8 @@ export async function runScheduledJobs(ctx: AppContext, logger: FastifyBaseLogge
       const recurring = await generateRecurringPayables(ctx, organization._id, today);
       // Vistorias recorrentes pela regra da locação (idempotente por índice único).
       const inspections = await generateScheduledInspections(ctx, organization._id, today);
+      // Locações sem término: abre a conta do período que começou (antes de recalcular status).
+      const extended = await extendOpenEndedReceivables(ctx, organization._id, today);
       const statuses = await refreshOverdueStatuses(ctx, organization._id, today);
       logger.info(
         {
@@ -34,6 +40,7 @@ export async function runScheduledJobs(ctx: AppContext, logger: FastifyBaseLogge
           notifications,
           recurringPayables: recurring,
           scheduledInspections: inspections.created,
+          extendedRentalReceivables: extended,
           overdueReceivables: statuses.receivables,
           overduePayables: statuses.payables,
         },

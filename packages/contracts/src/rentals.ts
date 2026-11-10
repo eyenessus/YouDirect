@@ -104,3 +104,41 @@ export const rentalCloseSchema = z.object({
   endDate: isoDateSchema,
   notes: optionalString(1000),
 });
+
+/* ------------------- Cronograma de pagamento da locação ------------------ */
+
+export const paymentWeekStatuses = ['PAID', 'PARTIAL', 'OPEN', 'OVERDUE'] as const;
+export const paymentWeekStatusSchema = z.enum(paymentWeekStatuses);
+export type PaymentWeekStatus = z.infer<typeof paymentWeekStatusSchema>;
+export const paymentWeekStatusLabels: Record<PaymentWeekStatus, string> = {
+  PAID: 'Paga',
+  PARTIAL: 'Parcial',
+  OPEN: 'Em aberto',
+  OVERDUE: 'Atrasada',
+};
+
+/** Uma semana (ou mês, em locação mensal) do contrato, calculada sobre a conta a receber. */
+export const rentalPaymentWeekSchema = z.object({
+  number: z.number().int(),
+  dueDate: isoDateSchema,
+  amountCents: z.number().int(),
+  paidCents: z.number().int(),
+  remainingCents: z.number().int(),
+  status: paymentWeekStatusSchema,
+});
+export type RentalPaymentWeek = z.infer<typeof rentalPaymentWeekSchema>;
+
+export const rentalPaymentScheduleSchema = z.object({
+  rentalId: objectIdSchema,
+  rentalNumber: z.string(),
+  /** Conta a receber do contrato; null em locação legada sem conta. */
+  receivableId: objectIdSchema.nullable(),
+  rentalType: rentalTypeSchema,
+  weeks: z.array(rentalPaymentWeekSchema),
+  totals: z.object({
+    amountCents: z.number().int(),
+    paidCents: z.number().int(),
+    remainingCents: z.number().int(),
+  }),
+});
+export type RentalPaymentSchedule = z.infer<typeof rentalPaymentScheduleSchema>;

@@ -7,6 +7,8 @@ import {
   type PaymentMethod,
   type ReceivableStatus,
   type PayableStatus,
+  type RentalPaymentSchedule,
+  type RentalPaymentWeek,
   addDaysIso,
   diffDaysIso,
 } from '@yudirect/contracts';
@@ -173,6 +175,94 @@ export async function ensureRentalReceivable(
   doc.status = deriveReceivableStatus(doc, today);
   await ctx.mongo.collections.receivables.insertOne(doc, { session });
   return _id;
+}
+
+/**
+ * Cronograma de pagamento do contrato, CALCULADO sobre a conta a receber única
+ * (A-FIN-02): nada novo é gravado.
+ *  - nº de períodos = ceil(total / valor do período); o último absorve a diferença,
+ *    então a soma das semanas sempre bate com o total da conta;
+ *  - vencimento do período i = início + i × dias do período (o 1º coincide com o
+ *    vencimento da conta);
+ *  - o já pago abate do período mais antigo para o mais novo.
+ */
+export function buildPaymentSchedule(
+  rental: Pick<RentalDoc, 'startDate' | 'rentalType' | 'periodicAmountCents'>,
+  receivable: Pick<ReceivableDoc, 'grossAmountCents' | 'paidAmountCents'>,
+  today: IsoDate,
+): { weeks: RentalPaymentWeek[]; totals: RentalPaymentSchedule['totals'] } {
+  const periodic = Math.max(rental.periodicAmountCents, 1);
+  const gross = Math.max(receivable.grossAmountCents, 0);
+  const count = Math.max(1, Math.ceil(gross / periodic));
+  const periodDays = rentalPeriodDays[rental.rentalType];
+
+  let unallocated = Math.max(receivable.paidAmountCents, 0);
+  const weeks: RentalPaymentWeek[] = [];
+  for (let i = 1; i <= count; i += 1) {
+    const amountCents = i < count ? periodic : gross - periodic * (count - 1);
+    const paidCents = Math.min(amountCents, unallocated);
+    unallocated -= paidCents;
+    const remaining = amountCents - paidCents;
+    const dueDate = addDaysIso(rental.startDate, periodDays * i) as IsoDate;
+    const status: RentalPaymentWeek['status'] =
+      remaining === 0 ? 'PAID' : dueDate < today ? 'OVERDUE' : paidCents > 0 ? 'PARTIAL' : 'OPEN';
+    weeks.push({ number: i, dueDate, amountCents, paidCents, remainingCents: remaining, status });
+  }
+  const paidTotal = weeks.reduce((a, w) => a + w.paidCents, 0);
+  return { weeks, totals: { amountCents: gross, paidCents: paidTotal, remainingCents: gross - paidTotal } };
+}
+
+/**
+ * Locação sem data de término tem a conta do 1º período apenas. Para o dono poder
+ * dar baixa nas semanas seguintes, o total cresce um período a cada período iniciado.
+ * Idempotente: só aumenta, nunca reduz.
+ */
+export async function extendOpenEndedReceivable(
+  ctx: AppContext,
+  rental: RentalDoc,
+  today: IsoDate = businessDate(),
+): Promise<boolean> {
+  if (rental.endDate || rental.status !== 'ACTIVE') return false;
+  const receivable = await ctx.mongo.collections.receivables.findOne({
+    organizationId: rental.organizationId,
+    rentalId: rental._id,
+    expectedPeriod: 'CONTRACT',
+  });
+  if (!receivable || receivable.status === 'CANCELED') return false;
+
+  const periodDays = rentalPeriodDays[rental.rentalType];
+  const started = Math.max(1, Math.floor(diffDaysIso(today, rental.startDate) / periodDays) + 1);
+  const target = rental.periodicAmountCents * started;
+  if (target <= receivable.grossAmountCents) return false;
+
+  const next = { ...receivable, grossAmountCents: target };
+  const res = await ctx.mongo.collections.receivables.updateOne(
+    { _id: receivable._id, version: receivable.version },
+    {
+      $set: {
+        grossAmountCents: target,
+        status: deriveReceivableStatus(next, today),
+        updatedAt: new Date(),
+      },
+      $inc: { version: 1 },
+    },
+  );
+  return res.modifiedCount > 0;
+}
+
+export async function extendOpenEndedReceivables(
+  ctx: AppContext,
+  organizationId: ObjectId,
+  today: IsoDate = businessDate(),
+): Promise<number> {
+  const rentals = await ctx.mongo.collections.rentals
+    .find({ organizationId, status: 'ACTIVE', endDate: null })
+    .toArray();
+  let extended = 0;
+  for (const rental of rentals) {
+    if (await extendOpenEndedReceivable(ctx, rental, today)) extended += 1;
+  }
+  return extended;
 }
 
 export interface RegisterPaymentInput {

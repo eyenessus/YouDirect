@@ -7,6 +7,7 @@ import {
   rentalListQuerySchema,
   rentalUpdateSchema,
   type Rental,
+  type RentalPaymentSchedule,
 } from '@yudirect/contracts';
 import { conflict, notFound } from '../../common/errors.js';
 import { decodeCursor, encodeCursor, escapeRegex, foldAccents, toObjectId } from '../../common/helpers.js';
@@ -14,7 +15,12 @@ import { requireAuthContext } from '../../plugins/auth.js';
 import { withTransaction } from '../../database/mongo.js';
 import { audit, nextNumber } from '../../services/common.js';
 import { describeFiles, requireFile } from '../../services/files.js';
-import { deriveReceivableStatus, ensureRentalReceivable } from '../../services/finance.js';
+import {
+  buildPaymentSchedule,
+  deriveReceivableStatus,
+  ensureRentalReceivable,
+  extendOpenEndedReceivable,
+} from '../../services/finance.js';
 import { postTransaction, defaultBankAccountId } from '../../services/ledger.js';
 import type { AppContext } from '../../context.js';
 import type { RentalDoc } from '../../database/types.js';
@@ -166,6 +172,48 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
       if (!doc) throw notFound('Locação não encontrada.');
       const [dto] = await toRentalDTOs(ctx, organizationId, [doc]);
       return dto;
+    },
+  );
+
+  /** Semanas do contrato (vencimento, pago, pendente, atraso) para dar baixa por semana. */
+  app.get(
+    '/rentals/:id/payment-schedule',
+    { onRequest: [app.requireAuth, app.requirePermission('finance', 'read')] },
+    async (request): Promise<RentalPaymentSchedule> => {
+      const ctx = request.appCtx;
+      const { organizationId } = requireAuthContext(request);
+      const id = toObjectId((request.params as { id: string }).id);
+      const rental = await ctx.mongo.collections.rentals.findOne({ _id: id, organizationId });
+      if (!rental) throw notFound('Locação não encontrada.');
+
+      const today = businessDate();
+      await extendOpenEndedReceivable(ctx, rental, today);
+      const receivable = await ctx.mongo.collections.receivables.findOne({
+        organizationId,
+        rentalId: rental._id,
+        expectedPeriod: 'CONTRACT',
+      });
+
+      // Locação legada sem conta a receber: nada é criado aqui, só devolvemos vazio.
+      if (!receivable || receivable.status === 'CANCELED') {
+        return {
+          rentalId: rental._id.toHexString(),
+          rentalNumber: rental.rentalNumber,
+          receivableId: null,
+          rentalType: rental.rentalType,
+          weeks: [],
+          totals: { amountCents: 0, paidCents: 0, remainingCents: 0 },
+        };
+      }
+      const { weeks, totals } = buildPaymentSchedule(rental, receivable, today);
+      return {
+        rentalId: rental._id.toHexString(),
+        rentalNumber: rental.rentalNumber,
+        receivableId: receivable._id.toHexString(),
+        rentalType: rental.rentalType,
+        weeks,
+        totals,
+      };
     },
   );
 
