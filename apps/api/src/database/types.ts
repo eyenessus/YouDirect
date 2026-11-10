@@ -510,6 +510,9 @@ export interface PaymentDoc extends Tenant {
   idempotencyKey: string | null;
   notes: string | null;
   createdBy: ObjectId | null;
+  /** Estornado (conta excluída/cancelada): sai de todos os relatórios. */
+  reversedAt?: Date | null;
+  reversalTransactionId?: ObjectId | null;
 }
 
 export interface NotificationDoc extends Tenant {
@@ -550,6 +553,8 @@ export interface MessageDispatchDoc extends Tenant {
     idempotencyKey: string;
     updatedAt: Date;
   }>;
+  /** Idempotency-Key do pedido de disparo (repetição devolve o mesmo disparo). */
+  requestKey?: string | null;
   createdBy: ObjectId | null;
 }
 

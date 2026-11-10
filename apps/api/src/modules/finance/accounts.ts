@@ -34,6 +34,7 @@ import {
   registerReceivablePayment,
   remainingCents,
   reversePaymentsOf,
+  stopRecurringSeries,
 } from '../../services/finance.js';
 import { defaultBankAccountId } from '../../services/ledger.js';
 import type { AppContext, AuthContext } from '../../context.js';
@@ -331,27 +332,45 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
         item.status = derivePayableStatus(item, today);
         return item;
       });
+      // Valida a conta bancária ANTES de gravar: antes, a conta era salva e
+      // só depois vinha o 409 — e o usuário, ao tentar de novo, duplicava.
+      let paidBankAccountId: ObjectId | null = null;
+      if (body.alreadyPaid) {
+        paidBankAccountId = body.paidBankAccountId
+          ? toObjectId(body.paidBankAccountId, 'paidBankAccountId')
+          : await defaultBankAccountId(ctx, auth.organizationId);
+        if (!paidBankAccountId) {
+          throw conflict('Cadastre uma conta bancária antes de registrar uma conta já paga.');
+        }
+        const account = await ctx.mongo.collections.bankAccounts.findOne({
+          _id: paidBankAccountId,
+          organizationId: auth.organizationId,
+          active: true,
+        });
+        if (!account) throw notFound('Conta bancária não encontrada.');
+      }
+
       await ctx.mongo.collections.payables.insertMany(docs);
       // "Já paga" vale para a primeira parcela (a que o dono acabou de quitar).
       const doc = docs[0]!;
 
-      if (body.alreadyPaid) {
-        const bankAccountId = body.paidBankAccountId
-          ? toObjectId(body.paidBankAccountId, 'paidBankAccountId')
-          : await defaultBankAccountId(ctx, auth.organizationId);
-        if (!bankAccountId) {
-          throw conflict('Cadastre uma conta bancária antes de registrar uma conta já paga.');
+      if (body.alreadyPaid && paidBankAccountId) {
+        try {
+          await registerPayablePayment(ctx, {
+            organizationId: auth.organizationId,
+            actorId: auth.userId,
+            sourceId: doc._id,
+            amountCents: doc.amountCents,
+            paidAt: doc.dueDate <= today ? doc.dueDate : today,
+            method: 'CASH',
+            bankAccountId: paidBankAccountId,
+            notes: 'Cadastrada como já paga.',
+          });
+        } catch (err) {
+          // Compensação: sem o pagamento, a conta "já paga" não deve existir.
+          await ctx.mongo.collections.payables.deleteMany({ _id: { $in: docs.map((d) => d._id) }, paidAmountCents: 0 });
+          throw err;
         }
-        await registerPayablePayment(ctx, {
-          organizationId: auth.organizationId,
-          actorId: auth.userId,
-          sourceId: doc._id,
-          amountCents: doc.amountCents,
-          paidAt: doc.dueDate <= today ? doc.dueDate : today,
-          method: 'CASH',
-          bankAccountId,
-          notes: 'Cadastrada como já paga.',
-        });
       }
 
       await audit(ctx, {
@@ -396,8 +415,38 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
         set.description = body.description;
         set.descriptionFold = foldAccents(body.description).toLowerCase();
       }
-      if (body.categoryId !== undefined) set.categoryId = toObjectId(body.categoryId, 'categoryId');
-      if (body.vehicleId !== undefined) set.vehicleId = body.vehicleId ? toObjectId(body.vehicleId) : null;
+      if (body.categoryId !== undefined) {
+        // Categoria e veículo precisam ser da MESMA organização.
+        const category = await ctx.mongo.collections.expenseCategories.findOne({
+          _id: toObjectId(body.categoryId, 'categoryId'),
+          organizationId: auth.organizationId,
+        });
+        if (!category) throw notFound('Categoria não encontrada.');
+        set.categoryId = category._id;
+      }
+      if (body.vehicleId !== undefined) {
+        if (body.vehicleId) {
+          const vehicle = await ctx.mongo.collections.vehicles.findOne({
+            _id: toObjectId(body.vehicleId, 'vehicleId'),
+            organizationId: auth.organizationId,
+          });
+          if (!vehicle) throw notFound('Veículo não encontrado.');
+          set.vehicleId = vehicle._id;
+        } else {
+          set.vehicleId = null;
+        }
+      }
+      if (body.recurring === false && current.recurring.enabled && current.recurring.seriesId) {
+        // Parar a recorrência vale para a série inteira (senão o job volta a gerar).
+        await stopRecurringSeries(ctx, auth.organizationId, current.recurring.seriesId);
+        set['recurring.enabled'] = false;
+      } else if (body.recurring === true && !current.recurring.enabled) {
+        set.recurring = {
+          enabled: true,
+          seriesId: current.recurring.seriesId ?? generateToken(10),
+          period: (body.dueDate ?? current.dueDate).slice(0, 7),
+        };
+      }
       if (body.amountCents !== undefined) set.amountCents = body.amountCents;
       if (body.dueDate !== undefined) set.dueDate = body.dueDate;
       if (body.supplierName !== undefined) {
@@ -475,6 +524,11 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
       if (!payable) throw notFound('Conta a pagar não encontrada.');
 
       await withTransaction(ctx, async (session) => {
+        // Excluir uma ocorrência de série recorrente encerra a série — sem
+        // isso as outras ocorrências manteriam o job gerando novos meses.
+        if (payable.recurring.enabled && payable.recurring.seriesId) {
+          await stopRecurringSeries(ctx, auth.organizationId, payable.recurring.seriesId, session);
+        }
         if (payable.paidAmountCents > 0) {
           // Nunca apaga o extrato: estorna e marca como cancelada.
           await reversePaymentsOf(

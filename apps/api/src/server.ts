@@ -2,12 +2,15 @@ import { buildApp } from './app.js';
 import { buildContext } from './context.js';
 import { loadDotEnv, loadEnv } from './config/env.js';
 import { startScheduler } from './jobs/scheduler.js';
+import { runMigrations } from './database/migrations.js';
 
 async function main() {
   loadDotEnv();
   const env = loadEnv();
   const ctx = await buildContext({ env });
   const app = await buildApp(ctx);
+  // Migrações de dados antes de atender (idempotentes, uma instância por vez).
+  await runMigrations(ctx, (msg, data) => app.log.info({ data }, msg));
 
   if (!env.MONGODB_URI) {
     app.log.warn(

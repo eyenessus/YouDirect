@@ -191,6 +191,12 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
 
   await c.messageDispatches.createIndexes([
     { key: { organizationId: 1, createdAt: -1, _id: -1 }, name: 'by_org_created' },
+    {
+      key: { organizationId: 1, requestKey: 1 },
+      unique: true,
+      partialFilterExpression: { requestKey: { $type: 'string' } },
+      name: 'uniq_org_request_key',
+    },
   ]);
 
   await c.subscriptions.createIndexes([

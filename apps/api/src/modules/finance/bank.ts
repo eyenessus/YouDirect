@@ -17,7 +17,7 @@ import { csvCell, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
 import { withTransaction } from '../../database/mongo.js';
 import { audit } from '../../services/common.js';
-import { accountBalance, postTransaction, sumAccountMovement } from '../../services/ledger.js';
+import { accountBalance, postTransaction, reverseTransaction, sumAccountMovement } from '../../services/ledger.js';
 import type { AppContext } from '../../context.js';
 import type { BankAccountDoc } from '../../database/types.js';
 
@@ -139,6 +139,9 @@ export async function registerBankRoutes(app: FastifyInstance): Promise<void> {
         if (body.active === false && current.isDefault) {
           throw conflict('Defina outra conta como padrão antes de desativar esta.');
         }
+        if (body.isDefault === true && !current.active && body.active !== true) {
+          throw conflict('Uma conta inativa não pode ser a padrão.');
+        }
         const set: Record<string, unknown> = { updatedAt: now };
         if (body.name !== undefined) set.name = body.name;
         if (body.institution !== undefined) set.institution = body.institution ?? null;
@@ -186,6 +189,15 @@ export async function registerBankRoutes(app: FastifyInstance): Promise<void> {
         organizationId: auth.organizationId,
       });
       if (!account) throw notFound('Conta bancária não encontrada.');
+      if (account.isDefault) {
+        const others = await ctx.mongo.collections.bankAccounts.countDocuments({
+          organizationId: auth.organizationId,
+          active: true,
+          _id: { $ne: id },
+        });
+        // Sem isso a organização ficaria sem conta padrão (pagamentos "já pagos" falhariam).
+        if (others > 0) throw conflict('Defina outra conta como padrão antes de excluir esta.');
+      }
 
       const movements = await ctx.mongo.collections.bankTransactions.countDocuments({
         organizationId: auth.organizationId,
@@ -258,6 +270,55 @@ export async function registerBankRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
+  /**
+   * Estorno de lançamento MANUAL (os demais são estornados pela origem:
+   * excluir a conta, cancelar a OS etc.). Cria o lançamento inverso; o
+   * original fica no extrato marcado como estornado.
+   */
+  app.post(
+    '/bank-transactions/:id/reverse',
+    { onRequest: [app.requireAuth, app.requirePermission('finance', 'delete')] },
+    async (request, reply) => {
+      const ctx = request.appCtx;
+      const auth = requireAuthContext(request);
+      const id = toObjectId((request.params as { id: string }).id);
+      const tx = await ctx.mongo.collections.bankTransactions.findOne({ _id: id, organizationId: auth.organizationId });
+      if (!tx) throw notFound('Lançamento não encontrado.');
+      if (tx.originType !== 'MANUAL' || tx.reversalOfTransactionId) {
+        throw conflict('Só lançamentos manuais podem ser estornados aqui. Estorne pela conta ou OS de origem.');
+      }
+      if (tx.reversedByTransactionId) throw conflict('Este lançamento já foi estornado.');
+      const reversalId = await withTransaction(ctx, async (session) => {
+        const rid = await reverseTransaction(
+          ctx,
+          {
+            organizationId: auth.organizationId,
+            transactionId: id,
+            occurredAt: businessDate(),
+            reason: tx.description,
+            actorId: auth.userId,
+          },
+          session,
+        );
+        await audit(
+          ctx,
+          {
+            organizationId: auth.organizationId,
+            actorId: auth.userId,
+            action: 'bankTransaction.reversed',
+            entityType: 'bankTransaction',
+            entityId: id,
+            after: { reversalId: rid },
+          },
+          session,
+        );
+        return rid;
+      });
+      reply.status(201);
+      return { id: reversalId?.toHexString() ?? null };
+    },
+  );
+
   /* ------------------------------ extrato -------------------------- */
   const buildStatement = async (
     ctx: AppContext,
@@ -271,6 +332,10 @@ export async function registerBankRoutes(app: FastifyInstance): Promise<void> {
       organizationId,
     });
     if (!account) throw notFound('Conta bancária não encontrada.');
+    // O saldo começa no saldo inicial: período anterior a ele não tem
+    // movimento (antes listava lançamentos fora do saldo).
+    if (from < account.initialBalanceDate) from = account.initialBalanceDate;
+    if (to < from) to = from;
 
     const before = await sumAccountMovement(
       ctx,
