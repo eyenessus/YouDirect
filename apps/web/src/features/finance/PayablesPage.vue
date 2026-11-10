@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { DollarSign, Trash2 } from 'lucide-vue-next';
+import { DollarSign, Pencil, Trash2 } from 'lucide-vue-next';
 import {
   formatCentsBRL,
   formatIsoDateBR,
@@ -13,6 +13,7 @@ import {
   type Payable,
 } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
+import ExportCsvButton from '@/components/ui/ExportCsvButton.vue';
 import DataTable, { type Column } from '@/components/ui/DataTable.vue';
 import SearchInput from '@/components/ui/SearchInput.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
@@ -66,6 +67,9 @@ function actionsFor(payable: Payable): ActionItem[] {
   if (auth.allows('finance', 'pay') && payable.remainingCents > 0) {
     items.push({ key: 'pay', label: 'Registrar pagamento', icon: DollarSign });
   }
+  if (auth.allows('finance', 'update') && payable.status !== 'CANCELED') {
+    items.push({ key: 'edit', label: 'Editar', icon: Pencil });
+  }
   if (auth.allows('finance', 'delete')) {
     items.push({ key: 'delete', label: 'Excluir', icon: Trash2, danger: true });
   }
@@ -100,6 +104,7 @@ async function load() {
 
 function onAction(key: string, payable: Payable) {
   if (key === 'pay') payTarget.value = payable;
+  else if (key === 'edit') void router.push(`/dashboard/finance/accounts-payable/${payable.id}/edit`);
   else confirmTarget.value = payable;
 }
 
@@ -132,6 +137,7 @@ onMounted(load);
       subtitle="Visualize e gerencie todas as contas a pagar"
     >
       <template #actions>
+        <ExportCsvButton path="/exports/payables.csv" filename="contas-a-pagar.csv" module="finance" />
         <AppButton
           v-if="auth.allows('finance', 'create')"
           @click="router.push('/dashboard/finance/accounts-payable/new')"

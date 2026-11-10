@@ -15,6 +15,8 @@ import { authPlugin } from './plugins/auth.js';
 import { errorsPlugin } from './plugins/errors.js';
 import { registerAuthRoutes } from './modules/auth/routes.js';
 import { registerVehicleRoutes } from './modules/vehicles/routes.js';
+import { registerExportRoutes } from './modules/exports/routes.js';
+import { registerAuditRoutes } from './modules/audit/routes.js';
 import { registerDriverRoutes } from './modules/drivers/routes.js';
 import { registerRentalRoutes } from './modules/rentals/routes.js';
 import { registerMaintenanceRoutes } from './modules/maintenance/routes.js';
@@ -156,6 +158,8 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
       await registerNotificationRoutes(api);
       await registerOrganizationRoutes(api);
       await registerWhatsappRoutes(api);
+      await registerExportRoutes(api);
+      await registerAuditRoutes(api);
     },
     { prefix: '/api/v1' },
   );

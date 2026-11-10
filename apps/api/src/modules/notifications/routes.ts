@@ -20,7 +20,18 @@ import { audit } from '../../services/common.js';
 import { runNotificationGenerators } from '../../services/notifications.js';
 import type { MessageDispatchDoc, MessageTemplateDoc, NotificationDoc } from '../../database/types.js';
 
-function toNotificationDTO(doc: NotificationDoc): Notification {
+/** Leitura é POR USUÁRIO: marcar como lida não some para os colegas. */
+function unreadFilter(organizationId: ObjectId, userId: ObjectId): Record<string, unknown> {
+  return {
+    organizationId,
+    $and: [{ $or: [{ userId: null }, { userId }] }],
+    readAt: null,
+    readBy: { $ne: userId },
+  };
+}
+
+function toNotificationDTO(doc: NotificationDoc, userId: ObjectId): Notification {
+  const readByMe = doc.readBy?.some((id) => id.equals(userId)) ?? false;
   return {
     id: doc._id.toHexString(),
     type: doc.type,
@@ -31,7 +42,7 @@ function toNotificationDTO(doc: NotificationDoc): Notification {
     entityType: doc.entityType,
     entityId: doc.entityId?.toHexString() ?? null,
     targetPath: doc.targetPath,
-    readAt: doc.readAt?.toISOString() ?? null,
+    readAt: doc.readAt?.toISOString() ?? (readByMe ? doc.updatedAt.toISOString() : null),
     createdAt: doc.createdAt.toISOString(),
   };
 }
@@ -110,12 +121,14 @@ export async function registerNotificationRoutes(app: FastifyInstance): Promise<
     { onRequest: [app.requireAuth, app.requirePermission('notifications', 'read')] },
     async (request) => {
       const ctx = request.appCtx;
-      const { organizationId } = requireAuthContext(request);
+      const { organizationId, userId } = requireAuthContext(request);
       const query = notificationListQuerySchema.parse(request.query);
 
-      const filter: Record<string, unknown> = { organizationId };
+      const filter: Record<string, unknown> =
+        query.unread === true
+          ? unreadFilter(organizationId, userId)
+          : { organizationId, $and: [{ $or: [{ userId: null }, { userId }] }] };
       if (query.type) filter.type = query.type;
-      if (query.unread === true) filter.readAt = null;
 
       const cursor = decodeCursor<{ createdAt: string; id: string }>(query.cursor);
       if (cursor) {
@@ -132,13 +145,10 @@ export async function registerNotificationRoutes(app: FastifyInstance): Promise<
         .toArray();
       const hasMore = docs.length > query.limit;
       const page = hasMore ? docs.slice(0, query.limit) : docs;
-      const unread = await ctx.mongo.collections.notifications.countDocuments({
-        organizationId,
-        readAt: null,
-      });
+      const unread = await ctx.mongo.collections.notifications.countDocuments(unreadFilter(organizationId, userId));
 
       return {
-        data: page.map(toNotificationDTO),
+        data: page.map((d) => toNotificationDTO(d, userId)),
         unread,
         page: {
           nextCursor: hasMore
@@ -157,25 +167,23 @@ export async function registerNotificationRoutes(app: FastifyInstance): Promise<
     { onRequest: [app.requireAuth, app.requirePermission('notifications', 'read')] },
     async (request) => {
       const ctx = request.appCtx;
-      const { organizationId } = requireAuthContext(request);
-      const unread = await ctx.mongo.collections.notifications.countDocuments({
-        organizationId,
-        readAt: null,
-      });
+      const { organizationId, userId } = requireAuthContext(request);
+      const unread = await ctx.mongo.collections.notifications.countDocuments(unreadFilter(organizationId, userId));
       return { unread };
     },
   );
 
+  // A leitura é pessoal (readBy): basta poder ver as notificações.
   app.patch(
     '/notifications/:id/read',
-    { onRequest: [app.requireAuth, app.requirePermission('notifications', 'update')] },
+    { onRequest: [app.requireAuth, app.requirePermission('notifications', 'read')] },
     async (request) => {
       const ctx = request.appCtx;
-      const { organizationId } = requireAuthContext(request);
+      const { organizationId, userId } = requireAuthContext(request);
       const id = toObjectId((request.params as { id: string }).id);
       const result = await ctx.mongo.collections.notifications.updateOne(
-        { _id: id, organizationId, readAt: null },
-        { $set: { readAt: new Date(), updatedAt: new Date() } },
+        { _id: id, organizationId },
+        { $addToSet: { readBy: userId } },
       );
       if (result.matchedCount === 0) {
         const exists = await ctx.mongo.collections.notifications.countDocuments({ _id: id, organizationId });
@@ -187,14 +195,13 @@ export async function registerNotificationRoutes(app: FastifyInstance): Promise<
 
   app.post(
     '/notifications/mark-all-read',
-    { onRequest: [app.requireAuth, app.requirePermission('notifications', 'update')] },
+    { onRequest: [app.requireAuth, app.requirePermission('notifications', 'read')] },
     async (request) => {
       const ctx = request.appCtx;
-      const { organizationId } = requireAuthContext(request);
-      const result = await ctx.mongo.collections.notifications.updateMany(
-        { organizationId, readAt: null },
-        { $set: { readAt: new Date(), updatedAt: new Date() } },
-      );
+      const { organizationId, userId } = requireAuthContext(request);
+      const result = await ctx.mongo.collections.notifications.updateMany(unreadFilter(organizationId, userId), {
+        $addToSet: { readBy: userId },
+      });
       return { ok: true, updated: result.modifiedCount };
     },
   );

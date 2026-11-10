@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { AlertTriangle, ChevronDown, ChevronUp, ClipboardList, Maximize2, MessageCircle, RotateCcw } from 'lucide-vue-next';
+import {
+  AlertTriangle,
+  CalendarClock,
+  ChevronDown,
+  ChevronUp,
+  ClipboardList,
+  Maximize2,
+  MessageCircle,
+  RotateCcw,
+  XCircle,
+} from 'lucide-vue-next';
 import {
   formatIsoDateBR,
   formatKm,
@@ -21,6 +31,7 @@ import EmptyState from '@/components/ui/EmptyState.vue';
 import FormField from '@/components/ui/FormField.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import AppTextarea from '@/components/ui/AppTextarea.vue';
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import RequestInspectionModal from './RequestInspectionModal.vue';
 import { api, ApiRequestError } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
@@ -74,13 +85,69 @@ function toggle(id: string) {
   expanded.value = next;
 }
 
-async function review(inspection: Inspection, decision: 'APPROVE' | 'REJECT') {
+/** Id da vistoria com ação em andamento (bloqueia duplo clique). */
+const busyId = ref<string | null>(null);
+
+async function review(inspection: Inspection, decision: 'APPROVE' | 'REJECT', notes?: string) {
+  busyId.value = inspection.id;
   try {
-    await api.post(`/inspections/${inspection.id}/review`, { decision });
+    await api.post(`/inspections/${inspection.id}/review`, { decision, notes: notes || undefined });
     toasts.success(decision === 'APPROVE' ? 'Vistoria aprovada' : 'Vistoria reprovada');
+    rejection.value = null;
     await load();
   } catch (err) {
     toasts.error('Não foi possível registrar', err instanceof ApiRequestError ? err.message : undefined);
+  } finally {
+    busyId.value = null;
+  }
+}
+
+/* ------------------- reprovar (motivo obrigatório) ------------------ */
+const rejection = ref<{ inspection: Inspection; reason: string } | null>(null);
+
+function confirmRejection() {
+  if (!rejection.value) return;
+  if (rejection.value.reason.trim().length < 3) {
+    toasts.error('Informe o motivo da reprovação');
+    return;
+  }
+  void review(rejection.value.inspection, 'REJECT', rejection.value.reason.trim());
+}
+
+/* ------------------------ reagendar / cancelar ---------------------- */
+const reschedule = ref<{ inspection: Inspection; scheduledAt: string } | null>(null);
+const cancelTarget = ref<Inspection | null>(null);
+
+async function submitReschedule() {
+  if (!reschedule.value) return;
+  const { inspection, scheduledAt } = reschedule.value;
+  busyId.value = inspection.id;
+  try {
+    // O prazo é recalculado na API (e o envio pelo WhatsApp é reagendado junto).
+    await api.patch(`/inspections/${inspection.id}/schedule`, { scheduledAt });
+    toasts.success('Vistoria reagendada');
+    reschedule.value = null;
+    await load();
+  } catch (err) {
+    toasts.error('Não foi possível reagendar', err instanceof ApiRequestError ? err.message : undefined);
+  } finally {
+    busyId.value = null;
+  }
+}
+
+async function confirmCancel() {
+  if (!cancelTarget.value) return;
+  const target = cancelTarget.value;
+  busyId.value = target.id;
+  try {
+    await api.delete(`/inspections/${target.id}`);
+    toasts.success('Vistoria cancelada', 'O link enviado ao motorista deixou de funcionar.');
+    cancelTarget.value = null;
+    await load();
+  } catch (err) {
+    toasts.error('Não foi possível cancelar', err instanceof ApiRequestError ? err.message : undefined);
+  } finally {
+    busyId.value = null;
   }
 }
 
@@ -326,7 +393,9 @@ onMounted(load);
             v-if="inspection.status === 'SUBMITTED' && auth.allows('inspections', 'review')"
             class="mt-6 flex flex-wrap gap-3"
           >
-            <AppButton @click="review(inspection, 'APPROVE')">Aprovar vistoria</AppButton>
+            <AppButton :loading="busyId === inspection.id" @click="review(inspection, 'APPROVE')">
+              Aprovar vistoria
+            </AppButton>
             <AppButton
               variant="secondary"
               @click="correction = { inspection, slots: [], reason: '' }"
@@ -334,8 +403,31 @@ onMounted(load);
               <template #icon><RotateCcw class="size-4" /></template>
               Solicitar correção
             </AppButton>
-            <AppButton variant="danger-outline" @click="review(inspection, 'REJECT')">
+            <AppButton
+              variant="danger-outline"
+              :disabled="busyId === inspection.id"
+              @click="rejection = { inspection, reason: '' }"
+            >
               Reprovar
+            </AppButton>
+          </div>
+
+          <div v-if="inspection.status === 'PENDING'" class="mt-6 flex flex-wrap gap-3">
+            <AppButton
+              v-if="auth.allows('inspections', 'request')"
+              variant="secondary"
+              @click="reschedule = { inspection, scheduledAt: inspection.scheduledAt }"
+            >
+              <template #icon><CalendarClock class="size-4" /></template>
+              Reagendar
+            </AppButton>
+            <AppButton
+              v-if="auth.allows('inspections', 'delete')"
+              variant="danger-outline"
+              @click="cancelTarget = inspection"
+            >
+              <template #icon><XCircle class="size-4" /></template>
+              Cancelar vistoria
             </AppButton>
           </div>
 
@@ -399,6 +491,59 @@ onMounted(load);
         </div>
       </template>
     </AppModal>
+
+    <AppModal
+      :open="rejection !== null"
+      title="Reprovar vistoria"
+      description="O motivo fica registrado no histórico da vistoria."
+      @close="rejection = null"
+    >
+      <template v-if="rejection">
+        <FormField v-slot="field" label="Motivo da reprovação" required>
+          <AppTextarea
+            :id="field.id"
+            v-model="rejection.reason"
+            :rows="3"
+            :maxlength="500"
+            placeholder="Ex.: avaria não informada no para-choque traseiro"
+          />
+        </FormField>
+        <div class="mt-6 flex justify-end gap-3">
+          <AppButton variant="secondary" @click="rejection = null">Voltar</AppButton>
+          <AppButton variant="danger" :loading="busyId === rejection.inspection.id" @click="confirmRejection">
+            Reprovar
+          </AppButton>
+        </div>
+      </template>
+    </AppModal>
+
+    <AppModal :open="reschedule !== null" title="Reagendar vistoria" @close="reschedule = null">
+      <template v-if="reschedule">
+        <FormField
+          v-slot="field"
+          label="Nova data"
+          required
+          hint="O prazo de envio passa a ser 2 dias depois. Se a coleta for pelo WhatsApp, a mensagem é reagendada."
+        >
+          <AppInput :id="field.id" v-model="reschedule.scheduledAt" type="date" :described-by="field.describedBy" />
+        </FormField>
+        <div class="mt-6 flex justify-end gap-3">
+          <AppButton variant="secondary" @click="reschedule = null">Voltar</AppButton>
+          <AppButton :loading="busyId === reschedule.inspection.id" @click="submitReschedule">Reagendar</AppButton>
+        </div>
+      </template>
+    </AppModal>
+
+    <ConfirmDialog
+      :open="cancelTarget !== null"
+      title="Cancelar vistoria"
+      message="Cancelar esta vistoria? O link enviado ao motorista deixa de funcionar e a coleta pelo WhatsApp é encerrada."
+      confirm-label="Cancelar vistoria"
+      danger
+      :loading="cancelTarget !== null && busyId === cancelTarget.id"
+      @cancel="cancelTarget = null"
+      @confirm="confirmCancel"
+    />
 
     <RequestInspectionModal
       :open="requestOpen"

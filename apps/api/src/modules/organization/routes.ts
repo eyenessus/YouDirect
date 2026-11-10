@@ -1,15 +1,18 @@
 import type { FastifyInstance } from 'fastify';
 import { ObjectId } from 'mongodb';
 import {
+  addDaysIso,
+  businessDate,
   formatShortDateBR,
   invitationCreateSchema,
   membershipPermissionsUpdateSchema,
+  membershipRoleUpdateSchema,
   type EmployeesOverview,
   type Invitation,
   type Membership,
   type SubscriptionOverview,
 } from '@yudirect/contracts';
-import { conflict, integrationUnavailable, notFound } from '../../common/errors.js';
+import { conflict, forbidden, integrationUnavailable, notFound } from '../../common/errors.js';
 import { generateToken, sha256, toObjectId } from '../../common/helpers.js';
 import { requireAuthContext } from '../../plugins/auth.js';
 import { audit } from '../../services/common.js';
@@ -178,6 +181,90 @@ export async function registerOrganizationRoutes(app: FastifyInstance): Promise<
     },
   );
 
+  /** Reenvia um convite pendente ou expirado: novo link (o anterior deixa de valer). */
+  app.post(
+    '/invitations/:id/resend',
+    {
+      onRequest: [app.requireAuth, app.requireOwnerOrAdmin],
+      config: { rateLimit: { max: 10, timeWindow: '10 minutes' } },
+    },
+    async (request) => {
+      const ctx = request.appCtx;
+      const auth = requireAuthContext(request);
+      const id = toObjectId((request.params as { id: string }).id);
+      const current = await ctx.mongo.collections.invitations.findOne({ _id: id, organizationId: auth.organizationId });
+      if (!current || !['PENDING', 'EXPIRED'].includes(current.status)) {
+        throw notFound('Convite não encontrado ou já utilizado.');
+      }
+      const token = generateToken(24);
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + INVITE_TTL_DAYS * 24 * 3600 * 1000);
+      const organization = await ctx.mongo.collections.organizations.findOne({ _id: auth.organizationId });
+      const acceptUrl = `${ctx.env.APP_URL.replace(/\/$/, '')}/convite/${token}`;
+      const mailStatus = ctx.integrations.email.status();
+      let delivery: InvitationDoc['delivery'];
+      if (mailStatus.connected) {
+        const result = await ctx.integrations.email.send(
+          current.emailLower,
+          `Convite para ${organization?.name ?? 'YuDirect'}`,
+          `Olá, ${current.name}! Você foi convidado(a) para acessar o YuDirect da ${
+            organization?.name ?? ''
+          }. Acesse: ${acceptUrl} (válido por ${INVITE_TTL_DAYS} dias).`,
+        );
+        delivery = { channel: 'EMAIL', status: result.delivered ? 'SENT' : 'FAILED', message: result.error };
+      } else {
+        delivery = { channel: 'MANUAL', status: 'UNAVAILABLE', message: mailStatus.message };
+      }
+      const updated = await ctx.mongo.collections.invitations.findOneAndUpdate(
+        { _id: id, status: current.status, tokenHash: current.tokenHash },
+        { $set: { tokenHash: sha256(token), expiresAt, status: 'PENDING', delivery, updatedAt: now } },
+        { returnDocument: 'after' },
+      );
+      if (!updated) throw conflict('O convite foi alterado ao mesmo tempo. Recarregue e tente novamente.');
+      await audit(ctx, {
+        organizationId: auth.organizationId,
+        actorId: auth.userId,
+        action: 'invitation.resent',
+        entityType: 'invitation',
+        entityId: id,
+        after: { delivery: delivery?.status },
+      });
+      return toInvitationDTO(updated, ctx.env.APP_URL, delivery?.status === 'SENT' ? undefined : token);
+    },
+  );
+
+  /** Promove a administrador ou rebaixa a membro — somente o proprietário. */
+  app.patch(
+    '/memberships/:id/role',
+    { onRequest: [app.requireAuth, app.requireOwnerOrAdmin] },
+    async (request) => {
+      const ctx = request.appCtx;
+      const auth = requireAuthContext(request);
+      if (auth.role !== 'OWNER') throw forbidden('Só o proprietário altera o papel de um colaborador.');
+      const id = toObjectId((request.params as { id: string }).id);
+      const body = membershipRoleUpdateSchema.parse(request.body);
+      const membership = await ctx.mongo.collections.memberships.findOne({ _id: id, organizationId: auth.organizationId });
+      if (!membership) throw notFound('Colaborador não encontrado.');
+      if (membership.role === 'OWNER') throw conflict('O papel do proprietário não pode ser alterado.');
+      if (membership.role !== body.role) {
+        await ctx.mongo.collections.memberships.updateOne(
+          { _id: id, role: membership.role },
+          { $set: { role: body.role, updatedAt: new Date() } },
+        );
+        await audit(ctx, {
+          organizationId: auth.organizationId,
+          actorId: auth.userId,
+          action: 'membership.role_updated',
+          entityType: 'membership',
+          entityId: id,
+          before: { role: membership.role },
+          after: { role: body.role },
+        });
+      }
+      return { ok: true, role: body.role };
+    },
+  );
+
   app.patch(
     '/memberships/:id/permissions',
     { onRequest: [app.requireAuth, app.requireOwnerOrAdmin] },
@@ -192,6 +279,9 @@ export async function registerOrganizationRoutes(app: FastifyInstance): Promise<
       });
       if (!membership) throw notFound('Colaborador não encontrado.');
       if (membership.role === 'OWNER') throw conflict('As permissões do proprietário não podem ser alteradas.');
+      if (membership.role === 'ADMIN' && auth.role !== 'OWNER') {
+        throw forbidden('Só o proprietário altera as permissões de um administrador.');
+      }
 
       await ctx.mongo.collections.memberships.updateOne(
         { _id: id },
@@ -224,6 +314,9 @@ export async function registerOrganizationRoutes(app: FastifyInstance): Promise<
       if (!membership) throw notFound('Colaborador não encontrado.');
       if (membership.role === 'OWNER') throw conflict('O proprietário não pode ser removido.');
       if (membership.userId.equals(auth.userId)) throw conflict('Você não pode remover o próprio acesso.');
+      if (membership.role === 'ADMIN' && auth.role !== 'OWNER') {
+        throw forbidden('Só o proprietário remove um administrador.');
+      }
 
       await ctx.mongo.collections.memberships.deleteOne({ _id: id });
       await ctx.mongo.collections.sessions.updateMany(
@@ -245,13 +338,49 @@ export async function registerOrganizationRoutes(app: FastifyInstance): Promise<
   app.get('/subscription', { onRequest: [app.requireAuth] }, async (request) => {
     const ctx = request.appCtx;
     const { organizationId } = requireAuthContext(request);
-    const [subscription, invoices, organization, vehicleCount] = await Promise.all([
+    const [found, invoices, organization, vehicleCount] = await Promise.all([
       ctx.mongo.collections.subscriptions.findOne({ organizationId }),
       ctx.mongo.collections.billingInvoices.find({ organizationId }).sort({ dueDate: -1 }).toArray(),
       ctx.mongo.collections.organizations.findOne({ _id: organizationId }),
       ctx.mongo.collections.vehicles.countDocuments({ organizationId, archivedAt: null }),
     ]);
-    if (!subscription) throw notFound('Nenhuma assinatura cadastrada para esta organização.');
+    let subscription = found;
+    if (!subscription) {
+      // Organização criada pelo bootstrap (sem seed) ainda não tem assinatura:
+      // nasce em TESTE, idempotente pelo índice único por organização.
+      const today = businessDate();
+      const end = addDaysIso(today, 30);
+      const now = new Date();
+      await ctx.mongo.collections.subscriptions.updateOne(
+        { organizationId },
+        {
+          $setOnInsert: {
+            _id: new ObjectId(),
+            organizationId,
+            status: 'TRIAL',
+            planCode: 'TRIAL',
+            planLabel: 'Período de teste',
+            productLabel: 'Essencial',
+            cycle: 'MONTHLY',
+            cycleMonths: 1,
+            monthlyPriceCents: 0,
+            discountPercent: 0,
+            vehicleRange: { min: 0, max: null },
+            periodStart: today,
+            periodEnd: end,
+            nextDueAt: end,
+            providerName: null,
+            providerCustomerId: null,
+            providerSubscriptionId: null,
+            createdAt: now,
+            updatedAt: now,
+          },
+        },
+        { upsert: true },
+      );
+      subscription = await ctx.mongo.collections.subscriptions.findOne({ organizationId });
+      if (!subscription) throw notFound('Nenhuma assinatura cadastrada para esta organização.');
+    }
 
     const billing = ctx.integrations.billing.status();
     const cycleTotalCents = Math.round(

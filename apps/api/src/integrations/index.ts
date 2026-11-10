@@ -1,6 +1,7 @@
 import {
   billingStatus,
   emailStatus,
+  isMailgun,
   postalCodeStatus,
   trafficFinesStatus,
   whatsappStatus,
@@ -156,6 +157,26 @@ export function createIntegrations(env: Env): Integrations {
       status: () => mail,
       async send(to, subject, body) {
         if (!mail.connected) return UNAVAILABLE(mail.message);
+        if (isMailgun(env)) {
+          // Mailgun: POST /v3/<domínio>/messages, Basic api:<chave>, form-urlencoded.
+          try {
+            const base = env.MAILGUN_API_URL ?? (env.MAILGUN_REGION === 'eu' ? 'https://api.eu.mailgun.net' : 'https://api.mailgun.net');
+            const res = await fetch(`${base.replace(/\/$/, '')}/v3/${encodeURIComponent(env.MAILGUN_DOMAIN!)}/messages`, {
+              signal: AbortSignal.timeout(INTEGRATION_TIMEOUT_MS),
+              method: 'POST',
+              headers: {
+                authorization: `Basic ${Buffer.from(`api:${env.MAILGUN_API_KEY}`).toString('base64')}`,
+                'content-type': 'application/x-www-form-urlencoded',
+              },
+              body: new URLSearchParams({ from: env.EMAIL_FROM!, to, subject, text: body }).toString(),
+            });
+            if (!res.ok) return UNAVAILABLE(`Mailgun retornou HTTP ${res.status}.`);
+            const payload = (await res.json().catch(() => ({}))) as { id?: string };
+            return { delivered: true, providerMessageId: payload.id ?? null, error: null, manualLink: null };
+          } catch (err) {
+            return UNAVAILABLE(`Falha ao contatar o Mailgun: ${(err as Error).message}`);
+          }
+        }
         try {
           const res = await fetch(env.EMAIL_API_URL!, {
             signal: AbortSignal.timeout(INTEGRATION_TIMEOUT_MS),

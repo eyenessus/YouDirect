@@ -85,6 +85,12 @@ const envSchema = z.object({
   EMAIL_API_URL: z.string().optional(),
   EMAIL_API_TOKEN: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
+  // EMAIL_PROVIDER=mailgun usa estas (e EMAIL_FROM).
+  MAILGUN_API_KEY: z.string().optional(),
+  MAILGUN_DOMAIN: z.string().optional(),
+  MAILGUN_REGION: z.enum(['us', 'eu']).default('us'),
+  /** Só para testes/proxy: substitui https://api.mailgun.net. */
+  MAILGUN_API_URL: z.string().url().optional(),
 
   POSTAL_CODE_PROVIDER_URL: z.string().optional(),
 
@@ -206,8 +212,14 @@ export function whaplyStatus(env: Env): IntegrationStatus {
   };
 }
 
+export function isMailgun(env: Env): boolean {
+  return (env.EMAIL_PROVIDER ?? '').toLowerCase() === 'mailgun';
+}
+
 export function emailStatus(env: Env): IntegrationStatus {
-  const connected = Boolean(env.EMAIL_API_URL && env.EMAIL_API_TOKEN && env.EMAIL_FROM);
+  const connected = isMailgun(env)
+    ? Boolean(env.MAILGUN_API_KEY && env.MAILGUN_DOMAIN && env.EMAIL_FROM)
+    : Boolean(env.EMAIL_API_URL && env.EMAIL_API_TOKEN && env.EMAIL_FROM);
   return {
     name: env.EMAIL_PROVIDER ?? (connected ? 'email' : null),
     connected,

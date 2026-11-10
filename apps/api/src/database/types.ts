@@ -169,6 +169,8 @@ export interface DriverDoc extends Tenant {
   addressProofFileId: ObjectId | null;
   /** Opt-in para mensagens de vistoria pelo WhatsApp (política da Meta). */
   whatsappConsent?: DriverConsentEmbedded | null;
+  /** LGPD: dados pessoais apagados (o histórico financeiro fica). */
+  anonymizedAt?: Date | null;
   status: DriverStatus;
   archivedAt: Date | null;
   createdBy: ObjectId | null;
@@ -525,7 +527,9 @@ export interface NotificationDoc extends Tenant {
   entityType: string | null;
   entityId: ObjectId | null;
   targetPath: string | null;
+  /** Leitura global legada; leituras novas são por usuário em `readBy`. */
   readAt: Date | null;
+  readBy?: ObjectId[];
   dedupeKey: string;
 }
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { Eye, EyeOff } from 'lucide-vue-next';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppInput from '@/components/ui/AppInput.vue';
@@ -119,6 +119,12 @@ async function submit() {
           </FormField>
 
           <p v-if="error" class="text-sm text-negative" role="alert">{{ error }}</p>
+
+          <div class="-mt-2 text-right">
+            <RouterLink to="/esqueci-a-senha" class="text-sm font-medium text-brand-600 hover:underline">
+              Esqueci a senha
+            </RouterLink>
+          </div>
 
           <AppButton type="submit" block size="lg" :loading="loading">Entrar</AppButton>
         </form>

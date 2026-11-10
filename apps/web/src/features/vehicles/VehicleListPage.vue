@@ -11,6 +11,7 @@ import {
   type Vehicle,
 } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
+import ExportCsvButton from '@/components/ui/ExportCsvButton.vue';
 import DataTable, { type Column } from '@/components/ui/DataTable.vue';
 import SearchInput from '@/components/ui/SearchInput.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
@@ -140,6 +141,7 @@ onMounted(load);
       subtitle="Visualize e gerencie sua frota de veículos"
     >
       <template #actions>
+        <ExportCsvButton path="/exports/vehicles.csv" filename="veiculos.csv" module="vehicles" />
         <AppButton v-if="auth.allows('vehicles', 'create')" @click="router.push('/dashboard/vehicles/new')">
           <template #icon><span class="text-lg leading-none">+</span></template>
           Novo Veículo

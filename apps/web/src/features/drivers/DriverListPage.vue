@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { Eye, Pencil, Trash2 } from 'lucide-vue-next';
 import { driverStatusLabels, maskCpf, maskPhone, type Driver } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
+import ExportCsvButton from '@/components/ui/ExportCsvButton.vue';
 import DataTable, { type Column } from '@/components/ui/DataTable.vue';
 import SearchInput from '@/components/ui/SearchInput.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
@@ -92,6 +93,7 @@ onMounted(load);
       subtitle="Visualize e gerencie os motoristas cadastrados"
     >
       <template #actions>
+        <ExportCsvButton path="/exports/drivers.csv" filename="motoristas.csv" module="drivers" />
         <AppButton v-if="auth.allows('drivers', 'create')" @click="router.push('/dashboard/drivers/new')">
           <template #icon><span class="text-lg leading-none">+</span></template>
           Novo Motorista

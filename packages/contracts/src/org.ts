@@ -54,6 +54,10 @@ export const membershipPermissionsUpdateSchema = z.object({
   permissions: permissionMatrixSchema,
 });
 
+export const membershipRoleUpdateSchema = z.object({
+  role: z.enum(['ADMIN', 'MEMBER']),
+});
+
 export const employeesOverviewSchema = z.object({
   freeSeats: z.number().int(),
   extraSeatPriceCents: z.number().int(),

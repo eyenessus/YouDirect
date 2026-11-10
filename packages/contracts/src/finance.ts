@@ -184,7 +184,15 @@ export type PayableCreate = z.infer<typeof payableCreateSchema>;
 
 export const payableUpdateSchema = payableCreateBase
   .partial()
-  .omit({ alreadyPaid: true, paidBankAccountId: true, installments: true });
+  .omit({ alreadyPaid: true, paidBankAccountId: true, installments: true })
+  // Na edição, null limpa o campo (ausente = não altera).
+  .extend({
+    vehicleId: objectIdSchema.nullable().optional(),
+    supplierName: payableCreateBase.shape.supplierName.nullable(),
+    supplierTaxId: payableCreateBase.shape.supplierTaxId.nullable(),
+    documentUrl: payableCreateBase.shape.documentUrl.nullable(),
+    notes: payableCreateBase.shape.notes.nullable(),
+  });
 
 export const payableListQuerySchema = z.object({
   q: z.string().trim().max(120).optional(),

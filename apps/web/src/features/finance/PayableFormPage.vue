@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { Plus } from 'lucide-vue-next';
 import {
   formatCentsBRL,
@@ -10,6 +10,7 @@ import {
   type BankAccount,
   type ExpenseCategory,
   type InstallmentFrequency,
+  type Payable,
   type Vehicle,
 } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
@@ -23,8 +24,13 @@ import CurrencyInput from '@/components/ui/CurrencyInput.vue';
 import FormField from '@/components/ui/FormField.vue';
 import { api, ApiRequestError } from '@/lib/api';
 import { useToastStore } from '@/stores/ui';
+import { todayLocalIso } from '@/lib/dates';
 
 const router = useRouter();
+const route = useRoute();
+/** Presente = edição (PATCH) de uma conta existente. */
+const payableId = typeof route.params?.id === 'string' ? route.params.id : null;
+const editing = ref<Payable | null>(null);
 const toasts = useToastStore();
 
 const categories = ref<ExpenseCategory[]>([]);
@@ -35,7 +41,7 @@ const form = reactive({
   categoryId: '',
   vehicleId: '',
   amountCents: 0,
-  dueDate: new Date().toISOString().slice(0, 10),
+  dueDate: todayLocalIso(),
   description: '',
   supplierName: '',
   supplierTaxId: '',
@@ -88,6 +94,20 @@ async function loadReferences() {
   form.categoryId =
     categories.value.find((c) => c.label === 'Outro')?.id ?? categories.value[0]?.id ?? '';
   form.paidBankAccountId = accounts.value.find((a) => a.isDefault)?.id ?? accounts.value[0]?.id ?? '';
+  if (payableId) {
+    const payable = await api.get<Payable>(`/payables/${payableId}`);
+    editing.value = payable;
+    form.categoryId = payable.category?.id ?? form.categoryId;
+    form.vehicleId = payable.vehicle?.id ?? '';
+    form.amountCents = payable.amountCents;
+    form.dueDate = payable.dueDate;
+    form.description = payable.description;
+    form.supplierName = payable.supplierName ?? '';
+    form.supplierTaxId = payable.supplierTaxId ?? '';
+    form.documentUrl = payable.documentUrl ?? '';
+    form.recurring = payable.recurring;
+    form.notes = payable.notes ?? '';
+  }
 }
 
 async function createCategory() {
@@ -112,6 +132,25 @@ async function submit() {
   errors.value = {};
   saving.value = true;
   try {
+    if (payableId) {
+      // Edição: valor nunca abaixo do já pago (validado na API); parar a
+      // recorrência encerra a série inteira.
+      await api.patch(`/payables/${payableId}`, {
+        categoryId: form.categoryId,
+        vehicleId: form.vehicleId || null,
+        amountCents: form.amountCents,
+        dueDate: form.dueDate,
+        description: form.description,
+        supplierName: form.supplierName || null,
+        supplierTaxId: form.supplierTaxId || null,
+        documentUrl: form.documentUrl || null,
+        recurring: editing.value?.installment ? undefined : form.recurring,
+        notes: form.notes || null,
+      });
+      toasts.success('Conta a pagar atualizada');
+      await router.push('/dashboard/finance/accounts-payable');
+      return;
+    }
     await api.post('/payables', {
       categoryId: form.categoryId,
       vehicleId: form.vehicleId || undefined,
@@ -153,8 +192,14 @@ onMounted(loadReferences);
   <form class="space-y-6" novalidate @submit.prevent="submit">
     <PageHeader
       eyebrow="FINANCEIRO"
-      title="Nova Conta a Pagar"
-      subtitle="Cadastre uma nova conta a pagar"
+      :title="payableId ? 'Editar Conta a Pagar' : 'Nova Conta a Pagar'"
+      :subtitle="
+        editing?.installment
+          ? `Parcela ${editing.installment.number} de ${editing.installment.total}`
+          : payableId
+            ? 'Altere os dados da conta'
+            : 'Cadastre uma nova conta a pagar'
+      "
       back-to="/dashboard/finance/accounts-payable"
     />
 
@@ -240,7 +285,18 @@ onMounted(loadReferences);
         </FormField>
       </div>
 
-      <div class="mt-6 space-y-3">
+      <div v-if="payableId" class="mt-6 space-y-3">
+        <AppCheckbox
+          v-if="!editing?.installment"
+          v-model="form.recurring"
+          label="Conta Recorrente (desmarcar encerra a série inteira)"
+        />
+        <p v-if="editing && editing.paidAmountCents > 0" class="text-sm text-ink-muted">
+          Já pago: {{ formatCentsBRL(editing.paidAmountCents) }} — o valor não pode ficar abaixo disso.
+        </p>
+      </div>
+
+      <div v-else class="mt-6 space-y-3">
         <AppCheckbox
           v-model="form.recurring"
           label="Conta Recorrente (gerar automaticamente todo mês)"
@@ -255,7 +311,7 @@ onMounted(loadReferences);
         />
       </div>
 
-      <div v-if="form.installmentsEnabled" class="mt-5 rounded-card bg-surface-muted p-5">
+      <div v-if="!payableId && form.installmentsEnabled" class="mt-5 rounded-card bg-surface-muted p-5">
         <div class="grid gap-5 sm:grid-cols-2">
           <FormField
             v-slot="field"
@@ -282,7 +338,7 @@ onMounted(loadReferences);
         </p>
       </div>
 
-      <div v-if="form.alreadyPaid" class="mt-5">
+      <div v-if="!payableId && form.alreadyPaid" class="mt-5">
         <FormField
           v-slot="field"
           label="Conta bancária do pagamento"
@@ -313,7 +369,7 @@ onMounted(loadReferences);
       >
         Cancelar
       </AppButton>
-      <AppButton type="submit" :loading="saving">Criar Conta a Pagar</AppButton>
+      <AppButton type="submit" :loading="saving">{{ payableId ? 'Salvar alterações' : 'Criar Conta a Pagar' }}</AppButton>
     </div>
 
     <AppModal :open="categoryModal" title="Nova categoria" size="sm" @close="categoryModal = false">

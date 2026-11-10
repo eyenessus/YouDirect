@@ -2,6 +2,7 @@ import {
   Bell,
   CalendarDays,
   ClipboardCheck,
+  ScrollText,
   DollarSign,
   Gauge,
   LayoutGrid,
@@ -112,6 +113,13 @@ export const navigation: NavItem[] = [
     label: 'Colaboradores',
     icon: UserCog,
     to: '/dashboard/employees',
+    ownerOnly: true,
+  },
+  {
+    key: 'audit',
+    label: 'Auditoria',
+    icon: ScrollText,
+    to: '/dashboard/audit',
     ownerOnly: true,
   },
 ];

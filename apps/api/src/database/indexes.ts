@@ -183,6 +183,7 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
     { key: { organizationId: 1, userId: 1, readAt: 1, createdAt: -1 }, name: 'by_user_read' },
     { key: { organizationId: 1, type: 1, createdAt: -1, _id: -1 }, name: 'by_org_type' },
     { key: { organizationId: 1, dedupeKey: 1 }, unique: true, name: 'uniq_dedupe' },
+    { key: { createdAt: 1 }, expireAfterSeconds: 180 * 24 * 3600, name: 'ttl_notification_180d' },
   ]);
 
   await c.messageTemplates.createIndexes([
@@ -216,6 +217,8 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
   await c.auditLogs.createIndexes([
     { key: { organizationId: 1, occurredAt: -1 }, name: 'by_org_occurred' },
     { key: { organizationId: 1, entityType: 1, entityId: 1, occurredAt: -1 }, name: 'by_entity' },
+    // Retenção de 5 anos (prazo prescricional geral para comprovação).
+    { key: { occurredAt: 1 }, expireAfterSeconds: 5 * 365 * 24 * 3600, name: 'ttl_audit_5y' },
   ]);
 
   await c.loginAttempts.createIndexes([{ key: { expiresAt: 1 }, expireAfterSeconds: 0, name: 'ttl_login_attempt' }]);

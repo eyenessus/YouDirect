@@ -12,6 +12,7 @@ import {
   type Receivable,
 } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
+import ExportCsvButton from '@/components/ui/ExportCsvButton.vue';
 import DataTable, { type Column } from '@/components/ui/DataTable.vue';
 import SearchInput from '@/components/ui/SearchInput.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
@@ -98,7 +99,11 @@ onMounted(load);
       eyebrow="FINANCEIRO"
       title="Contas a Receber"
       subtitle="Visualize e gerencie todas as contas a receber"
-    />
+    >
+      <template #actions>
+        <ExportCsvButton path="/exports/receivables.csv" filename="contas-a-receber.csv" module="finance" />
+      </template>
+    </PageHeader>
 
     <section class="fo-card overflow-hidden">
       <div class="p-6">

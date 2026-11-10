@@ -115,7 +115,7 @@ export async function generateCnhNotifications(
       entityType: 'driver',
       entityId: driver._id,
       targetPath: `/dashboard/drivers/${driver._id.toHexString()}`,
-      dedupeKey: `cnh:${driver._id.toHexString()}:${expiry}:${bucket}:${days < 0 ? today : ''}`,
+      dedupeKey: `cnh:${driver._id.toHexString()}:${expiry}:${bucket}:${days < 0 ? weekKey(today) : ''}`,
     });
     if (ok) created += 1;
   }
@@ -184,7 +184,7 @@ export async function generateInspectionNotifications(
       entityType: 'inspection',
       entityId: inspection._id,
       targetPath: `/dashboard/inspections/${inspection.vehicleId.toHexString()}`,
-      dedupeKey: `inspection-due:${inspection._id.toHexString()}:${inspection.dueDate}:${overdue ? `late:${today}` : 'soon'}`,
+      dedupeKey: `inspection-due:${inspection._id.toHexString()}:${inspection.dueDate}:${overdue ? `late:${weekKey(today)}` : 'soon'}`,
     });
     if (ok) created += 1;
   }
@@ -240,4 +240,11 @@ export async function runNotificationGenerators(
     generateMaintenanceNotifications(ctx, organizationId, today),
   ]);
   return results.reduce((a, b) => a + b, 0);
+}
+
+/** Segunda-feira da semana de `iso` (AAAA-MM-DD): chave de lembrete semanal. */
+export function weekKey(iso: string): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
 }

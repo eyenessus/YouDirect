@@ -3,7 +3,9 @@ import { ObjectId } from 'mongodb';
 import {
   acceptInvitationRequestSchema,
   changePasswordRequestSchema,
+  confirmPasswordResetSchema,
   loginRequestSchema,
+  requestPasswordResetSchema,
   notificationPreferencesRequestSchema,
   passwordProblem,
   updateProfileRequestSchema,
@@ -28,6 +30,8 @@ import { audit } from '../../services/common.js';
  * existe.
  * ------------------------------------------------------------------ */
 export const LOGIN_LOCK_THRESHOLD = 10;
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
+const PASSWORD_RESET_MAX_PER_HOUR = 3;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_LOCK_MS = 15 * 60 * 1000;
 
@@ -216,6 +220,102 @@ export async function registerAuthRoutes(
         entityId: user._id,
       });
       void reply;
+      return { ok: true };
+    },
+  );
+
+  /* ----------------------- esqueci a senha ------------------------- *
+   * Resposta SEMPRE igual (exista ou não o e-mail). Token de uso único,
+   * guardado só como hash, válido por 1 hora; no máximo 3 pedidos por
+   * conta por hora (além do limite por IP).
+   * ----------------------------------------------------------------- */
+  app.post(
+    '/auth/password/forgot',
+    { config: { rateLimit: { max: 5, timeWindow: '15 minutes' } } },
+    async (request) => {
+      const ctx = request.appCtx;
+      const body = requestPasswordResetSchema.parse(request.body);
+      const generic = {
+        ok: true,
+        message: 'Se o e-mail estiver cadastrado, enviaremos um link para redefinir a senha.',
+      };
+      const user = await ctx.mongo.collections.users.findOne({ emailLower: body.email });
+      if (!user || user.status !== 'ACTIVE') return generic;
+
+      const recent = await ctx.mongo.collections.passwordResets.countDocuments({
+        userId: user._id,
+        createdAt: { $gte: new Date(Date.now() - 3600 * 1000) },
+      });
+      if (recent >= PASSWORD_RESET_MAX_PER_HOUR) return generic;
+
+      const token = generateToken(32);
+      const now = new Date();
+      await ctx.mongo.collections.passwordResets.insertOne({
+        _id: new ObjectId(),
+        userId: user._id,
+        tokenHash: sha256(token),
+        expiresAt: new Date(now.getTime() + PASSWORD_RESET_TTL_MS),
+        usedAt: null,
+        createdAt: now,
+      });
+      const link = `${ctx.env.APP_URL.replace(/\/$/, '')}/redefinir-senha/${token}`;
+      const result = await ctx.integrations.email.send(
+        user.emailLower,
+        'YuDirect — redefinição de senha',
+        [
+          `Olá, ${user.name}.`,
+          '',
+          'Recebemos um pedido para redefinir a senha da sua conta no YuDirect.',
+          `Para criar uma nova senha, acesse (válido por 1 hora): ${link}`,
+          '',
+          'Se não foi você, ignore este e-mail — sua senha atual continua valendo.',
+        ].join('\n'),
+      );
+      if (!result.delivered) request.log.warn({ error: result.error }, 'e-mail de redefinição não enviado');
+      return generic;
+    },
+  );
+
+  app.post(
+    '/auth/password/reset',
+    { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } },
+    async (request) => {
+      const ctx = request.appCtx;
+      const body = confirmPasswordResetSchema.parse(request.body);
+      const now = new Date();
+      // Claim atômico: o mesmo link não serve duas vezes, nem em paralelo.
+      const reset = await ctx.mongo.collections.passwordResets.findOneAndUpdate(
+        { tokenHash: sha256(body.token), usedAt: null, expiresAt: { $gt: now } },
+        { $set: { usedAt: now } },
+      );
+      if (!reset) throw badRequest('Link inválido ou expirado. Peça um novo em "Esqueci a senha".');
+      const user = await ctx.mongo.collections.users.findOne({ _id: reset.userId, status: 'ACTIVE' });
+      if (!user) throw badRequest('Link inválido ou expirado. Peça um novo em "Esqueci a senha".');
+
+      await ctx.mongo.collections.users.updateOne(
+        { _id: user._id },
+        { $set: { passwordHash: await hashPassword(body.password), updatedAt: now } },
+      );
+      // Quem tinha a senha antiga (ou um link antigo) perde o acesso.
+      await ctx.mongo.collections.sessions.updateMany(
+        { userId: user._id, revokedAt: null },
+        { $set: { revokedAt: now } },
+      );
+      await ctx.mongo.collections.passwordResets.updateMany(
+        { userId: user._id, usedAt: null },
+        { $set: { usedAt: now } },
+      );
+      await ctx.mongo.collections.loginAttempts.deleteOne({ _id: user.emailLower });
+      const membership = await ctx.mongo.collections.memberships.findOne({ userId: user._id, status: 'ACTIVE' });
+      if (membership) {
+        await audit(ctx, {
+          organizationId: membership.organizationId,
+          actorId: user._id,
+          action: 'user.password_reset',
+          entityType: 'user',
+          entityId: user._id,
+        });
+      }
       return { ok: true };
     },
   );

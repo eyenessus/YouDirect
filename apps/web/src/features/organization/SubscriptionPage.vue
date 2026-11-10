@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import {
-  ArrowUpCircle, ChevronRight, Download, ExternalLink, FileText, RefreshCw, XCircle,
+  ChevronRight, Download, ExternalLink, FileText, RefreshCw,
 } from 'lucide-vue-next';
 import {
   formatCentsBRL,
@@ -70,11 +70,28 @@ function openInvoice(url: string | null) {
   if (url) window.open(url, '_blank', 'noopener');
 }
 
-function notifyUnavailable(action: string) {
-  toasts.warning(
-    `${action} indisponível`,
-    'Esta ação depende do provedor de cobrança configurado para a organização.',
-  );
+const BOM = String.fromCharCode(0xfeff);
+
+/** Extrato do período em CSV, gerado com os mesmos números exibidos na tela. */
+function downloadStatement() {
+  if (!overview.value) return;
+  const { statement } = overview.value;
+  const cell = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const money = (c: number) => (c / 100).toFixed(2).replace('.', ',');
+  const lines = [
+    [cell('Item'), cell('Valor (R$)')].join(';'),
+    ...statement.lines.map((l) => [cell(l.hint ? `${l.label} (${l.hint})` : l.label), money(l.amountCents)].join(';')),
+    [cell('Total no período'), money(statement.totalCents)].join(';'),
+  ];
+  const blob = new Blob([`${BOM}${statement.periodLabel}\r\n${lines.join('\r\n')}\r\n`], {
+    type: 'text/csv;charset=utf-8',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'extrato-assinatura.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 onMounted(load);
@@ -129,16 +146,12 @@ onMounted(load);
             </div>
           </dl>
 
-          <div v-if="auth.isOwnerOrAdmin" class="mt-7 space-y-3">
-            <AppButton variant="secondary" @click="notifyUnavailable('Upgrade de plano')">
-              <template #icon><ArrowUpCircle class="size-4" /></template>
-              Upgrade de plano
-            </AppButton>
-            <AppButton variant="danger-outline" @click="notifyUnavailable('Cancelamento')">
-              <template #icon><XCircle class="size-4" /></template>
-              Cancelar Assinatura
-            </AppButton>
-          </div>
+          <!-- Sem integração de cobrança não há upgrade/cancelamento automático:
+               em vez de botões que só avisam "indisponível", orientamos o caminho real. -->
+          <p v-if="auth.isOwnerOrAdmin" class="mt-7 text-[15px] leading-relaxed text-ink-soft">
+            Para mudar de plano ou cancelar a assinatura, fale com o suporte do YuDirect — a alteração vale a
+            partir do próximo ciclo.
+          </p>
 
           <p
             v-if="!overview.subscription.provider.connected"
@@ -159,7 +172,7 @@ onMounted(load);
             </div>
             <div class="flex items-center gap-3">
               <StatusBadge :label="overview.subscription.cycleLabel" tone="slate" :solid="false" />
-              <AppButton variant="secondary" size="sm" @click="notifyUnavailable('Download do extrato')">
+              <AppButton variant="secondary" size="sm" @click="downloadStatement">
                 <template #icon><Download class="size-4" /></template>
                 Baixar
               </AppButton>
@@ -203,7 +216,7 @@ onMounted(load);
               estiver conectado.
             </p>
           </div>
-          <AppButton variant="secondary" @click="refresh">
+          <AppButton v-if="overview.subscription.provider.connected" variant="secondary" @click="refresh">
             <template #icon><RefreshCw class="size-4" /></template>
             Atualizar
           </AppButton>

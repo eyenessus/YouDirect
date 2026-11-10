@@ -24,11 +24,14 @@ import {
 } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import AppButton from '@/components/ui/AppButton.vue';
+import AppInput from '@/components/ui/AppInput.vue';
+import AppModal from '@/components/ui/AppModal.vue';
 import AppSkeleton from '@/components/ui/AppSkeleton.vue';
+import FormField from '@/components/ui/FormField.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import WhatsappConsentCard from './WhatsappConsentCard.vue';
 import LaunchPaymentDialog from '@/features/finance/LaunchPaymentDialog.vue';
-import { api } from '@/lib/api';
+import { api, ApiRequestError, downloadFile } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/ui';
 import { statusTone } from '@/lib/status';
@@ -41,6 +44,39 @@ const toasts = useToastStore();
 const driver = ref<Driver | null>(null);
 const loading = ref(true);
 const payOpen = ref(false);
+
+/* ----------------------------- LGPD ------------------------------ */
+const exporting = ref(false);
+const anonymizeOpen = ref(false);
+const anonymizeConfirm = ref('');
+const anonymizing = ref(false);
+
+async function exportData() {
+  if (!driver.value) return;
+  exporting.value = true;
+  try {
+    await downloadFile(`/drivers/${driver.value.id}/data-export`, `dados-motorista-${driver.value.id}.json`);
+  } catch (err) {
+    toasts.error('Não foi possível exportar', err instanceof ApiRequestError ? err.message : undefined);
+  } finally {
+    exporting.value = false;
+  }
+}
+
+async function anonymize() {
+  if (!driver.value) return;
+  anonymizing.value = true;
+  try {
+    await api.post(`/drivers/${driver.value.id}/anonymize`, { confirm: anonymizeConfirm.value.trim() });
+    toasts.success('Motorista anonimizado', 'Os dados pessoais foram apagados; o histórico financeiro foi mantido.');
+    anonymizeOpen.value = false;
+    await router.replace('/dashboard/drivers');
+  } catch (err) {
+    toasts.error('Não foi possível anonimizar', err instanceof ApiRequestError ? err.message : undefined);
+  } finally {
+    anonymizing.value = false;
+  }
+}
 
 async function reload() {
   driver.value = await api.get<Driver>(`/drivers/${route.params.id}`);
@@ -83,6 +119,26 @@ onMounted(async () => {
           </AppButton>
         </template>
       </PageHeader>
+
+      <section
+        v-if="auth.allows('drivers', 'export') || auth.isOwnerOrAdmin"
+        class="fo-card flex flex-wrap items-center justify-between gap-4 p-5"
+      >
+        <div class="min-w-0">
+          <p class="font-semibold text-ink">Dados pessoais (LGPD)</p>
+          <p class="text-sm text-ink-muted">
+            Atenda pedidos do titular: exportar tudo o que a empresa guarda ou anonimizar o cadastro.
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <AppButton v-if="auth.allows('drivers', 'export')" variant="secondary" :loading="exporting" @click="exportData">
+            Exportar dados
+          </AppButton>
+          <AppButton v-if="auth.isOwnerOrAdmin" variant="danger-outline" @click="anonymizeOpen = true">
+            Anonimizar
+          </AppButton>
+        </div>
+      </section>
 
       <div class="grid gap-6 xl:grid-cols-2">
         <section class="fo-card p-7">
@@ -282,5 +338,27 @@ onMounted(async () => {
       :title="`Lançar pagamento — ${driver.fullName}`"
       @close="payOpen = false"
     />
+
+    <AppModal
+      :open="anonymizeOpen"
+      title="Anonimizar motorista"
+      description="Apaga nome, CPF, RG, contato, CNH, endereço e documentos. Locações, cobranças e pagamentos ficam no histórico, sem identificação. Não pode ser desfeito."
+      @close="anonymizeOpen = false"
+    >
+      <FormField v-slot="field" label="Digite ANONIMIZAR para confirmar" required>
+        <AppInput :id="field.id" v-model="anonymizeConfirm" autocomplete="off" />
+      </FormField>
+      <template #footer>
+        <AppButton variant="secondary" @click="anonymizeOpen = false">Cancelar</AppButton>
+        <AppButton
+          variant="danger"
+          :disabled="anonymizeConfirm.trim() !== 'ANONIMIZAR'"
+          :loading="anonymizing"
+          @click="anonymize"
+        >
+          Anonimizar
+        </AppButton>
+      </template>
+    </AppModal>
   </div>
 </template>

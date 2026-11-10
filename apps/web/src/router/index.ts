@@ -22,6 +22,18 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true, title: 'Entrar' },
   },
   {
+    path: '/esqueci-a-senha',
+    name: 'forgot-password',
+    component: () => import('@/features/auth/ForgotPasswordPage.vue'),
+    meta: { public: true, title: 'Esqueci a senha' },
+  },
+  {
+    path: '/redefinir-senha/:token',
+    name: 'reset-password',
+    component: () => import('@/features/auth/ResetPasswordPage.vue'),
+    meta: { public: true, title: 'Nova senha' },
+  },
+  {
     path: '/convite/:token',
     name: 'invite',
     component: () => import('@/features/auth/AcceptInvitePage.vue'),
@@ -158,6 +170,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/features/maintenance/MaintenanceWizardPage.vue'),
         meta: { module: 'maintenance', title: 'Nova Manutenção' },
       },
+      {
+        path: 'maintenance/:vehicleId/:orderId/edit',
+        name: 'maintenance-edit',
+        component: () => import('@/features/maintenance/MaintenanceWizardPage.vue'),
+        meta: { module: 'maintenance', title: 'Editar Manutenção' },
+      },
 
       {
         path: 'inspections',
@@ -215,6 +233,12 @@ const routes: RouteRecordRaw[] = [
         meta: { module: 'finance', title: 'Nova Conta a Pagar' },
       },
       {
+        path: 'finance/accounts-payable/:id/edit',
+        name: 'payable-edit',
+        component: () => import('@/features/finance/PayableFormPage.vue'),
+        meta: { module: 'finance', title: 'Editar Conta a Pagar' },
+      },
+      {
         path: 'finance/reports/by-vehicle',
         name: 'report-by-vehicle',
         component: () => import('@/features/finance/VehicleReportPage.vue'),
@@ -238,6 +262,12 @@ const routes: RouteRecordRaw[] = [
         name: 'employees',
         component: () => import('@/features/organization/EmployeesPage.vue'),
         meta: { ownerOnly: true, title: 'Colaboradores' },
+      },
+      {
+        path: 'audit',
+        name: 'audit',
+        component: () => import('@/features/organization/AuditPage.vue'),
+        meta: { ownerOnly: true, title: 'Auditoria' },
       },
       {
         path: 'profile',

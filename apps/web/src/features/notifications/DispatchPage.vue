@@ -170,12 +170,27 @@ async function send() {
   confirmSend.value = false;
   sending.value = true;
   try {
-    const result = await api.post<Dispatch>('/message-dispatches', {
-      templateId: selectedTemplateId.value || undefined,
-      body: body.value,
-      driverIds: [...selected.value],
-      consentConfirmed: true,
-    });
+    // Mesma chave em uma repetição (retry de rede) → a API devolve o mesmo disparo.
+    const idempotencyKey =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const result = await api.post<Dispatch>(
+      '/message-dispatches',
+      {
+        templateId: selectedTemplateId.value || undefined,
+        body: body.value,
+        driverIds: [...selected.value],
+        consentConfirmed: true,
+      },
+      { headers: { 'idempotency-key': idempotencyKey } },
+    );
+    if (result.deliveries.length < selected.value.size) {
+      toasts.info(
+        `${selected.value.size - result.deliveries.length} motorista(s) ignorado(s)`,
+        'Revogaram o consentimento para mensagens pelo WhatsApp.',
+      );
+    }
     lastResult.value = result;
     if (result.summary.sent > 0) {
       toasts.success(
@@ -197,8 +212,41 @@ async function send() {
 
 async function openHistory() {
   historyOpen.value = true;
-  const res = await api.get<{ data: Dispatch[] }>('/message-dispatches');
-  history.value = res.data;
+  try {
+    const res = await api.get<{ data: Dispatch[] }>('/message-dispatches');
+    history.value = res.data;
+  } catch (err) {
+    toasts.error('Não foi possível carregar o histórico', err instanceof ApiRequestError ? err.message : undefined);
+  }
+}
+
+/** Abre um disparo do histórico no painel de resultado (com os links e o reenvio). */
+async function showDispatch(id: string) {
+  try {
+    lastResult.value = await api.get<Dispatch>(`/message-dispatches/${id}`);
+    historyOpen.value = false;
+  } catch (err) {
+    toasts.error('Não foi possível abrir o disparo', err instanceof ApiRequestError ? err.message : undefined);
+  }
+}
+
+const retrying = ref(false);
+const retryable = computed(
+  () => lastResult.value?.deliveries.some((d) => d.status === 'FAILED' || d.status === 'PENDING') ?? false,
+);
+
+async function retryFailed() {
+  if (!lastResult.value) return;
+  retrying.value = true;
+  try {
+    const result = await api.post<Dispatch>(`/message-dispatches/${lastResult.value.id}/retry`, {});
+    lastResult.value = result;
+    toasts.success('Reenvio concluído', `${result.summary.sent} de ${result.summary.total} enviada(s).`);
+  } catch (err) {
+    toasts.error('Não foi possível reenviar', err instanceof ApiRequestError ? err.message : undefined);
+  } finally {
+    retrying.value = false;
+  }
 }
 
 onMounted(load);
@@ -389,6 +437,10 @@ onMounted(load);
         </p>
       </div>
 
+      <div v-if="retryable && whatsapp?.connected && auth.allows('notifications', 'dispatch')" class="mt-4">
+        <AppButton variant="secondary" :loading="retrying" @click="retryFailed">Reenviar as que falharam</AppButton>
+      </div>
+
       <ul class="mt-4 divide-y divide-line">
         <li
           v-for="delivery in lastResult.deliveries"
@@ -406,7 +458,9 @@ onMounted(load);
                   ? 'Enviada'
                   : delivery.status === 'FAILED'
                     ? 'Falhou'
-                    : 'Sem provedor'
+                    : delivery.status === 'PENDING'
+                      ? 'Pendente'
+                      : 'Sem provedor'
               "
               :tone="delivery.status === 'SENT' ? 'green' : delivery.status === 'FAILED' ? 'red' : 'amber'"
               :solid="false"
@@ -457,6 +511,13 @@ onMounted(load);
             </span>
           </div>
           <p class="mt-2 line-clamp-2 text-sm text-ink-soft">{{ dispatch.bodySnapshot }}</p>
+          <button
+            type="button"
+            class="mt-2 text-sm font-medium text-brand-600 hover:underline"
+            @click="showDispatch(dispatch.id)"
+          >
+            Ver destinatários{{ dispatch.summary.failed + dispatch.summary.pending > 0 ? ' e reenviar' : '' }}
+          </button>
         </li>
       </ul>
     </AppModal>

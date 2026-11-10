@@ -12,6 +12,7 @@ import {
   paymentMethodLabels,
   paymentMethods,
   type BankAccount,
+  type MaintenanceOrder,
   type MaintenanceType,
   type Vehicle,
 } from '@yudirect/contracts';
@@ -26,6 +27,7 @@ import FileDropzone from '@/components/ui/FileDropzone.vue';
 import FormField from '@/components/ui/FormField.vue';
 import { api, ApiRequestError, type UploadedFileResponse } from '@/lib/api';
 import { useToastStore } from '@/stores/ui';
+import { todayLocalIso } from '@/lib/dates';
 
 interface PartRow {
   uid: number;
@@ -43,6 +45,9 @@ const router = useRouter();
 const toasts = useToastStore();
 
 const vehicleId = route.params.vehicleId as string;
+/** Presente = edição de uma OS existente (PATCH); ausente = nova OS. */
+const orderId = (route.params.orderId as string | undefined) ?? null;
+const editing = ref<MaintenanceOrder | null>(null);
 const vehicle = ref<Vehicle | null>(null);
 const accounts = ref<BankAccount[]>([]);
 
@@ -56,7 +61,7 @@ const furthest = ref(0);
 
 const form = reactive({
   type: 'CORRECTIVE' as MaintenanceType,
-  performedAt: new Date().toISOString().slice(0, 10),
+  performedAt: todayLocalIso(),
   description: '',
   laborCostCents: 0,
   mileageKm: '',
@@ -138,14 +143,14 @@ function previous() {
   current.value = Math.max(current.value - 1, 0);
 }
 
-async function submit() {
+async function submit(status: 'COMPLETED' | 'OPEN' = 'COMPLETED') {
   if (!validateStep(0) || !validateStep(1)) {
     toasts.warning('Revise os campos obrigatórios');
     return;
   }
   saving.value = true;
   try {
-    await api.post(`/vehicles/${vehicleId}/maintenance`, {
+    const payload = {
       type: form.type,
       performedAt: form.performedAt || undefined,
       description: form.description,
@@ -155,7 +160,6 @@ async function submit() {
       notes: form.notes || undefined,
       paymentMethod: form.paymentMethod,
       bankAccountId: form.bankAccountId || undefined,
-      status: 'COMPLETED',
       items: parts.value.map((p) => ({
         name: p.name,
         code: p.code || undefined,
@@ -165,8 +169,19 @@ async function submit() {
         warrantyUntil: p.warrantyUntil || undefined,
         nextDueDate: p.nextDueDate || undefined,
       })),
-    });
-    toasts.success('Manutenção registrada', `Total de ${formatCentsBRL(totalCents.value)}.`);
+    };
+    if (orderId) {
+      await api.patch(`/maintenance/${orderId}`, payload);
+      toasts.success('OS atualizada', `Total de ${formatCentsBRL(totalCents.value)}.`);
+    } else {
+      await api.post(`/vehicles/${vehicleId}/maintenance`, { ...payload, status });
+      toasts.success(
+        status === 'OPEN' ? 'OS aberta' : 'Manutenção registrada',
+        status === 'OPEN'
+          ? 'Conclua a OS no histórico quando o serviço terminar — só então o valor entra no extrato.'
+          : `Total de ${formatCentsBRL(totalCents.value)}.`,
+      );
+    }
     await router.push(`/dashboard/maintenance/${vehicleId}`);
   } catch (err) {
     if (err instanceof ApiRequestError) {
@@ -188,7 +203,34 @@ onMounted(async () => {
   accounts.value = accountsRes.data.filter((a) => a.active);
   form.mileageKm = String(vehicleRes.mileageKm);
   form.bankAccountId = accounts.value.find((a) => a.isDefault)?.id ?? accounts.value[0]?.id ?? '';
-  addPart();
+  if (orderId) {
+    const order = await api.get<MaintenanceOrder>(`/maintenance/${orderId}`);
+    editing.value = order;
+    form.type = order.type;
+    form.performedAt = order.performedAt ?? '';
+    form.description = order.description;
+    form.laborCostCents = order.laborCostCents;
+    form.mileageKm = order.mileageKm !== null ? String(order.mileageKm) : '';
+    form.notes = order.notes ?? '';
+    form.paymentMethod = order.paymentMethod;
+    form.bankAccountId = order.bankAccount?.id ?? form.bankAccountId;
+    invoice.value = order.invoice
+      ? { fileId: order.invoice.fileId, url: order.invoice.url, originalName: order.invoice.originalName }
+      : null;
+    parts.value = order.items.map((item) => ({
+      uid: ++partSeq,
+      name: item.name,
+      code: item.code ?? '',
+      quantity: String(item.quantity),
+      unitCostCents: item.unitCostCents,
+      supplier: item.supplier ?? '',
+      warrantyUntil: item.warrantyUntil ?? '',
+      nextDueDate: item.nextDueDate ?? '',
+    }));
+    // Todas as etapas liberadas na edição.
+    furthest.value = steps.length - 1;
+  }
+  if (parts.value.length === 0) addPart();
 });
 </script>
 
@@ -196,7 +238,7 @@ onMounted(async () => {
   <div class="space-y-6">
     <PageHeader
       eyebrow="MANUTENÇÃO"
-      :title="`Nova Manutenção — ${vehicle?.plate ?? ''}`"
+      :title="editing ? `Editar OS ${editing.orderNumber} — ${vehicle?.plate ?? ''}` : `Nova Manutenção — ${vehicle?.plate ?? ''}`"
       :subtitle="vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.year ?? ''}`.trim() : ''"
       :back-to="`/dashboard/maintenance/${vehicleId}`"
     />
@@ -448,7 +490,14 @@ onMounted(async () => {
         Próximo
         <template #icon><ArrowRight class="order-last size-4" /></template>
       </AppButton>
-      <AppButton v-else :loading="saving" @click="submit">Registrar Manutenção</AppButton>
+      <div v-else class="flex flex-wrap gap-3">
+        <AppButton v-if="!orderId" variant="secondary" :loading="saving" @click="submit('OPEN')">
+          Salvar como aberta
+        </AppButton>
+        <AppButton :loading="saving" @click="submit()">
+          {{ orderId ? 'Salvar alterações' : 'Registrar Manutenção' }}
+        </AppButton>
+      </div>
     </div>
   </div>
 </template>

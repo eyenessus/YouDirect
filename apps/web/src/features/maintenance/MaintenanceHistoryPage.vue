@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { CalendarCheck, Download, ExternalLink, Eye, FileText, Trash2, Wrench } from 'lucide-vue-next';
+import { CalendarCheck, CheckCircle2, Download, ExternalLink, Eye, FileText, Pencil, Trash2, Wrench } from 'lucide-vue-next';
 import {
   formatCentsBRL,
   formatIsoDateBR,
@@ -41,6 +41,9 @@ const downloading = ref(false);
 const detail = ref<MaintenanceOrder | null>(null);
 const attachmentsFor = ref<MaintenanceOrder | null>(null);
 const confirmTarget = ref<MaintenanceOrder | null>(null);
+/** Ações com efeito no extrato pedem confirmação. */
+const pending = ref<{ kind: 'cancel' | 'complete'; order: MaintenanceOrder } | null>(null);
+const acting = ref(false);
 const deleting = ref(false);
 
 const columns: Column[] = [
@@ -56,8 +59,15 @@ const columns: Column[] = [
 ];
 
 function actionsFor(order: MaintenanceOrder): ActionItem[] {
+  const canUpdate = auth.allows('maintenance', 'update');
   return [
     { key: 'view', label: 'Ver detalhes', icon: Eye },
+    ...(canUpdate && order.status !== 'CANCELED'
+      ? [{ key: 'edit', label: 'Editar', icon: Pencil } satisfies ActionItem]
+      : []),
+    ...(canUpdate && order.status === 'OPEN'
+      ? [{ key: 'complete', label: 'Concluir OS', icon: CheckCircle2 } satisfies ActionItem]
+      : []),
     {
       key: 'cancel',
       label: 'Cancelar OS',
@@ -89,14 +99,27 @@ async function load() {
 async function onAction(key: string, order: MaintenanceOrder) {
   if (key === 'view') detail.value = order;
   else if (key === 'delete') confirmTarget.value = order;
-  else if (key === 'cancel') {
-    try {
-      await api.post(`/maintenance/${order.id}/cancel`);
-      toasts.success('OS cancelada', 'O lançamento bancário foi estornado.');
-      await load();
-    } catch (err) {
-      toasts.error('Não foi possível cancelar', err instanceof ApiRequestError ? err.message : undefined);
-    }
+  else if (key === 'edit') await router.push(`/dashboard/maintenance/${vehicleId}/${order.id}/edit`);
+  else if (key === 'cancel' || key === 'complete') pending.value = { kind: key, order };
+}
+
+async function confirmPending() {
+  if (!pending.value) return;
+  const { kind, order } = pending.value;
+  acting.value = true;
+  try {
+    await api.post(`/maintenance/${order.id}/${kind}`);
+    if (kind === 'cancel') toasts.success('OS cancelada', order.ledgerPosted ? 'O lançamento bancário foi estornado.' : undefined);
+    else toasts.success('OS concluída', order.bankAccount ? 'O valor foi lançado no extrato.' : undefined);
+    pending.value = null;
+    await load();
+  } catch (err) {
+    toasts.error(
+      kind === 'cancel' ? 'Não foi possível cancelar' : 'Não foi possível concluir',
+      err instanceof ApiRequestError ? err.message : undefined,
+    );
+  } finally {
+    acting.value = false;
   }
 }
 
@@ -367,6 +390,21 @@ onMounted(load);
       :loading="deleting"
       @cancel="confirmTarget = null"
       @confirm="confirmDelete"
+    />
+
+    <ConfirmDialog
+      :open="pending !== null"
+      :title="pending?.kind === 'cancel' ? 'Cancelar ordem de serviço' : 'Concluir ordem de serviço'"
+      :message="
+        pending?.kind === 'cancel'
+          ? `Cancelar a OS ${pending?.order.orderNumber ?? ''}? Se já houver lançamento no extrato, ele será estornado.`
+          : `Concluir a OS ${pending?.order.orderNumber ?? ''}? O total será debitado na conta bancária informada.`
+      "
+      :confirm-label="pending?.kind === 'cancel' ? 'Cancelar OS' : 'Concluir'"
+      :danger="pending?.kind === 'cancel'"
+      :loading="acting"
+      @cancel="pending = null"
+      @confirm="confirmPending"
     />
   </div>
 </template>

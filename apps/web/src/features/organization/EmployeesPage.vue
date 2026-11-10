@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { ChevronDown, ChevronRight, DollarSign, MailCheck, Trash2, Users } from 'lucide-vue-next';
+import { ChevronDown, ChevronRight, DollarSign, MailCheck, Pencil, Trash2, Users } from 'lucide-vue-next';
 import {
   formatCentsBRL,
   invitationStatusLabels,
@@ -10,6 +10,7 @@ import {
   permissionModuleLabels,
   permissionModules,
   type EmployeesOverview,
+  type Membership,
   type PermissionAction,
   type PermissionMatrix,
   type PermissionModule,
@@ -26,8 +27,14 @@ import FormField from '@/components/ui/FormField.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import { api, ApiRequestError } from '@/lib/api';
 import { useToastStore } from '@/stores/ui';
+import { useAuthStore } from '@/stores/auth';
 
 const toasts = useToastStore();
+const auth = useAuthStore();
+const isOwner = computed(() => auth.organization?.role === 'OWNER');
+/** Colaborador cujas permissões estão sendo editadas (null = novo convite). */
+const editing = ref<Membership | null>(null);
+const busyId = ref<string | null>(null);
 
 const overview = ref<EmployeesOverview | null>(null);
 const loading = ref(true);
@@ -59,6 +66,7 @@ async function load() {
 }
 
 function openModal() {
+  editing.value = null;
   modalOpen.value = true;
   form.name = '';
   form.email = '';
@@ -67,6 +75,71 @@ function openModal() {
   expandedModules.value = new Set();
   errors.value = {};
   inviteLink.value = null;
+}
+
+function openEdit(member: Membership) {
+  editing.value = member;
+  matrix.value = JSON.parse(JSON.stringify(member.permissions ?? {})) as PermissionMatrix;
+  expandedModules.value = new Set();
+  errors.value = {};
+  inviteLink.value = null;
+  modalOpen.value = true;
+}
+
+/** ADMIN não edita outro ADMIN (regra da API) — o botão some. */
+function canManage(member: Membership): boolean {
+  return member.role === 'MEMBER' || isOwner.value;
+}
+
+async function savePermissions() {
+  if (!editing.value) return;
+  saving.value = true;
+  try {
+    await api.patch(`/memberships/${editing.value.id}/permissions`, { permissions: matrix.value });
+    toasts.success('Permissões atualizadas', 'Valem a partir do próximo carregamento de página do colaborador.');
+    modalOpen.value = false;
+    await load();
+  } catch (err) {
+    toasts.error('Não foi possível salvar', err instanceof ApiRequestError ? err.message : undefined);
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function changeRole(member: Membership) {
+  const role = member.role === 'ADMIN' ? 'MEMBER' : 'ADMIN';
+  busyId.value = member.id;
+  try {
+    await api.patch(`/memberships/${member.id}/role`, { role });
+    toasts.success(role === 'ADMIN' ? 'Promovido a administrador' : 'Agora é colaborador');
+    await load();
+  } catch (err) {
+    toasts.error('Não foi possível alterar o papel', err instanceof ApiRequestError ? err.message : undefined);
+  } finally {
+    busyId.value = null;
+  }
+}
+
+async function resendInvite(id: string) {
+  busyId.value = id;
+  try {
+    const invitation = await api.post<{ acceptUrl: string | null; delivery: { status: string } | null }>(
+      `/invitations/${id}/resend`,
+    );
+    await load();
+    if (invitation.delivery?.status === 'SENT') {
+      toasts.success('Convite reenviado por e-mail');
+    } else {
+      editing.value = null;
+      inviteLink.value = invitation.acceptUrl;
+      modalOpen.value = true;
+      toasts.warning('Novo link gerado', 'O e-mail não foi enviado: compartilhe o link exibido.');
+    }
+  } catch (err) {
+    toasts.error('Não foi possível reenviar', err instanceof ApiRequestError ? err.message : undefined);
+  } finally {
+    busyId.value = null;
+  }
 }
 
 function isModuleEnabled(mod: PermissionModule): boolean {
@@ -247,6 +320,24 @@ onMounted(load);
             <div class="flex items-center gap-3">
               <StatusBadge :label="membershipRoleLabels[member.role]" tone="slate" :solid="false" />
               <AppButton
+                v-if="isOwner"
+                variant="secondary"
+                size="sm"
+                :loading="busyId === member.id"
+                @click="changeRole(member)"
+              >
+                {{ member.role === 'ADMIN' ? 'Tornar colaborador' : 'Tornar administrador' }}
+              </AppButton>
+              <AppButton
+                v-if="canManage(member)"
+                variant="ghost"
+                :aria-label="`Editar permissões de ${member.user.name}`"
+                @click="openEdit(member)"
+              >
+                <template #icon><Pencil class="size-4" /></template>
+              </AppButton>
+              <AppButton
+                v-if="canManage(member)"
                 variant="ghost"
                 :aria-label="`Remover ${member.user.name}`"
                 @click="removeTarget = { id: member.id, name: member.user.name }"
@@ -288,6 +379,14 @@ onMounted(load);
                 :tone="invite.status === 'PENDING' ? 'amber' : 'slate'"
                 :solid="false"
               />
+              <AppButton
+                variant="secondary"
+                size="sm"
+                :loading="busyId === invite.id"
+                @click="resendInvite(invite.id)"
+              >
+                Reenviar
+              </AppButton>
               <AppButton v-if="invite.status === 'PENDING'" variant="ghost" @click="revokeInvite(invite.id)">
                 Revogar
               </AppButton>
@@ -300,8 +399,12 @@ onMounted(load);
     <!-- Modal -->
     <AppModal
       :open="modalOpen"
-      title="Adicionar colaborador"
-      description="Defina os dados e as áreas que este colaborador poderá acessar."
+      :title="editing ? `Permissões de ${editing.user.name}` : 'Adicionar colaborador'"
+      :description="
+        editing
+          ? 'Marque as áreas e ações que este colaborador pode usar.'
+          : 'Defina os dados e as áreas que este colaborador poderá acessar.'
+      "
       size="lg"
       @close="modalOpen = false"
     >
@@ -319,7 +422,7 @@ onMounted(load);
       </div>
 
       <div v-else class="space-y-5">
-        <div class="grid gap-5 sm:grid-cols-2">
+        <div v-if="!editing" class="grid gap-5 sm:grid-cols-2">
           <FormField v-slot="field" label="Nome" required :error="errors.name">
             <AppInput :id="field.id" v-model="form.name" placeholder="João Silva" :invalid="field.invalid" />
           </FormField>
@@ -334,7 +437,7 @@ onMounted(load);
           </FormField>
         </div>
 
-        <FormField v-slot="field" label="Telefone (opcional)" :error="errors.phone">
+        <FormField v-if="!editing" v-slot="field" label="Telefone (opcional)" :error="errors.phone">
           <AppInput :id="field.id" v-model="form.phone" placeholder="11999999999" inputmode="tel" />
         </FormField>
 
@@ -415,7 +518,8 @@ onMounted(load);
         <AppButton variant="secondary" @click="modalOpen = false">
           {{ inviteLink ? 'Fechar' : 'Cancelar' }}
         </AppButton>
-        <AppButton v-if="!inviteLink" :loading="saving" @click="submit">Enviar convite</AppButton>
+        <AppButton v-if="editing" :loading="saving" @click="savePermissions">Salvar permissões</AppButton>
+        <AppButton v-else-if="!inviteLink" :loading="saving" @click="submit">Enviar convite</AppButton>
       </template>
     </AppModal>
 
