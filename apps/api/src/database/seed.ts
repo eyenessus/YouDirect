@@ -32,6 +32,7 @@ import type {
 } from './types.js';
 import { postTransaction } from '../services/ledger.js';
 import { derivePayableStatus, deriveReceivableStatus } from '../services/finance.js';
+import { backfillRentalPaymentEntries } from '../services/rental-payments.js';
 import { runNotificationGenerators } from '../services/notifications.js';
 import { ensureDefaultCategories } from '../modules/finance/accounts.js';
 import { ensureDefaultTemplate } from '../modules/notifications/routes.js';
@@ -577,6 +578,7 @@ async function wipe(ctx: AppContext) {
     c.payables.deleteMany({}),
     c.receivables.deleteMany({}),
     c.payments.deleteMany({}),
+    c.rentalPayments.deleteMany({}),
     c.notifications.deleteMany({}),
     c.messageTemplates.deleteMany({}),
     c.messageDispatches.deleteMany({}),
@@ -1158,6 +1160,9 @@ export async function seed(ctx: AppContext): Promise<void> {
       { $set: { status: deriveReceivableStatus(doc, TODAY) } },
     );
   }
+
+  /* ----------- lançamentos da aba Pagamentos da locação (recibos INV) ----------- */
+  await backfillRentalPaymentEntries(ctx);
 
   /* ---------------------------- alertas ---------------------------- */
   await runNotificationGenerators(ctx, organizationId, TODAY);

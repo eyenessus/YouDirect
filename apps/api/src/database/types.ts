@@ -516,6 +516,32 @@ export interface PaymentDoc extends Tenant {
   reversalTransactionId?: ObjectId | null;
 }
 
+/**
+ * Lançamento da aba "Pagamentos" da locação (uma linha da lista, com recibo INV-AAAA-NNN).
+ * O dinheiro NÃO mora aqui: pago => `payments` + extrato via registerReceivablePayment;
+ * pendente é só previsão (RENT) ou uma conta a receber ainda não paga (EXTRA_KM).
+ */
+export interface RentalPaymentDoc extends Tenant {
+  rentalId: ObjectId;
+  driverId: ObjectId;
+  receiptNumber: string;
+  sequence: number;
+  category: 'RENT' | 'EXTRA_KM';
+  amountCents: number;
+  expectedDate: IsoDate;
+  notes: string | null;
+  status: 'PENDING' | 'PAID';
+  paidAt: IsoDate | null;
+  method: PaymentMethod | null;
+  /** RENT: conta do contrato; EXTRA_KM: conta própria (kind OTHER). */
+  receivableId: ObjectId | null;
+  paymentId: ObjectId | null;
+  /** Exclusão lógica: o histórico (e o estorno, se pago) permanece. */
+  deletedAt: Date | null;
+  idempotencyKey: string | null;
+  createdBy: ObjectId | null;
+}
+
 export interface NotificationDoc extends Tenant {
   userId: ObjectId | null;
   type: NotificationType;
