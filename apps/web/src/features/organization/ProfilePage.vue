@@ -3,6 +3,7 @@ import { onMounted, reactive, ref } from 'vue';
 import { BellOff, Bell, Eye, EyeOff, Lock, Mail, Pencil, Phone, Shield, User } from 'lucide-vue-next';
 import { formatDateTimeBR, maskPhone } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
+import PublicSiteCard from './PublicSiteCard.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppInput from '@/components/ui/AppInput.vue';
 import AppModal from '@/components/ui/AppModal.vue';
@@ -141,6 +142,8 @@ onMounted(load);
     <AppSkeleton v-if="loading" variant="cards" :rows="2" />
 
     <div v-else-if="profile" class="grid gap-6 xl:grid-cols-2">
+      <PublicSiteCard v-if="auth.isOwnerOrAdmin" />
+
       <!-- Informações pessoais -->
       <section class="fo-card p-7">
         <div class="flex items-start justify-between gap-4">

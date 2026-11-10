@@ -10,6 +10,7 @@ import {
   type VehicleStatus,
 } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
+import MaintenanceRequestsPanel from './MaintenanceRequestsPanel.vue';
 import SearchInput from '@/components/ui/SearchInput.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import AppButton from '@/components/ui/AppButton.vue';
@@ -52,6 +53,8 @@ onMounted(load);
       title="Manutenções"
       subtitle="Selecione um veículo para visualizar ou lançar manutenções."
     />
+
+    <MaintenanceRequestsPanel />
 
     <SearchInput
       v-model="query"

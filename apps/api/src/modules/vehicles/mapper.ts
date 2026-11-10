@@ -29,6 +29,7 @@ export async function toVehicleDTO(
       .map((id) => files.get(id.toHexString()))
       .filter((f): f is NonNullable<typeof f> => Boolean(f))
       .map((f) => ({ fileId: f.id.toHexString(), url: f.url, originalName: f.originalName })),
+    offer: doc.offer ?? null,
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
   };
@@ -60,6 +61,7 @@ export async function toVehicleDTOs(
       .map((id) => files.get(id.toHexString()))
       .filter((f): f is NonNullable<typeof f> => Boolean(f))
       .map((f) => ({ fileId: f.id.toHexString(), url: f.url, originalName: f.originalName })),
+    offer: doc.offer ?? null,
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
   }));

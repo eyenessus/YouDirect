@@ -176,6 +176,34 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
     },
   ]);
 
+  await c.driverAccessTokens.createIndexes([
+    { key: { tokenHash: 1 }, unique: true, name: 'uniq_token' },
+    { key: { organizationId: 1, driverId: 1, createdAt: -1 }, name: 'by_driver' },
+    { key: { expiresAt: 1 }, expireAfterSeconds: 7 * 24 * 3600, name: 'ttl_expired_7d' },
+  ]);
+
+  await c.driverSessions.createIndexes([
+    { key: { tokenHash: 1 }, unique: true, name: 'uniq_token' },
+    { key: { organizationId: 1, driverId: 1, revokedAt: 1 }, name: 'by_driver' },
+    { key: { expiresAt: 1 }, expireAfterSeconds: 0, name: 'ttl_expires' },
+  ]);
+
+  await c.maintenanceRequests.createIndexes([
+    { key: { organizationId: 1, status: 1, createdAt: -1 }, name: 'by_org_status' },
+    { key: { organizationId: 1, driverId: 1, createdAt: -1 }, name: 'by_driver' },
+  ]);
+
+  await c.rentalLeads.createIndexes([{ key: { organizationId: 1, status: 1, createdAt: -1 }, name: 'by_org_status' }]);
+
+  await c.organizations.createIndexes([
+    {
+      key: { publicSlug: 1 },
+      unique: true,
+      partialFilterExpression: { publicSlug: { $type: 'string' } },
+      name: 'uniq_public_slug',
+    },
+  ]);
+
   await c.trafficFines.createIndexes([
     { key: { organizationId: 1, fineNumber: 1 }, unique: true, name: 'uniq_org_fine_number' },
     {

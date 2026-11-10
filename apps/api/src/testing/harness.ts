@@ -66,10 +66,10 @@ export async function closeSharedHarness(): Promise<void> {
   }
 }
 
-export function sessionCookie(headers: Record<string, unknown>): string {
+export function sessionCookie(headers: Record<string, unknown>, name = 'yudirect_session'): string {
   const raw = headers['set-cookie'];
   const list = Array.isArray(raw) ? raw : [raw];
-  const cookie = list.find((c) => typeof c === 'string' && c.startsWith('yudirect_session='));
+  const cookie = list.find((c) => typeof c === 'string' && c.startsWith(`${name}=`));
   if (!cookie) throw new Error('Cookie de sessão não retornado.');
   return String(cookie).split(';')[0]!;
 }

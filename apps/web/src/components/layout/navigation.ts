@@ -92,6 +92,7 @@ export const navigation: NavItem[] = [
     children: [
       { label: 'Consultar', to: '/dashboard/rentals' },
       { label: 'Cadastrar', to: '/dashboard/rentals/new' },
+      { label: 'Pedidos do site', to: '/dashboard/leads' },
     ],
   },
   {

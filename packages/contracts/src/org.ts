@@ -128,6 +128,7 @@ export const filePurposes = [
   'INSPECTION_PHOTO',
   'TRAFFIC_FINE_NOTICE',
   'TRAFFIC_FINE_PROOF',
+  'MAINTENANCE_REQUEST_PHOTO',
 ] as const;
 export const filePurposeSchema = z.enum(filePurposes);
 export type FilePurpose = z.infer<typeof filePurposeSchema>;

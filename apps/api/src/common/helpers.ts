@@ -151,7 +151,7 @@ export function formatSequence(prefix: string, year: number, seq: number): strin
  */
 export function redactUrl(url: string): string {
   return url
-    .replace(/(\/(?:inspection-public|invitations|vistoria|convite|redefinir-senha)\/)[^/?#]+/g, '$1[redacted]')
+    .replace(/(\/(?:inspection-public|invitations|vistoria|convite|redefinir-senha|entrar)\/)[^/?#]+/g, '$1[redacted]')
     .replace(/([?&](?:sig|token|signature)=)[^&#]+/gi, '$1[redacted]');
 }
 

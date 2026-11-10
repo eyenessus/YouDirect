@@ -276,7 +276,7 @@ function publicLink(ctx: AppContext, token: string): string {
  * Garante um token de link público válido e devolve o valor bruto
  * (reaproveitado no botão de URL do template e no fallback manual).
  */
-async function ensurePublicToken(ctx: AppContext, inspection: InspectionDoc, forceNew = false): Promise<string> {
+export async function ensurePublicToken(ctx: AppContext, inspection: InspectionDoc, forceNew = false): Promise<string> {
   const existing = ctx.pii.decrypt(inspection.requestTokenEnc ?? null);
   const valid =
     existing &&

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { vehicleOfferSchema } from './portal.js';
 import {
   amountCentsSchema,
   emailSchema,
@@ -42,6 +43,8 @@ export const vehicleSchema = z.object({
   purchaseAmountCents: z.number().int().nullable(),
   status: vehicleStatusSchema,
   photos: z.array(vehiclePhotoSchema),
+  /** Oferta no site da locadora (grupo, preço semanal); null = fora do site. */
+  offer: vehicleOfferSchema.nullable().optional(),
   createdAt: isoDateTimeSchema,
   updatedAt: isoDateTimeSchema,
 });

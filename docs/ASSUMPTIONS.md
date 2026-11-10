@@ -163,6 +163,39 @@ fuso de negócio (`businessDate`, nunca `toISOString().slice(0,10)`).
 | Mais de uma locação cobre o dia (troca de motorista) | Pede escolha entre as candidatas (`AMBIGUOUS`) |
 | Nenhuma locação cobre o dia | Decisão manual (`NONE`) |
 
+### A-POR-01 — Acesso à Área do Motorista por link de uso único **[R]**
+O motorista não tem senha. A equipe gera, na página do motorista, um link pessoal
+(`/motorista/entrar/:token`): uso único, válido por 7 dias, guardado só como
+hash. Gerar um novo link invalida o anterior.
+
+- **Envio:** pelo WhatsApp genérico ou, sem provedor, por link `wa.me`. O Whaply
+  está restrito à vistoria, e um código OTP exigiria um template da Meta.
+- **Abertura:** é um POST feito pela página, porque pré-visualizações de link
+  só fazem GET e assim não "gastam" o link.
+- **Sessão:** própria (`driverSessions`, cookie `yudirect_driver`, 30 dias). Ela
+  nunca vale nas rotas da equipe, e a sessão da equipe não vale no portal.
+- **Perda de acesso:** revogar o acesso, inativar ou anonimizar o motorista
+  derruba a sessão.
+
+O motorista vê as próprias locações, as faturas semanais (calculadas pelo
+cronograma da conta do contrato), as multas confirmadas e as vistorias
+pendentes. Ele pode pedir manutenção, o que avisa a equipe sem criar OS
+(a OS movimenta o caixa) e enviar documentos.
+
+### A-SITE-01 — Site da locadora (`/l/:slug`) **[R]**
+- **Referência:** a home da Localiza: busca, grupos "ou similar", como funciona,
+  requisitos e FAQ.
+- **Ofertas:** o grupo, o preço semanal, a caução e o km são definidos por
+  veículo (`offer`). A vitrine agrupa os veículos e mostra o menor preço de cada
+  grupo ("a partir de").
+- **Disponibilidade:** "Disponível" quando há um carro do grupo AVAILABLE; senão
+  aparece "Lista de espera".
+- **Preço:** fixo, sem preço dinâmico (a Localiza varia o preço pela demanda,
+  mas a locação semanal para app usa tabela).
+- **Pedido de reserva:** vira um registro em `rentalLeads`, com honeypot,
+  limite de pedidos por IP e sem duplicar o mesmo telefone em 24 h. Ao aprovar
+  um pedido, o cadastro de motorista abre já preenchido.
+
 ## 4. Dados de demonstração (seed)
 
 ### A-SEED-01 — Saldo de abertura da conta **[R]**

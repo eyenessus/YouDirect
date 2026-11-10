@@ -38,6 +38,10 @@ import type {
   MessagingRateDoc,
   UnmatchedMediaDoc,
   TrafficFineDoc,
+  DriverAccessTokenDoc,
+  DriverSessionDoc,
+  MaintenanceRequestDoc,
+  RentalLeadDoc,
 } from './types.js';
 
 export interface Collections {
@@ -62,6 +66,10 @@ export interface Collections {
   payments: Collection<PaymentDoc>;
   rentalPayments: Collection<RentalPaymentDoc>;
   trafficFines: Collection<TrafficFineDoc>;
+  driverAccessTokens: Collection<DriverAccessTokenDoc>;
+  driverSessions: Collection<DriverSessionDoc>;
+  maintenanceRequests: Collection<MaintenanceRequestDoc>;
+  rentalLeads: Collection<RentalLeadDoc>;
   notifications: Collection<NotificationDoc>;
   messageTemplates: Collection<MessageTemplateDoc>;
   messageDispatches: Collection<MessageDispatchDoc>;
@@ -111,6 +119,10 @@ function buildCollections(db: Db): Collections {
     payments: db.collection<PaymentDoc>('payments'),
     rentalPayments: db.collection<RentalPaymentDoc>('rentalPayments'),
     trafficFines: db.collection<TrafficFineDoc>('trafficFines'),
+    driverAccessTokens: db.collection<DriverAccessTokenDoc>('driverAccessTokens'),
+    driverSessions: db.collection<DriverSessionDoc>('driverSessions'),
+    maintenanceRequests: db.collection<MaintenanceRequestDoc>('maintenanceRequests'),
+    rentalLeads: db.collection<RentalLeadDoc>('rentalLeads'),
     notifications: db.collection<NotificationDoc>('notifications'),
     messageTemplates: db.collection<MessageTemplateDoc>('messageTemplates'),
     messageDispatches: db.collection<MessageDispatchDoc>('messageDispatches'),

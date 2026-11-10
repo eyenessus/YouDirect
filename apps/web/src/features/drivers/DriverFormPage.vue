@@ -46,7 +46,14 @@ const cepLoading = ref(false);
 const stateOptions = brazilianStates.map((uf) => ({ value: uf, label: uf }));
 
 onMounted(async () => {
-  if (!driverId.value) return;
+  if (!driverId.value) {
+    // Pré-preenchimento vindo de um pedido de reserva do site.
+    const q = route.query;
+    if (typeof q.fullName === 'string') form.fullName = q.fullName;
+    if (typeof q.phone === 'string') form.phone = q.phone;
+    if (typeof q.email === 'string') form.email = q.email;
+    return;
+  }
   try {
     const driver = await api.get<Driver>(`/drivers/${driverId.value}`);
     form.fullName = driver.fullName;

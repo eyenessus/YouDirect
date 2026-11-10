@@ -70,7 +70,10 @@ async function request<T>(method: string, path: string, options: RequestOptions 
     signal: options.signal,
   });
 
-  if (response.status === 401 && path !== '/auth/me' && path !== '/auth/login') {
+  // Área do Motorista e site público têm o próprio tratamento de sessão:
+  // um 401 ali nunca deve mandar para o login da equipe.
+  const ownSession = path.startsWith('/driver/') || path.startsWith('/public/');
+  if (response.status === 401 && !ownSession && path !== '/auth/me' && path !== '/auth/login') {
     onUnauthorized?.();
   }
 
@@ -140,6 +143,17 @@ export interface UploadedFileResponse {
   contentType: string;
   size: number;
   originalName: string;
+}
+
+/** Upload pela Área do Motorista (sessão do motorista, finalidades restritas). */
+export async function uploadDriverFile(
+  file: File,
+  purpose: 'MAINTENANCE_REQUEST_PHOTO' | 'DRIVER_ID' | 'DRIVER_ADDRESS_PROOF',
+): Promise<UploadedFileResponse> {
+  const form = new FormData();
+  form.append('purpose', purpose);
+  form.append('file', file);
+  return request<UploadedFileResponse>('POST', '/driver/files', { body: form });
 }
 
 export async function uploadFile(file: File, purpose: string): Promise<UploadedFileResponse> {

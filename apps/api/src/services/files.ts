@@ -20,6 +20,7 @@ const rules: Record<FilePurpose, { mimes: string[]; maxBytes: number; label: str
   INSPECTION_PHOTO: { mimes: IMAGE_MIME, maxBytes: 10 * 1024 * 1024, label: 'Foto de vistoria' },
   TRAFFIC_FINE_NOTICE: { mimes: DOCUMENT_MIME, maxBytes: 10 * 1024 * 1024, label: 'Notificação da multa' },
   TRAFFIC_FINE_PROOF: { mimes: DOCUMENT_MIME, maxBytes: 10 * 1024 * 1024, label: 'Comprovante de indicação' },
+  MAINTENANCE_REQUEST_PHOTO: { mimes: IMAGE_MIME, maxBytes: 10 * 1024 * 1024, label: 'Foto do pedido de manutenção' },
 };
 
 export function filePurposeRules(purpose: FilePurpose) {

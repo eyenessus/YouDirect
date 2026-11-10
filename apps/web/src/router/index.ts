@@ -5,6 +5,8 @@ import { useAuthStore } from '@/stores/auth';
 declare module 'vue-router' {
   interface RouteMeta {
     public?: boolean;
+    /** Página fora do painel (Área do Motorista, site da locadora): sem sessão da equipe. */
+    standalone?: boolean;
     module?: PermissionModule;
     ownerOnly?: boolean;
     title?: string;
@@ -44,6 +46,71 @@ const routes: RouteRecordRaw[] = [
     name: 'public-inspection',
     component: () => import('@/features/inspections/PublicInspectionPage.vue'),
     meta: { public: true, title: 'Vistoria' },
+  },
+
+  /* ------------------------- Área do Motorista ---------------------- */
+  {
+    path: '/motorista/entrar/:token',
+    name: 'driver-login',
+    component: () => import('@/features/driver-portal/DriverLoginPage.vue'),
+    meta: { public: true, standalone: true, title: 'Área do Motorista' },
+  },
+  {
+    path: '/motorista/sem-acesso',
+    name: 'driver-no-access',
+    component: () => import('@/features/driver-portal/DriverNoAccessPage.vue'),
+    meta: { public: true, standalone: true, title: 'Área do Motorista' },
+  },
+  {
+    path: '/motorista',
+    component: () => import('@/features/driver-portal/DriverShell.vue'),
+    meta: { public: true, standalone: true },
+    children: [
+      {
+        path: '',
+        name: 'driver-home',
+        component: () => import('@/features/driver-portal/DriverHomePage.vue'),
+        meta: { public: true, standalone: true, title: 'Início' },
+      },
+      {
+        path: 'faturas',
+        name: 'driver-invoices',
+        component: () => import('@/features/driver-portal/DriverInvoicesPage.vue'),
+        meta: { public: true, standalone: true, title: 'Faturas' },
+      },
+      {
+        path: 'multas',
+        name: 'driver-fines',
+        component: () => import('@/features/driver-portal/DriverFinesPage.vue'),
+        meta: { public: true, standalone: true, title: 'Multas' },
+      },
+      {
+        path: 'manutencao',
+        name: 'driver-maintenance',
+        component: () => import('@/features/driver-portal/DriverMaintenancePage.vue'),
+        meta: { public: true, standalone: true, title: 'Manutenção' },
+      },
+      {
+        path: 'conta',
+        name: 'driver-account',
+        component: () => import('@/features/driver-portal/DriverAccountPage.vue'),
+        meta: { public: true, standalone: true, title: 'Minha conta' },
+      },
+    ],
+  },
+
+  /* -------------------------- Site da locadora ---------------------- */
+  {
+    path: '/l/:slug',
+    name: 'public-site',
+    component: () => import('@/features/public-site/PublicSitePage.vue'),
+    meta: { public: true, standalone: true, title: 'Aluguel de carros para motoristas de app' },
+  },
+  {
+    path: '/l/:slug/reservar',
+    name: 'public-site-reserve',
+    component: () => import('@/features/public-site/PublicReservePage.vue'),
+    meta: { public: true, standalone: true, title: 'Pedir reserva' },
   },
 
   /* ------------------------------ shell ---------------------------- */
@@ -158,6 +225,12 @@ const routes: RouteRecordRaw[] = [
         meta: { module: 'rentals', title: 'Locação' },
       },
 
+      {
+        path: 'leads',
+        name: 'rental-leads',
+        component: () => import('@/features/rentals/RentalLeadsPage.vue'),
+        meta: { module: 'rentals', title: 'Pedidos de Reserva' },
+      },
       {
         path: 'fines',
         name: 'fines',
@@ -334,6 +407,8 @@ export const router = createRouter({
 });
 
 router.beforeEach(async (to) => {
+  // Área do Motorista e site público não usam a sessão da equipe.
+  if (to.meta.standalone) return true;
   const auth = useAuthStore();
   if (!auth.loaded) await auth.load();
 

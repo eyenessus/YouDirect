@@ -12,6 +12,9 @@ import { randomUUID } from 'node:crypto';
 import { corsOrigins } from './config/env.js';
 import type { AppContext } from './context.js';
 import { authPlugin } from './plugins/auth.js';
+import { driverAuthPlugin } from './plugins/driver-auth.js';
+import { registerDriverPortalRoutes } from './modules/driver-portal/routes.js';
+import { registerPublicSiteRoutes } from './modules/public-site/routes.js';
 import { errorsPlugin } from './plugins/errors.js';
 import { registerAuthRoutes } from './modules/auth/routes.js';
 import { registerVehicleRoutes } from './modules/vehicles/routes.js';
@@ -119,6 +122,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
 
   await app.register(errorsPlugin);
   await app.register(authPlugin, { ctx });
+  await app.register(driverAuthPlugin, { ctx });
 
   /* ------------------- proteção CSRF (same-origin) ------------------ */
   const allowedOrigins = new Set(corsOrigins(ctx.env));
@@ -155,6 +159,8 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
       await registerRentalPaymentRoutes(api);
       await registerMaintenanceRoutes(api);
       await registerFineRoutes(api);
+      await registerDriverPortalRoutes(api);
+      await registerPublicSiteRoutes(api);
       await registerInspectionRoutes(api);
       await registerBankRoutes(api);
       await registerAccountRoutes(api);

@@ -37,6 +37,9 @@ import type {
   FineIndicationStatus,
   FineAppealStatus,
   FineAppealInstance,
+  MaintenanceRequestCategory,
+  MaintenanceRequestStatus,
+  RentalLeadStatus,
 } from '@yudirect/contracts';
 
 /** Data pura de negócio no formato `YYYY-MM-DD`. */
@@ -57,9 +60,21 @@ export interface OrganizationDoc extends Base {
   legalId: string | null;
   timezone: string;
   currency: string;
+  /** Endereço do site público (`/l/:slug`). */
+  publicSlug?: string | null;
   settings: {
     freeSeats: number;
     extraSeatPriceCents: number;
+    /** Site da locadora e contatos exibidos na Área do Motorista. */
+    publicSite?: {
+      enabled: boolean;
+      headline: string | null;
+      about: string | null;
+      city: string | null;
+      whatsappPhone: string | null;
+      emergencyPhone: string | null;
+      requirements: string[];
+    };
     /** Coleta de vistoria pelo WhatsApp (plano §4.1). Ausente = padrão. */
     inspectionWhatsapp?: InspectionWhatsappSettings;
   };
@@ -146,6 +161,16 @@ export interface VehicleDoc extends Tenant {
   registration: { state: string | null; city: string | null };
   purchase: { date: IsoDate | null; amountCents: number | null };
   photoFileIds: ObjectId[];
+  /** Oferta no site da locadora (grupo "ou similar", preço semanal). */
+  offer?: {
+    showOnSite: boolean;
+    groupName: string;
+    weeklyPriceCents: number;
+    depositCents: number;
+    kmPolicy: 'UNLIMITED' | 'FRANCHISE';
+    weeklyKmFranchise: number | null;
+    highlights: string[];
+  } | null;
   status: VehicleStatus;
   archivedAt: Date | null;
   createdBy: ObjectId | null;
@@ -508,6 +533,57 @@ export interface ReceivableDoc extends Tenant {
   status: ReceivableStatus;
   createdBy: ObjectId | null;
   version: number;
+}
+
+/** Link de acesso de uso único à Área do Motorista. */
+export interface DriverAccessTokenDoc extends Tenant {
+  driverId: ObjectId;
+  tokenHash: string;
+  expiresAt: Date;
+  usedAt: Date | null;
+  createdBy: ObjectId | null;
+}
+
+/** Sessão do motorista (separada das sessões da equipe). */
+export interface DriverSessionDoc {
+  _id: ObjectId;
+  organizationId: ObjectId;
+  driverId: ObjectId;
+  tokenHash: string;
+  createdAt: Date;
+  lastSeenAt: Date;
+  expiresAt: Date;
+  revokedAt: Date | null;
+  userAgent: string | null;
+  ip: string | null;
+}
+
+export interface MaintenanceRequestDoc extends Tenant {
+  driverId: ObjectId;
+  rentalId: ObjectId | null;
+  vehicleId: ObjectId;
+  category: MaintenanceRequestCategory;
+  description: string;
+  vehicleStopped: boolean;
+  photoFileIds: ObjectId[];
+  status: MaintenanceRequestStatus;
+  responseNote: string | null;
+  handledBy: ObjectId | null;
+}
+
+export interface RentalLeadDoc extends Tenant {
+  fullName: string;
+  phone: string;
+  email: string | null;
+  groupName: string | null;
+  desiredStartDate: IsoDate | null;
+  appPlatforms: string[];
+  hasEarCnh: boolean;
+  message: string | null;
+  status: RentalLeadStatus;
+  notes: string | null;
+  ip: string | null;
+  handledBy: ObjectId | null;
 }
 
 export interface TrafficFineDoc extends Tenant {

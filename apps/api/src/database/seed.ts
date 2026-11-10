@@ -634,6 +634,10 @@ async function wipe(ctx: AppContext) {
     c.payments.deleteMany({}),
     c.rentalPayments.deleteMany({}),
     c.trafficFines.deleteMany({}),
+    c.driverAccessTokens.deleteMany({}),
+    c.driverSessions.deleteMany({}),
+    c.maintenanceRequests.deleteMany({}),
+    c.rentalLeads.deleteMany({}),
     c.notifications.deleteMany({}),
     c.messageTemplates.deleteMany({}),
     c.messageDispatches.deleteMany({}),
@@ -667,7 +671,24 @@ export async function seed(ctx: AppContext): Promise<void> {
     legalId: ORG_LEGAL_ID,
     timezone: 'America/Sao_Paulo',
     currency: 'BRL',
-    settings: { freeSeats: 3, extraSeatPriceCents: 990 },
+    publicSlug: 'ff-veiculos',
+    settings: {
+      freeSeats: 3,
+      extraSeatPriceCents: 990,
+      publicSite: {
+        enabled: true,
+        headline: 'Carro para rodar no app, com manutenção inclusa',
+        about: 'Locação semanal para motoristas de Uber e 99. Manutenção, documentação e vistoria pelo WhatsApp.',
+        city: 'São Paulo/SP',
+        whatsappPhone: '11999990000',
+        emergencyPhone: '11999990001',
+        requirements: [
+          'CNH definitiva com EAR (exerce atividade remunerada)',
+          'Cadastro ativo na Uber ou 99',
+          'Comprovante de residência recente',
+        ],
+      },
+    },
     createdAt: now,
     updatedAt: now,
   });
@@ -1218,6 +1239,31 @@ export async function seed(ctx: AppContext): Promise<void> {
 
   /* ----------- lançamentos da aba Pagamentos da locação (recibos INV) ----------- */
   await backfillRentalPaymentEntries(ctx);
+
+  /* --------------------- ofertas no site (grupos) -------------------- */
+  const SEED_OFFERS: Array<{ plates: string[]; groupName: string; weekly: number; highlights: string[] }> = [
+    { plates: ['RVS9B58', 'RVA9F74'], groupName: 'Compacto', weekly: brl(550), highlights: ['Econômico', 'Ideal para começar'] },
+    { plates: ['EBR7G53', 'RNA8D85', 'GCQ0E23'], groupName: 'Hatch', weekly: brl(650), highlights: ['Ar-condicionado', 'Direção elétrica'] },
+    { plates: ['SEB9B67'], groupName: 'Sedã', weekly: brl(700), highlights: ['Porta-malas grande', 'Mais espaço para o passageiro'] },
+  ];
+  for (const o of SEED_OFFERS) {
+    await ctx.mongo.collections.vehicles.updateMany(
+      { _id: { $in: o.plates.map((p) => vehicleIds.get(p)!) } },
+      {
+        $set: {
+          offer: {
+            showOnSite: true,
+            groupName: o.groupName,
+            weeklyPriceCents: o.weekly,
+            depositCents: o.weekly * 2,
+            kmPolicy: 'UNLIMITED',
+            weeklyKmFranchise: null,
+            highlights: o.highlights,
+          },
+        },
+      },
+    );
+  }
 
   /* ----------------------------- multas ---------------------------- */
   // Exemplos do módulo de Multas (não geram cobrança, então não mexem nos números do financeiro):
