@@ -59,14 +59,14 @@ beforeEach(() => {
 });
 
 describe('página da locação', () => {
-  it('abre com o título "Locação #LOC-…", a situação e as abas Detalhes e Pagamentos', async () => {
+  it('abre com o título "Locação #LOC-…", a situação e as abas Detalhes, Pagamentos e Multas', async () => {
     useAuthStore().me = me({}, 'OWNER');
     const w = await mountPage();
     expect(w.text()).toContain('Locação #LOC-2026-003');
     expect(w.text()).toContain('Detalhes completos da locação');
     expect(w.text()).toContain('Ativa');
     const tabs = w.findAll('[role="tab"]').map((t) => t.text());
-    expect(tabs).toEqual(['Detalhes', 'Pagamentos']);
+    expect(tabs).toEqual(['Detalhes', 'Pagamentos', 'Multas']);
     expect(get).toHaveBeenCalledWith('/rentals/r1');
   });
 

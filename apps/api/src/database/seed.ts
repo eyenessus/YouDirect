@@ -14,6 +14,7 @@ import { ObjectId } from 'mongodb';
 import {
   addDaysIso,
   DEFAULT_PHOTO_SLOTS,
+  fineGravityPoints,
   fullMatrix,
   type PaymentMethod,
 } from '@yudirect/contracts';
@@ -34,6 +35,7 @@ import { postTransaction } from '../services/ledger.js';
 import { derivePayableStatus, deriveReceivableStatus } from '../services/finance.js';
 import { backfillRentalPaymentEntries } from '../services/rental-payments.js';
 import { runNotificationGenerators } from '../services/notifications.js';
+import { createFine } from '../services/traffic-fines.js';
 import { ensureDefaultCategories } from '../modules/finance/accounts.js';
 import { ensureDefaultTemplate } from '../modules/notifications/routes.js';
 
@@ -267,6 +269,58 @@ const RENTALS = [
   { number: 'LOC-2026-005', plate: 'RVS9B58', driver: 'driver-c', weekly: brl(650), deposit: brl(1300) },
   { number: 'LOC-2026-006', plate: 'RNA8D85', driver: 'driver-b', weekly: brl(800), deposit: brl(1600) },
   { number: 'LOC-2026-007', plate: 'EBR7G53', driver: 'driver-a', weekly: brl(700), deposit: brl(1500) },
+] as const;
+
+/** Multas de exemplo (datas relativas a TODAY = 2026-11-08). */
+const SEED_FINES = [
+  {
+    plate: 'EBR7G53', // LOC-2026-007: identificada automaticamente, indicar em 4 dias
+    ait: 'SP-1F2345678',
+    authority: 'DETRAN-SP',
+    code: '7455-0',
+    description: 'Transitar em velocidade superior à máxima permitida em até 20%',
+    gravity: 'MEDIUM',
+    date: '2026-10-21',
+    time: '18:40',
+    place: 'Av. Brasil, 1500 - São Paulo/SP',
+    amount: 13016,
+    discounted: 10413,
+    discountUntil: '2026-11-25',
+    noticeDate: '2026-10-28',
+    deadline: '2026-11-12',
+  },
+  {
+    plate: 'RNA8D85', // LOC-2026-006: prazo de indicação já vencido
+    ait: 'SP-2A9876543',
+    authority: 'CET - São Paulo',
+    code: '6050-1',
+    description: 'Avançar o sinal vermelho do semáforo',
+    gravity: 'VERY_SERIOUS',
+    date: '2026-10-05',
+    time: '08:12',
+    place: 'R. da Consolação x R. Maria Antônia - São Paulo/SP',
+    amount: 29347,
+    discounted: 23478,
+    discountUntil: '2026-11-20',
+    noticeDate: '2026-10-15',
+    deadline: '2026-11-05',
+  },
+  {
+    plate: 'FQT3I57', // sem locação na data: decisão manual
+    ait: 'PRF-E00112233',
+    authority: 'PRF',
+    code: '5185-1',
+    description: 'Deixar de manter acesa a luz baixa durante o dia em rodovia',
+    gravity: 'MEDIUM',
+    date: '2026-10-30',
+    time: '14:05',
+    place: 'BR-116, km 210',
+    amount: 13016,
+    discounted: undefined,
+    discountUntil: undefined,
+    noticeDate: '2026-11-04',
+    deadline: '2026-12-04',
+  },
 ] as const;
 
 /** Totais e pendências exatamente como na tela "Contas a Receber". */
@@ -579,6 +633,7 @@ async function wipe(ctx: AppContext) {
     c.receivables.deleteMany({}),
     c.payments.deleteMany({}),
     c.rentalPayments.deleteMany({}),
+    c.trafficFines.deleteMany({}),
     c.notifications.deleteMany({}),
     c.messageTemplates.deleteMany({}),
     c.messageDispatches.deleteMany({}),
@@ -1163,6 +1218,32 @@ export async function seed(ctx: AppContext): Promise<void> {
 
   /* ----------- lançamentos da aba Pagamentos da locação (recibos INV) ----------- */
   await backfillRentalPaymentEntries(ctx);
+
+  /* ----------------------------- multas ---------------------------- */
+  // Exemplos do módulo de Multas (não geram cobrança, então não mexem nos números do financeiro):
+  // uma identificada automaticamente com prazo próximo, uma com prazo de indicação perdido
+  // e uma de veículo sem locação na data (fica para decisão manual).
+  for (const f of SEED_FINES) {
+    await createFine(ctx, { organizationId, userId: ownerId }, {
+      vehicleId: vehicleIds.get(f.plate)!.toHexString(),
+      aitNumber: f.ait,
+      authorityName: f.authority,
+      authorityState: 'SP',
+      infractionCode: f.code,
+      infractionDescription: f.description,
+      gravity: f.gravity,
+      points: fineGravityPoints[f.gravity],
+      occurredDate: f.date,
+      occurredTime: f.time,
+      place: f.place,
+      amountCents: f.amount,
+      discountedAmountCents: f.discounted,
+      discountUntil: f.discountUntil,
+      adminFeeCents: 0,
+      noticeDate: f.noticeDate,
+      indicationDeadline: f.deadline,
+    });
+  }
 
   /* ---------------------------- alertas ---------------------------- */
   await runNotificationGenerators(ctx, organizationId, TODAY);

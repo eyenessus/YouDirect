@@ -159,6 +159,31 @@ const routes: RouteRecordRaw[] = [
       },
 
       {
+        path: 'fines',
+        name: 'fines',
+        component: () => import('@/features/fines/FineListPage.vue'),
+        meta: { module: 'fines', title: 'Multas' },
+      },
+      {
+        path: 'fines/new',
+        name: 'fines-new',
+        component: () => import('@/features/fines/FineFormPage.vue'),
+        meta: { module: 'fines', title: 'Nova Multa' },
+      },
+      {
+        path: 'fines/:id/edit',
+        name: 'fines-edit',
+        component: () => import('@/features/fines/FineFormPage.vue'),
+        meta: { module: 'fines', title: 'Editar Multa' },
+      },
+      {
+        path: 'fines/:id',
+        name: 'fine-detail',
+        component: () => import('@/features/fines/FineDetailPage.vue'),
+        meta: { module: 'fines', title: 'Multa' },
+      },
+
+      {
         path: 'maintenance',
         name: 'maintenance',
         component: () => import('@/features/maintenance/MaintenanceVehiclesPage.vue'),

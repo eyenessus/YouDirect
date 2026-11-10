@@ -19,6 +19,7 @@ import { postTransaction, reverseTransaction } from './ledger.js';
 import { foldAccents, sha256 } from '../common/helpers.js';
 import type { IsoDate, PayableDoc, ReceivableDoc, RentalDoc } from '../database/types.js';
 import { audit } from './common.js';
+import { syncFineFromReceivable } from './fine-sync.js';
 
 /* ------------------------------------------------------------------ *
  * Regras de status (prompt §5):
@@ -376,7 +377,7 @@ export async function registerReceivablePayment(
         organizationId: input.organizationId,
         bankAccountId: input.bankAccountId,
         occurredAt: input.paidAt,
-        description: `Pagamento da locação - Contrato ${receivable.description.replace(/^Locação\s+/, '')}`,
+        description: receivableStatementDescription(receivable),
         direction: 'IN',
         amountCents: input.amountCents,
         originType: 'RECEIVABLE',
@@ -423,6 +424,7 @@ export async function registerReceivablePayment(
       { session },
     );
     if (updated.matchedCount === 0) throw conflict('A conta foi alterada ao mesmo tempo. Tente novamente.');
+    await syncFineFromReceivable(ctx, receivable, status, input.actorId, session);
 
     await audit(
       ctx,
@@ -440,6 +442,12 @@ export async function registerReceivablePayment(
 
     return { paymentId, receivableId: receivable._id, alreadyProcessed: false };
   });
+}
+
+/** Texto da entrada no extrato bancário conforme o tipo da conta a receber. */
+export function receivableStatementDescription(receivable: Pick<ReceivableDoc, 'kind' | 'description'>): string {
+  if (receivable.kind === 'FINE') return `Reembolso de multa - ${receivable.description.replace(/^Multa\s+/, '')}`.slice(0, 180);
+  return `Pagamento da locação - Contrato ${receivable.description.replace(/^Locação\s+/, '')}`;
 }
 
 /** Pagamento "realizado" não pode estar no futuro (inflaria meses que ainda não aconteceram). */
@@ -533,6 +541,7 @@ export async function reverseReceivablePayment(
       { session },
     );
     if (res.matchedCount === 0) throw conflict('A conta foi alterada por outra operação. Tente novamente.');
+    await syncFineFromReceivable(ctx, receivable, status, params.actorId, session);
 
     await audit(
       ctx,

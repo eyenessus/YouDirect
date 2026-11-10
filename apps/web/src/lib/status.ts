@@ -9,8 +9,26 @@ import type {
   PayableStatus,
   ReceivableStatus,
   RentalStatus,
+  TrafficFineStatus,
   VehicleStatus,
 } from '@yudirect/contracts';
+
+/** Prazo de indicação: vermelho vencido, âmbar até 7 dias, nada se já indicado/encerrado. */
+export function fineDeadlineTone(
+  fine: { indicationDeadline: string | null; indication: { status: string }; status: TrafficFineStatus },
+  today: string,
+): { tone: 'red' | 'amber'; label: string } | null {
+  if (!fine.indicationDeadline) return null;
+  if (fine.indication.status === 'MISSED') return { tone: 'red', label: 'Prazo perdido' };
+  if (fine.indication.status !== 'PENDING' || !['RECEIVED', 'DRIVER_IDENTIFIED'].includes(fine.status)) return null;
+  const days = Math.round(
+    (Date.parse(`${fine.indicationDeadline}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000,
+  );
+  if (days < 0) return { tone: 'red', label: 'Indicação vencida' };
+  if (days === 0) return { tone: 'red', label: 'Indicar hoje' };
+  if (days <= 7) return { tone: 'amber', label: `Indicar em ${days} dia(s)` };
+  return null;
+}
 import type { BadgeTone } from '@/components/ui/StatusBadge.vue';
 
 /**
@@ -72,6 +90,17 @@ export const statusTone = {
     OVERDUE: 'red',
     CANCELED: 'slate',
   } satisfies Record<InvoiceStatus, BadgeTone>,
+
+  fine: {
+    RECEIVED: 'amber',
+    DRIVER_IDENTIFIED: 'blue',
+    INDICATED: 'blue',
+    CHARGED: 'amber',
+    PAID: 'green',
+    COMPANY_LIABLE: 'slate',
+    CONTESTED: 'amber',
+    CANCELED: 'slate',
+  } satisfies Record<TrafficFineStatus, BadgeTone>,
 
   severity: {
     CRITICAL: 'red',

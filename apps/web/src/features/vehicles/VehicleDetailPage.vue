@@ -10,6 +10,7 @@ import {
   type Vehicle,
 } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
+import FinesPanel from '@/features/fines/FinesPanel.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSkeleton from '@/components/ui/AppSkeleton.vue';
 import { api } from '@/lib/api';
@@ -115,6 +116,8 @@ onMounted(async () => {
           </a>
         </div>
       </section>
+
+      <FinesPanel v-if="auth.allows('fines', 'read')" :vehicle-id="vehicle.id" />
 
       <div class="flex flex-wrap gap-3">
         <AppButton variant="secondary" @click="router.push(`/dashboard/maintenance/${vehicle.id}`)">

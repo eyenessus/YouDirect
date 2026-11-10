@@ -55,6 +55,12 @@ export interface TrafficFine {
   occurredAt: string | null;
   amountCents: number;
   status: string;
+  /** Campos opcionais usados na importação para o módulo de Multas. */
+  aitNumber?: string | null;
+  authority?: string | null;
+  points?: number | null;
+  dueDate?: string | null;
+  indicationDeadline?: string | null;
 }
 
 export interface TrafficFinesProvider {

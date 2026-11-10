@@ -136,6 +136,33 @@ movimentação gera **estorno/arquivamento**, nunca remoção de lançamentos.
 
 ---
 
+### A-FIN-06 — Multas repassadas ao motorista **[R]**
+A cobrança de uma multa é uma conta a receber própria, `kind: 'FINE'`, com
+`trafficFineId` (índice único: uma cobrança por multa). Ela **não** entra na
+aba Pagamentos da locação: o tipo `OTHER` já significa KM excedente ali.
+Cancelar ou excluir a locação também não cancela essa conta.
+
+Regras adotadas como padrão (fáceis de mudar):
+- **Valor cobrado:** o valor com desconto enquanto ele for válido; depois, o
+  valor cheio. Soma-se a taxa administrativa, que por padrão é 0.
+- **Vencimento:** o próximo vencimento do aluguel do motorista, para cair no
+  ciclo semanal.
+- **Multa NIC** (por não indicar o condutor no prazo): **não** é repassada.
+  O alerta de prazo perdido marca a indicação como `MISSED`.
+- **Pagamento ao órgão:** continua sendo lançado à mão em Contas a Pagar. O
+  reembolso do motorista entra como receita, então os dois se anulam na DRE.
+
+### A-MUL-01 — Quem estava com o carro **[R]**
+As locações guardam apenas datas, sem hora. O dia da infração é calculado no
+fuso de negócio (`businessDate`, nunca `toISOString().slice(0,10)`).
+
+| Situação no dia da infração | Resultado |
+|---|---|
+| Uma única locação cobre o dia | Identificação automática (`HIGH`) |
+| É dia de entrega ou de devolução, ou a locação ativa já passou do fim previsto | Pede confirmação (`MEDIUM`) |
+| Mais de uma locação cobre o dia (troca de motorista) | Pede escolha entre as candidatas (`AMBIGUOUS`) |
+| Nenhuma locação cobre o dia | Decisão manual (`NONE`) |
+
 ## 4. Dados de demonstração (seed)
 
 ### A-SEED-01 — Saldo de abertura da conta **[R]**

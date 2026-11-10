@@ -9,6 +9,7 @@ import {
   UserCog,
   Users,
   Car,
+  ReceiptText,
 } from 'lucide-vue-next';
 import type { PermissionModule } from '@yudirect/contracts';
 
@@ -91,6 +92,16 @@ export const navigation: NavItem[] = [
     children: [
       { label: 'Consultar', to: '/dashboard/rentals' },
       { label: 'Cadastrar', to: '/dashboard/rentals/new' },
+    ],
+  },
+  {
+    key: 'fines',
+    label: 'Multas',
+    icon: ReceiptText,
+    module: 'fines',
+    children: [
+      { label: 'Consultar', to: '/dashboard/fines' },
+      { label: 'Cadastrar', to: '/dashboard/fines/new' },
     ],
   },
   {

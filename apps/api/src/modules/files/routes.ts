@@ -17,6 +17,8 @@ const PURPOSE_MODULE: Record<FilePurpose, PermissionModule> = {
   RENTAL_CONTRACT: 'rentals',
   MAINTENANCE_INVOICE: 'maintenance',
   INSPECTION_PHOTO: 'inspections',
+  TRAFFIC_FINE_NOTICE: 'fines',
+  TRAFFIC_FINE_PROOF: 'fines',
 };
 
 function assertFilePermission(

@@ -30,6 +30,13 @@ import type {
   MessageKind,
   MessageStatus,
   InspectionWhatsappSettings,
+  ReceivableKind,
+  FineGravity,
+  TrafficFineStatus,
+  FineMatchConfidence,
+  FineIndicationStatus,
+  FineAppealStatus,
+  FineAppealInstance,
 } from '@yudirect/contracts';
 
 /** Data pura de negócio no formato `YYYY-MM-DD`. */
@@ -493,10 +500,65 @@ export interface ReceivableDoc extends Tenant {
   paidAmountCents: number;
   dueDate: IsoDate;
   paymentMethod: PaymentMethod | null;
-  kind: 'RENT' | 'DEPOSIT' | 'OTHER';
+  kind: ReceivableKind;
   installmentNo: number | null;
   expectedPeriod: string | null;
+  /** kind FINE: a multa que originou a cobrança. */
+  trafficFineId?: ObjectId | null;
   status: ReceivableStatus;
+  createdBy: ObjectId | null;
+  version: number;
+}
+
+export interface TrafficFineDoc extends Tenant {
+  fineNumber: string;
+  sequence: number;
+  aitNumber: string;
+  aitNumberNorm: string;
+  /** Chave do índice único de AIT; null quando cancelada (permite recadastrar). */
+  aitActiveKey: string | null;
+  authority: { name: string; code: string | null; state: string | null };
+  source: 'MANUAL' | 'PROVIDER';
+  infractionCode: string | null;
+  infractionDescription: string;
+  gravity: FineGravity | null;
+  points: number | null;
+  /** Instante UTC da infração. */
+  occurredAt: Date;
+  /** Data de negócio (fuso de São Paulo) da infração. */
+  occurredOn: IsoDate;
+  place: string | null;
+  vehicleId: ObjectId;
+  plateSnapshot: string;
+  amountCents: number;
+  discountedAmountCents: number | null;
+  discountUntil: IsoDate | null;
+  adminFeeCents: number;
+  noticeDate: IsoDate | null;
+  indicationDeadline: IsoDate | null;
+  dueDate: IsoDate | null;
+  noticeFileId: ObjectId | null;
+  indicationProofFileId: ObjectId | null;
+  status: TrafficFineStatus;
+  match: {
+    rentalId: ObjectId | null;
+    driverId: ObjectId | null;
+    confidence: FineMatchConfidence;
+    candidateRentalIds: ObjectId[];
+    matchedAt: Date | null;
+    matchedBy: ObjectId | null;
+  };
+  indication: { status: FineIndicationStatus; protocol: string | null; indicatedAt: IsoDate | null };
+  appeal: {
+    status: FineAppealStatus;
+    instance: FineAppealInstance | null;
+    filedAt: IsoDate | null;
+    /** Estado para onde a multa volta se o recurso for indeferido. */
+    resumeStatus: TrafficFineStatus | null;
+  };
+  receivableId: ObjectId | null;
+  notes: string | null;
+  history: Array<{ at: Date; actorId: ObjectId | null; action: string; detail?: string | null }>;
   createdBy: ObjectId | null;
   version: number;
 }

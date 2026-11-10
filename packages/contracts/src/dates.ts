@@ -20,6 +20,55 @@ export function businessDate(instant: Date = new Date()): string {
   return partsFormatter.format(instant);
 }
 
+const dateTimePartsFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: BUSINESS_TIMEZONE,
+  hourCycle: 'h23',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+});
+
+/** Diferença (ms) entre o relógio do fuso de negócio e o UTC num instante. */
+function businessOffsetMs(instant: number): number {
+  const parts = Object.fromEntries(
+    dateTimePartsFormatter.formatToParts(new Date(instant)).map((p) => [p.type, p.value]),
+  ) as Record<string, string>;
+  const asUtc = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second),
+  );
+  return asUtc - (instant - (instant % 1000));
+}
+
+/**
+ * Data (`YYYY-MM-DD`) e hora (`HH:MM`) no fuso de negócio → instante UTC.
+ * Ex.: 2026-11-10 23:30 em São Paulo → 2026-11-11T02:30:00.000Z.
+ */
+export function zonedDateTimeToUtc(date: string, time: string): Date {
+  const [y, m, d] = date.split('-').map(Number);
+  const [hh, mm] = time.split(':').map(Number);
+  const wall = Date.UTC(y, m - 1, d, hh, mm);
+  let instant = wall - businessOffsetMs(wall);
+  // Segunda passada: corrige quando o offset muda entre o palpite e o resultado.
+  instant = wall - businessOffsetMs(instant);
+  return new Date(instant);
+}
+
+/** Hora local (`HH:MM`) no fuso de negócio de um instante. */
+export function businessTime(instant: Date): string {
+  const parts = Object.fromEntries(
+    dateTimePartsFormatter.formatToParts(instant).map((p) => [p.type, p.value]),
+  ) as Record<string, string>;
+  return `${parts.hour}:${parts.minute}`;
+}
+
 /** Converte `YYYY-MM-DD` em `Date` UTC à meia-noite (chave de competência). */
 export function isoDateToUtc(date: string): Date {
   return new Date(`${date}T00:00:00.000Z`);

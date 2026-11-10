@@ -1,5 +1,6 @@
 import { ObjectId, type ClientSession } from 'mongodb';
 import {
+  addDaysIso,
   businessDate,
   diffDaysIso,
   formatIsoDateBR,
@@ -228,6 +229,83 @@ export async function generateMaintenanceNotifications(
   return created;
 }
 
+/**
+ * Multas: prazo de indicação do condutor (7 dias, 2 dias, vencido) e fim do
+ * desconto. Prazo perdido marca a indicação como MISSED (provável NIC) —
+ * uma vez só, então o alerta crítico não se repete.
+ */
+export async function generateFineNotifications(
+  ctx: AppContext,
+  organizationId: ObjectId,
+  today = businessDate(),
+): Promise<number> {
+  let created = 0;
+  const pending = await ctx.mongo.collections.trafficFines
+    .find({
+      organizationId,
+      status: { $in: ['RECEIVED', 'DRIVER_IDENTIFIED'] },
+      'indication.status': 'PENDING',
+      indicationDeadline: { $type: 'string', $lte: addDaysIso(today, 7) },
+    })
+    .toArray();
+  for (const fine of pending) {
+    const deadline = fine.indicationDeadline!;
+    const days = diffDaysIso(deadline, today);
+    const missed = days < 0;
+    if (missed) {
+      const now = new Date();
+      await ctx.mongo.collections.trafficFines.updateOne(
+        { _id: fine._id, 'indication.status': 'PENDING' },
+        {
+          $set: { 'indication.status': 'MISSED', updatedAt: now },
+          $inc: { version: 1 },
+          $push: { history: { at: now, actorId: null, action: 'indication_missed', detail: 'Prazo de indicação vencido: provável multa NIC.' } },
+        },
+      );
+    }
+    const bucket = missed ? 'missed' : days <= 2 ? 'near' : 'soon';
+    const ok = await createNotification(ctx, {
+      organizationId,
+      type: 'FINE',
+      severity: missed || days <= 2 ? 'CRITICAL' : 'WARNING',
+      title: missed ? 'Prazo de indicação perdido' : 'Indique o condutor da multa',
+      message: missed
+        ? `O prazo para indicar o condutor da multa ${fine.aitNumber} (${fine.plateSnapshot}) venceu em ${formatIsoDateBR(deadline)}. A empresa pode receber multa NIC.`
+        : `Multa ${fine.aitNumber} (${fine.plateSnapshot}): indicar o condutor até ${formatIsoDateBR(deadline)}${days === 0 ? ' (hoje)' : ` (${days} dia(s))`}.`,
+      subjectLabel: fine.plateSnapshot,
+      entityType: 'trafficFine',
+      entityId: fine._id,
+      targetPath: `/dashboard/fines/${fine._id.toHexString()}`,
+      dedupeKey: `fine-indication:${fine._id.toHexString()}:${deadline}:${bucket}`,
+    });
+    if (ok) created += 1;
+  }
+
+  const discounts = await ctx.mongo.collections.trafficFines
+    .find({
+      organizationId,
+      status: { $in: ['RECEIVED', 'DRIVER_IDENTIFIED', 'INDICATED'] },
+      discountUntil: { $type: 'string', $gte: today, $lte: addDaysIso(today, 3) },
+    })
+    .toArray();
+  for (const fine of discounts) {
+    const ok = await createNotification(ctx, {
+      organizationId,
+      type: 'FINE',
+      severity: 'INFO',
+      title: 'Desconto da multa termina em breve',
+      message: `O valor com desconto da multa ${fine.aitNumber} (${fine.plateSnapshot}) vale até ${formatIsoDateBR(fine.discountUntil!)}.`,
+      subjectLabel: fine.plateSnapshot,
+      entityType: 'trafficFine',
+      entityId: fine._id,
+      targetPath: `/dashboard/fines/${fine._id.toHexString()}`,
+      dedupeKey: `fine-discount:${fine._id.toHexString()}:${fine.discountUntil}`,
+    });
+    if (ok) created += 1;
+  }
+  return created;
+}
+
 export async function runNotificationGenerators(
   ctx: AppContext,
   organizationId: ObjectId,
@@ -238,6 +316,7 @@ export async function runNotificationGenerators(
     generateRentalNotifications(ctx, organizationId, today),
     generateInspectionNotifications(ctx, organizationId, today),
     generateMaintenanceNotifications(ctx, organizationId, today),
+    generateFineNotifications(ctx, organizationId, today),
   ]);
   return results.reduce((a, b) => a + b, 0);
 }

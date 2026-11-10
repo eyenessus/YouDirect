@@ -653,7 +653,8 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
         sourceId: {
           $in: (
             await ctx.mongo.collections.receivables
-              .find({ organizationId: auth.organizationId, rentalId: id })
+              // Multa paga pelo motorista não impede excluir o contrato (ela segue na própria conta).
+              .find({ organizationId: auth.organizationId, rentalId: id, kind: { $ne: 'FINE' } })
               .project<{ _id: ObjectId }>({ _id: 1 })
               .toArray()
           ).map((r) => r._id),
@@ -676,7 +677,8 @@ export async function registerRentalRoutes(app: FastifyInstance): Promise<void> 
           { session },
         );
         await ctx.mongo.collections.receivables.updateMany(
-          { organizationId: auth.organizationId, rentalId: id, paidAmountCents: 0 },
+          // Multas repassadas continuam devidas mesmo com a locação cancelada.
+          { organizationId: auth.organizationId, rentalId: id, paidAmountCents: 0, kind: { $ne: 'FINE' } },
           { $set: { status: 'CANCELED', updatedAt: now } },
           { session },
         );

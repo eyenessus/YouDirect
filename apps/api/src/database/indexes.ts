@@ -167,6 +167,30 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
       partialFilterExpression: { expectedPeriod: { $type: 'string' }, rentalId: { $type: 'objectId' } },
       name: 'uniq_rental_period',
     },
+    {
+      // Uma multa gera no máximo uma cobrança (idempotência do "Cobrar").
+      key: { organizationId: 1, trafficFineId: 1 },
+      unique: true,
+      partialFilterExpression: { trafficFineId: { $type: 'objectId' } },
+      name: 'uniq_traffic_fine',
+    },
+  ]);
+
+  await c.trafficFines.createIndexes([
+    { key: { organizationId: 1, fineNumber: 1 }, unique: true, name: 'uniq_org_fine_number' },
+    {
+      // O mesmo auto de infração não entra duas vezes (exceto se o anterior foi cancelado).
+      // `aitActiveKey` = AIT normalizado; vira null quando a multa é cancelada.
+      key: { organizationId: 1, aitActiveKey: 1 },
+      unique: true,
+      partialFilterExpression: { aitActiveKey: { $type: 'string' } },
+      name: 'uniq_org_ait_active',
+    },
+    { key: { organizationId: 1, vehicleId: 1, occurredAt: -1 }, name: 'by_vehicle' },
+    { key: { organizationId: 1, 'match.driverId': 1, status: 1 }, name: 'by_driver' },
+    { key: { organizationId: 1, 'match.rentalId': 1 }, name: 'by_rental' },
+    { key: { organizationId: 1, status: 1, indicationDeadline: 1 }, name: 'by_indication_deadline' },
+    { key: { organizationId: 1, occurredAt: -1, _id: -1 }, name: 'by_org_occurred' },
   ]);
 
   await c.payments.createIndexes([

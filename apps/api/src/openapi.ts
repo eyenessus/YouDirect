@@ -266,6 +266,47 @@ export function openApiDocument(serverUrl: string) {
       '/maintenance/{id}/cancel': {
         post: op('Cancela a OS e estorna o lançamento', 'Manutenções', { parameters: [pathParam('id', 'ID')] }),
       },
+      '/traffic-fines': {
+        get: op('Lista multas (filtros: status, veículo, motorista, locação, prazo, busca) com resumo', 'Multas'),
+        post: op('Cadastra multa e identifica o motorista pela locação da data', 'Multas'),
+      },
+      '/traffic-fines/export.csv': { get: op('Exporta as multas filtradas em CSV', 'Multas') },
+      '/traffic-fines/{id}': {
+        get: op('Detalhe da multa com histórico e cobrança', 'Multas', { parameters: [pathParam('id', 'ID')] }),
+        patch: op('Edita a multa (controle por version)', 'Multas', { parameters: [pathParam('id', 'ID')] }),
+      },
+      '/traffic-fines/{id}/rematch': {
+        post: op('Refaz a identificação automática do motorista', 'Multas', { parameters: [pathParam('id', 'ID')] }),
+      },
+      '/traffic-fines/{id}/identify': {
+        post: op('Define o motorista (e a locação) manualmente', 'Multas', { parameters: [pathParam('id', 'ID')] }),
+      },
+      '/traffic-fines/{id}/indicate': {
+        post: op('Registra a indicação do condutor ao órgão', 'Multas', { parameters: [pathParam('id', 'ID')] }),
+      },
+      '/traffic-fines/{id}/charge': {
+        post: op('Cobra a multa do motorista (conta a receber FINE, idempotente)', 'Multas', {
+          parameters: [pathParam('id', 'ID')],
+        }),
+      },
+      '/traffic-fines/{id}/contest': {
+        post: op('Registra recurso (defesa prévia, JARI, CETRAN)', 'Multas', { parameters: [pathParam('id', 'ID')] }),
+      },
+      '/traffic-fines/{id}/appeal-result': {
+        post: op('Resultado do recurso: deferido cancela, indeferido retoma', 'Multas', { parameters: [pathParam('id', 'ID')] }),
+      },
+      '/traffic-fines/{id}/company-liable': {
+        post: op('A empresa assume a multa', 'Multas', { parameters: [pathParam('id', 'ID')] }),
+      },
+      '/traffic-fines/{id}/cancel': {
+        post: op('Cancela a multa e estorna a cobrança', 'Multas', { parameters: [pathParam('id', 'ID')] }),
+      },
+      '/traffic-fines/{id}/notify-driver': {
+        post: op('Avisa o motorista pelo WhatsApp (ou devolve link manual)', 'Multas', { parameters: [pathParam('id', 'ID')] }),
+      },
+      '/vehicles/{id}/traffic-fines/import': {
+        post: op('Importa multas do provedor configurado (sem duplicar AIT)', 'Multas', { parameters: [pathParam('id', 'ID')] }),
+      },
 
       '/inspection/photo-slots': {
         get: op('Tipos de foto configurados (máx. 12 ativos)', 'Vistorias'),

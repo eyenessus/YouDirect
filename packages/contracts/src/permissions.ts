@@ -15,6 +15,7 @@ export const permissionModules = [
   'rentals',
   'inspections',
   'maintenance',
+  'fines',
   'finance',
   'notifications',
 ] as const;
@@ -42,6 +43,7 @@ export const permissionModuleLabels: Record<PermissionModule, string> = {
   rentals: 'Locações',
   inspections: 'Vistorias',
   maintenance: 'Manutenções',
+  fines: 'Multas',
   finance: 'Financeiro',
   notifications: 'Notificações',
 };
@@ -66,6 +68,8 @@ export const moduleActions: Record<PermissionModule, readonly PermissionAction[]
   rentals: ['read', 'create', 'update', 'delete'],
   inspections: ['read', 'request', 'review', 'update', 'delete'],
   maintenance: ['read', 'create', 'update', 'delete', 'export'],
+  /** `pay` = cobrar a multa do motorista (gera conta a receber). */
+  fines: ['read', 'create', 'update', 'delete', 'pay', 'export'],
   finance: ['read', 'create', 'update', 'delete', 'pay', 'export'],
   notifications: ['read', 'update', 'dispatch'],
 };

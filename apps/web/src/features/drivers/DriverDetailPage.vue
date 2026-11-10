@@ -31,6 +31,7 @@ import AppSkeleton from '@/components/ui/AppSkeleton.vue';
 import FormField from '@/components/ui/FormField.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import WhatsappConsentCard from './WhatsappConsentCard.vue';
+import FinesPanel from '@/features/fines/FinesPanel.vue';
 import { api, ApiRequestError, downloadFile } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/ui';
@@ -351,6 +352,8 @@ onMounted(async () => {
         </section>
 
         <WhatsappConsentCard :driver="driver" @updated="reload" />
+
+        <FinesPanel v-if="auth.allows('fines', 'read')" class="xl:col-span-2" :driver-id="driver.id" />
       </div>
     </template>
 
