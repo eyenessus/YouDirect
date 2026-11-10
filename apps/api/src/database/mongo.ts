@@ -22,6 +22,7 @@ import type {
   PasswordResetDoc,
   PayableDoc,
   PaymentDoc,
+  RentalPaymentDoc,
   PhotoSlotDoc,
   ReceivableDoc,
   RentalDoc,
@@ -58,6 +59,7 @@ export interface Collections {
   payables: Collection<PayableDoc>;
   receivables: Collection<ReceivableDoc>;
   payments: Collection<PaymentDoc>;
+  rentalPayments: Collection<RentalPaymentDoc>;
   notifications: Collection<NotificationDoc>;
   messageTemplates: Collection<MessageTemplateDoc>;
   messageDispatches: Collection<MessageDispatchDoc>;
@@ -105,6 +107,7 @@ function buildCollections(db: Db): Collections {
     payables: db.collection<PayableDoc>('payables'),
     receivables: db.collection<ReceivableDoc>('receivables'),
     payments: db.collection<PaymentDoc>('payments'),
+    rentalPayments: db.collection<RentalPaymentDoc>('rentalPayments'),
     notifications: db.collection<NotificationDoc>('notifications'),
     messageTemplates: db.collection<MessageTemplateDoc>('messageTemplates'),
     messageDispatches: db.collection<MessageDispatchDoc>('messageDispatches'),

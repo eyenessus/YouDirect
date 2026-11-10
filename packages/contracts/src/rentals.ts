@@ -9,6 +9,7 @@ import {
 import {
   inspectionPeriodSchema,
   inspectionWeekdaySchema,
+  paymentMethodSchema,
   rentalStatusSchema,
   rentalTypeSchema,
 } from './enums.js';
@@ -142,3 +143,90 @@ export const rentalPaymentScheduleSchema = z.object({
   }),
 });
 export type RentalPaymentSchedule = z.infer<typeof rentalPaymentScheduleSchema>;
+
+/* ------------- Pagamentos da locação (aba "Pagamentos" da página da locação) ------------- */
+
+/** Pagamento da locação (abate o contrato) ou KM excedente (cobrança extra que soma ao total). */
+export const rentalPaymentCategories = ['RENT', 'EXTRA_KM'] as const;
+export const rentalPaymentCategorySchema = z.enum(rentalPaymentCategories);
+export type RentalPaymentCategory = z.infer<typeof rentalPaymentCategorySchema>;
+export const rentalPaymentCategoryLabels: Record<RentalPaymentCategory, string> = {
+  RENT: 'Pagamento da Locação',
+  EXTRA_KM: 'KM Excedente',
+};
+
+/** Situação exibida: `OVERDUE` = pendente com data prevista já vencida. */
+export const rentalPaymentStatuses = ['PAID', 'PENDING', 'OVERDUE'] as const;
+export const rentalPaymentStatusSchema = z.enum(rentalPaymentStatuses);
+export type RentalPaymentStatus = z.infer<typeof rentalPaymentStatusSchema>;
+export const rentalPaymentStatusLabels: Record<RentalPaymentStatus, string> = {
+  PAID: 'Pago',
+  PENDING: 'Pendente',
+  OVERDUE: 'Atrasado',
+};
+
+export const rentalPaymentEntrySchema = z.object({
+  id: objectIdSchema,
+  receiptNumber: z.string(),
+  category: rentalPaymentCategorySchema,
+  description: z.string(),
+  amountCents: z.number().int(),
+  expectedDate: isoDateSchema,
+  method: paymentMethodSchema.nullable(),
+  status: rentalPaymentStatusSchema,
+  paidAt: isoDateSchema.nullable(),
+  notes: z.string().nullable(),
+});
+export type RentalPaymentEntry = z.infer<typeof rentalPaymentEntrySchema>;
+
+export const rentalPaymentsViewSchema = z.object({
+  rentalId: objectIdSchema,
+  rentalNumber: z.string(),
+  rentalStatus: rentalStatusSchema,
+  summary: z.object({
+    /** Valor total da locação, sem caução (contrato + KM excedente). */
+    totalCents: z.number().int(),
+    paidCents: z.number().int(),
+    pendingCents: z.number().int(),
+    /** Caução: valor separado, fora do total. */
+    depositCents: z.number().int(),
+  }),
+  entries: z.array(rentalPaymentEntrySchema),
+});
+export type RentalPaymentsView = z.infer<typeof rentalPaymentsViewSchema>;
+
+/** Data prevista e data do pagamento são sempre informadas pelo dono (sem valor automático). */
+export const rentalPaymentCreateSchema = z
+  .object({
+    category: rentalPaymentCategorySchema,
+    amountCents: amountCentsSchema.refine((v) => v > 0, 'Informe um valor maior que zero'),
+    expectedDate: isoDateSchema,
+    alreadyPaid: z.boolean().default(false),
+    paidAt: isoDateSchema.optional(),
+    method: paymentMethodSchema.optional(),
+    notes: optionalString(300),
+  })
+  .refine((v) => !v.alreadyPaid || Boolean(v.paidAt), {
+    message: 'Informe a data do pagamento',
+    path: ['paidAt'],
+  });
+export type RentalPaymentCreate = z.infer<typeof rentalPaymentCreateSchema>;
+
+/** Só lançamentos pendentes podem ser editados. */
+export const rentalPaymentUpdateSchema = z.object({
+  amountCents: amountCentsSchema.refine((v) => v > 0, 'Informe um valor maior que zero').optional(),
+  expectedDate: isoDateSchema.optional(),
+  notes: optionalString(300),
+});
+export type RentalPaymentUpdate = z.infer<typeof rentalPaymentUpdateSchema>;
+
+/** "Marcar como pago" num lançamento pendente. */
+export const rentalPaymentPaySchema = z.object({
+  paidAt: isoDateSchema,
+  method: paymentMethodSchema,
+});
+export type RentalPaymentPay = z.infer<typeof rentalPaymentPaySchema>;
+
+export const rentalPaymentListQuerySchema = z.object({
+  q: z.string().trim().max(120).optional(),
+});

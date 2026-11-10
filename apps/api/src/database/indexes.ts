@@ -179,6 +179,18 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
     },
   ]);
 
+  await c.rentalPayments.createIndexes([
+    { key: { organizationId: 1, rentalId: 1, deletedAt: 1, expectedDate: 1 }, name: 'by_rental' },
+    { key: { organizationId: 1, receiptNumber: 1 }, unique: true, name: 'uniq_receipt' },
+    { key: { organizationId: 1, paymentId: 1 }, name: 'by_payment' },
+    {
+      key: { organizationId: 1, rentalId: 1, idempotencyKey: 1 },
+      unique: true,
+      partialFilterExpression: { idempotencyKey: { $type: 'string' } },
+      name: 'uniq_idempotency',
+    },
+  ]);
+
   await c.notifications.createIndexes([
     { key: { organizationId: 1, userId: 1, readAt: 1, createdAt: -1 }, name: 'by_user_read' },
     { key: { organizationId: 1, type: 1, createdAt: -1, _id: -1 }, name: 'by_org_type' },
