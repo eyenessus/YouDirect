@@ -12,7 +12,7 @@ export async function registerFileRoutes(app: FastifyInstance): Promise<void> {
     const ctx = request.appCtx;
     const auth = requireAuthContext(request);
 
-    const file = await request.file({ limits: { fileSize: 25 * 1024 * 1024 } });
+    const file = await request.file({ limits: { fileSize: 10 * 1024 * 1024 } });
     if (!file) throw badRequest('Envie o arquivo no campo "file".');
 
     const purposeRaw = (file.fields?.purpose as { value?: string } | undefined)?.value;

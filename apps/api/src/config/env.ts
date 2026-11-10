@@ -31,7 +31,7 @@ const envSchema = z.object({
   SESSION_SECRET: z.string().min(16).default('dev-only-session-secret-change-me'),
   COOKIE_SECURE: booleanish.default(false),
 
-  STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+  STORAGE_DRIVER: z.enum(['mongo', 'local', 's3']).default('mongo'),
   STORAGE_LOCAL_DIR: z.string().default('./.storage'),
   STORAGE_SIGNED_URL_TTL_SECONDS: z.coerce.number().int().min(30).max(86400).default(900),
   S3_BUCKET: z.string().optional(),

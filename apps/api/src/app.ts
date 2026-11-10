@@ -67,7 +67,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   await app.register(cookie, { secret: ctx.env.SESSION_SECRET });
 
   await app.register(multipart, {
-    limits: { fileSize: 25 * 1024 * 1024, files: 1, fields: 10 },
+    limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 10 },
     attachFieldsToBody: false,
   });
 

@@ -241,7 +241,7 @@ async function submit() {
           <FileDropzone
             purpose="DRIVER_ID"
             title="Arraste e solte o arquivo aqui"
-            max-label="Limite de arquivo 25 MB"
+            max-label="Limite de arquivo 10 MB"
             :files="idDocument ? [idDocument] : []"
             @uploaded="
               (file: UploadedFileResponse) =>
@@ -307,7 +307,7 @@ async function submit() {
           <FileDropzone
             purpose="DRIVER_ADDRESS_PROOF"
             title="Arraste e solte o arquivo aqui"
-            max-label="Limite de arquivo 25 MB"
+            max-label="Limite de arquivo 10 MB"
             :files="addressProof ? [addressProof] : []"
             @uploaded="
               (file: UploadedFileResponse) =>

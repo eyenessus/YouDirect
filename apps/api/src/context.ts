@@ -35,7 +35,7 @@ export async function buildContext(options: BuildContextOptions = {}): Promise<A
   return {
     env,
     mongo,
-    storage: createStorageDriver(env),
+    storage: createStorageDriver(env, mongo.db),
     integrations: createIntegrations(env),
     pii: new PiiCipher(env.SESSION_SECRET),
   };

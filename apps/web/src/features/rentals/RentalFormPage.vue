@@ -352,7 +352,7 @@ async function submit() {
       <FileDropzone
         purpose="RENTAL_CONTRACT"
         title="Clique ou arraste o contrato aqui"
-        hint="PDF, JPG, PNG — máx. 25MB"
+        hint="PDF, JPG, PNG — máx. 10 MB"
         :disabled="!isEdit && !form.vehicleId"
         disabled-reason="Selecione o veículo e clique para anexar"
         :files="contract ? [contract] : []"

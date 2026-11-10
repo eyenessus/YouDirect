@@ -1,4 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import type { Db } from 'mongodb';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import type { Env } from '../config/env.js';
@@ -54,6 +55,57 @@ class LocalStorageDriver implements StorageDriver {
 
   async remove(key: string): Promise<void> {
     await rm(this.pathFor(key), { force: true });
+  }
+}
+
+/**
+ * Guarda o arquivo no próprio MongoDB, codificado em Base64, na coleção
+ * `fileBlobs` (_id = storageKey). Dispensa disco persistente (ex.: Heroku).
+ * Limite: o documento BSON aceita até 16 MB; em Base64 o conteúdo cresce
+ * ~33%, então o arquivo original deve ter no máximo ~11 MB.
+ */
+export const MONGO_BLOB_MAX_BYTES = 11 * 1024 * 1024;
+
+interface BlobDoc {
+  _id: string;
+  data: string; // Base64
+  contentType: string;
+  size: number;
+  checksum: string;
+  createdAt: Date;
+}
+
+class MongoStorageDriver implements StorageDriver {
+  readonly name = 'mongo';
+  constructor(private readonly db: Db) {}
+
+  private get blobs() {
+    return this.db.collection<BlobDoc>('fileBlobs');
+  }
+
+  async put(key: string, body: Buffer, contentType: string): Promise<StoredObject> {
+    if (body.byteLength > MONGO_BLOB_MAX_BYTES) {
+      throw badRequest(
+        `Arquivo acima do limite de ${Math.floor(MONGO_BLOB_MAX_BYTES / (1024 * 1024))} MB do armazenamento no banco de dados.`,
+      );
+    }
+    const checksum = createHash('sha256').update(body).digest('hex');
+    await this.blobs.replaceOne(
+      { _id: key },
+      { data: body.toString('base64'), contentType, size: body.byteLength, checksum, createdAt: new Date() },
+      { upsert: true },
+    );
+    return { storageKey: key, checksum, size: body.byteLength };
+  }
+
+  async get(key: string): Promise<Buffer> {
+    const doc = await this.blobs.findOne({ _id: key });
+    if (!doc) throw notFound('Arquivo não encontrado no armazenamento.');
+    return Buffer.from(doc.data, 'base64');
+  }
+
+  async remove(key: string): Promise<void> {
+    await this.blobs.deleteOne({ _id: key });
   }
 }
 
@@ -117,7 +169,8 @@ class S3StorageDriver implements StorageDriver {
   }
 }
 
-export function createStorageDriver(env: Env): StorageDriver {
+export function createStorageDriver(env: Env, db: Db): StorageDriver {
+  if (env.STORAGE_DRIVER === 'mongo') return new MongoStorageDriver(db);
   if (env.STORAGE_DRIVER === 's3') {
     if (!env.S3_BUCKET || !env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY) {
       throw new Error('STORAGE_DRIVER=s3 exige S3_BUCKET, S3_ACCESS_KEY_ID e S3_SECRET_ACCESS_KEY.');

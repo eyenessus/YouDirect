@@ -13,10 +13,10 @@ import { generateToken } from '../common/helpers.js';
 
 const rules: Record<FilePurpose, { mimes: string[]; maxBytes: number; label: string }> = {
   VEHICLE_PHOTO: { mimes: IMAGE_MIME, maxBytes: 5 * 1024 * 1024, label: 'Foto do veículo' },
-  DRIVER_ID: { mimes: DOCUMENT_MIME, maxBytes: 25 * 1024 * 1024, label: 'Documento de identificação' },
-  DRIVER_ADDRESS_PROOF: { mimes: DOCUMENT_MIME, maxBytes: 25 * 1024 * 1024, label: 'Comprovante de endereço' },
-  RENTAL_CONTRACT: { mimes: DOCUMENT_MIME, maxBytes: 25 * 1024 * 1024, label: 'Contrato' },
-  MAINTENANCE_INVOICE: { mimes: DOCUMENT_MIME, maxBytes: 25 * 1024 * 1024, label: 'Nota fiscal da OS' },
+  DRIVER_ID: { mimes: DOCUMENT_MIME, maxBytes: 10 * 1024 * 1024, label: 'Documento de identificação' },
+  DRIVER_ADDRESS_PROOF: { mimes: DOCUMENT_MIME, maxBytes: 10 * 1024 * 1024, label: 'Comprovante de endereço' },
+  RENTAL_CONTRACT: { mimes: DOCUMENT_MIME, maxBytes: 10 * 1024 * 1024, label: 'Contrato' },
+  MAINTENANCE_INVOICE: { mimes: DOCUMENT_MIME, maxBytes: 10 * 1024 * 1024, label: 'Nota fiscal da OS' },
   INSPECTION_PHOTO: { mimes: IMAGE_MIME, maxBytes: 10 * 1024 * 1024, label: 'Foto de vistoria' },
 };
 

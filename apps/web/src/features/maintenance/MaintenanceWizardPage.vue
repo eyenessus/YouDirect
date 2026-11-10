@@ -265,7 +265,7 @@ onMounted(async () => {
         <FileDropzone
           purpose="MAINTENANCE_INVOICE"
           title="Clique ou arraste o arquivo aqui"
-          hint="PDF, JPG, PNG — máx. 25MB"
+          hint="PDF, JPG, PNG — máx. 10 MB"
           :files="invoice ? [invoice] : []"
           @uploaded="
             (file: UploadedFileResponse) =>
