@@ -3,7 +3,7 @@ import { businessDate } from '@yudirect/contracts';
 import type { AppContext } from '../context.js';
 import { runNotificationGenerators } from '../services/notifications.js';
 import { reconcilePixCharges } from '../services/pix.js';
-import { generateBillingReminders } from '../services/billing-reminders.js';
+import { generateBillingEscalations, generateBillingReminders } from '../services/billing-reminders.js';
 import { recomputeLoyalty } from '../services/loyalty.js';
 import { reconcileSignatures } from '../services/contract-signature.js';
 import { expireStaleCreditChecks, purgeExpiredCreditReports } from '../services/credit.js';
@@ -50,6 +50,7 @@ export async function runScheduledJobs(ctx: AppContext, logger: FastifyBaseLogge
       // Cobrança: Pix pendentes (webhook perdido) antes dos lembretes, para não cobrar quem já pagou.
       const pix = await reconcilePixCharges(ctx, organization._id).catch(() => ({ paid: 0, expired: 0 }));
       const reminders = await generateBillingReminders(ctx, organization._id).catch(() => ({ sent: 0, failed: 0, skipped: 0 }));
+      const escalations = await generateBillingEscalations(ctx, organization._id, today).catch(() => 0);
       const loyalty = await recomputeLoyalty(ctx, organization._id, today).catch(() => 0);
       const signatures = await reconcileSignatures(ctx, organization._id).catch(() => 0);
       logger.info(
@@ -64,6 +65,7 @@ export async function runScheduledJobs(ctx: AppContext, logger: FastifyBaseLogge
           pixPaid: pix.paid,
           pixExpired: pix.expired,
           billingRemindersSent: reminders.sent,
+          billingEscalations: escalations,
           loyaltyUpdated: loyalty,
           signaturesUpdated: signatures,
         },

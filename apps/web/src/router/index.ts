@@ -163,6 +163,12 @@ const routes: RouteRecordRaw[] = [
         meta: { module: 'vehicles', title: 'Novo Veículo' },
       },
       {
+        path: 'vehicles/due',
+        name: 'vehicle-due',
+        component: () => import('@/features/vehicles/VehicleDuePage.vue'),
+        meta: { module: 'vehicles', title: 'Vencimentos da frota' },
+      },
+      {
         path: 'vehicles/import',
         name: 'vehicle-import',
         component: () => import('@/features/vehicles/VehicleImportPage.vue'),

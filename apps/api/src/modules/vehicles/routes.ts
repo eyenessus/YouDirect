@@ -1,7 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import { ObjectId } from 'mongodb';
 import {
+  businessDate,
   trafficFinesResponseSchema,
+  vehicleDueQuerySchema,
   vehicleInputSchema,
   vehicleListQuerySchema,
   vehicleUpdateSchema,
@@ -13,6 +15,7 @@ import { cursorDate,
 import { requireAuthContext } from '../../plugins/auth.js';
 import { audit } from '../../services/common.js';
 import { requireFile } from '../../services/files.js';
+import { listVehicleDue } from '../../services/vehicle-due.js';
 import type { VehicleDoc } from '../../database/types.js';
 import { toVehicleDTO, toVehicleDTOs } from './mapper.js';
 import { registerVehicleImportRoutes } from './import.js';
@@ -75,6 +78,18 @@ export async function registerVehicleRoutes(app: FastifyInstance): Promise<void>
     },
   );
 
+  /* ------------------------ vencimentos da frota ------------------- */
+  app.get(
+    '/vehicles/due',
+    { onRequest: [app.requireAuth, app.requirePermission('vehicles', 'read')] },
+    async (request) => {
+      const { organizationId } = requireAuthContext(request);
+      const query = vehicleDueQuerySchema.parse(request.query);
+      const data = await listVehicleDue(request.appCtx, organizationId, businessDate(), query.withinDays, query.kind);
+      return { data };
+    },
+  );
+
   /* ----------------------------- detalhe --------------------------- */
   app.get(
     '/vehicles/:id',
@@ -122,6 +137,13 @@ export async function registerVehicleRoutes(app: FastifyInstance): Promise<void>
         registration: { state: body.registrationState ?? null, city: body.registrationCity ?? null },
         purchase: { date: body.purchaseDate ?? null, amountCents: body.purchaseAmountCents ?? null },
         photoFileIds,
+        compliance: {
+          ipvaDueDate: body.ipvaDueDate ?? null,
+          licensingDueDate: body.licensingDueDate ?? null,
+          insuranceDueDate: body.insuranceDueDate ?? null,
+          insurerName: body.insurerName ?? null,
+          policyNumber: body.policyNumber ?? null,
+        },
         status: 'AVAILABLE',
         archivedAt: null,
         createdBy: auth.userId,
@@ -182,6 +204,9 @@ export async function registerVehicleRoutes(app: FastifyInstance): Promise<void>
       if (body.purchaseDate !== undefined) set['purchase.date'] = body.purchaseDate ?? null;
       if (body.purchaseAmountCents !== undefined)
         set['purchase.amountCents'] = body.purchaseAmountCents ?? null;
+      for (const key of ['ipvaDueDate', 'licensingDueDate', 'insuranceDueDate', 'insurerName', 'policyNumber'] as const) {
+        if (body[key] !== undefined) set[`compliance.${key}`] = body[key] ?? null;
+      }
       if (body.photoFileIds !== undefined) {
         const ids: ObjectId[] = [];
         for (const fileId of body.photoFileIds) {

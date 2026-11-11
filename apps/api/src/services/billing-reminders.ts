@@ -11,6 +11,7 @@ import {
   type PortalInvoice,
 } from '@yudirect/contracts';
 import type { AppContext } from '../context.js';
+import { createNotification, weekKey } from './notifications.js';
 import { portalInvoices } from './driver-portal.js';
 
 /* ------------------------------------------------------------------ *
@@ -20,8 +21,10 @@ import { portalInvoices } from './driver-portal.js';
  * provedor nada é "enviado" de mentira.
  * ------------------------------------------------------------------ */
 
+const RETRY_AFTER_MS = 30 * 60 * 1000;
+
 export function billingSettingsOf(settings: { billing?: BillingSettings } | undefined): BillingSettings {
-  return settings?.billing ?? defaultBillingSettings;
+  return { ...defaultBillingSettings, ...(settings?.billing ?? {}) };
 }
 
 /** Marco da régua para a fatura hoje (ou null se hoje não é dia de lembrar). */
@@ -91,6 +94,7 @@ export async function generateBillingReminders(
       const bucket = reminderBucket(invoice.dueDate, today, settings);
       if (!bucket) continue;
       // Reserva o marco antes de enviar: dois jobs simultâneos não mandam duas mensagens.
+      let attemptNo = 1;
       try {
         await ctx.mongo.collections.billingReminders.insertOne({
           _id: new ObjectId(),
@@ -101,24 +105,77 @@ export async function generateBillingReminders(
           bucket,
           status: 'SENT',
           error: null,
+          attempts: 1,
           createdAt: now,
           updatedAt: now,
         });
       } catch (err) {
-        if ((err as { code?: number }).code === 11000) continue;
-        throw err;
+        if ((err as { code?: number }).code !== 11000) throw err;
+        // Já existe: só tenta de novo uma falha (até 3 vezes, com 30 min entre as tentativas).
+        const previous = await ctx.mongo.collections.billingReminders.findOne({ organizationId, invoiceKey: invoice.key, bucket });
+        const attempts = previous?.attempts ?? 1;
+        if (!previous || previous.status !== 'FAILED' || attempts >= 3 || now.getTime() - previous.updatedAt.getTime() < RETRY_AFTER_MS) continue;
+        const claimed = await ctx.mongo.collections.billingReminders.updateOne(
+          { _id: previous._id, status: 'FAILED', updatedAt: previous.updatedAt },
+          { $set: { status: 'SENT', error: null, updatedAt: now }, $inc: { attempts: 1 } },
+        );
+        if (claimed.modifiedCount !== 1) continue;
+        attemptNo = attempts + 1;
       }
       const body = reminderMessage({ driverName: driver.fullName, companyName: org.name, invoice, bucket, portalUrl });
-      const res = await ctx.integrations.whatsapp.send(driver.phone, body, `billing:${invoice.key}:${bucket}`);
+      const res = await ctx.integrations.whatsapp.send(driver.phone, body, attemptNo === 1 ? `billing:${invoice.key}:${bucket}` : `billing:${invoice.key}:${bucket}:r${attemptNo}`);
       if (res.delivered) out.sent += 1;
       else {
         out.failed += 1;
         await ctx.mongo.collections.billingReminders.updateOne(
           { organizationId, invoiceKey: invoice.key, bucket },
-          { $set: { status: 'FAILED', error: res.error, updatedAt: new Date() } },
+          { $set: { status: 'FAILED', error: res.error, updatedAt: now } },
         );
       }
     }
   }
   return out;
+}
+
+/**
+ * Alerta a equipe sobre faturas muito atrasadas (a partir de `escalationDays`), com reaviso
+ * semanal. Não depende do WhatsApp: o operador precisa saber mesmo sem o provedor conectado.
+ */
+export async function generateBillingEscalations(
+  ctx: AppContext,
+  organizationId: ObjectId,
+  today = businessDate(),
+): Promise<number> {
+  const org = await ctx.mongo.collections.organizations.findOne({ _id: organizationId });
+  if (!org) return 0;
+  const { escalationDays } = billingSettingsOf(org.settings);
+  const driverIds = await ctx.mongo.collections.rentals.distinct('driverId', {
+    organizationId,
+    status: { $ne: 'CANCELED' },
+    $or: [{ status: 'ACTIVE' }, { endDate: { $gte: addDaysIso(today, -60) } }],
+  });
+  let created = 0;
+  for (const driverId of driverIds as ObjectId[]) {
+    const driver = await ctx.mongo.collections.drivers.findOne({ _id: driverId, organizationId });
+    if (!driver || driver.archivedAt || driver.anonymizedAt) continue;
+    const { invoices } = await portalInvoices(ctx, { organizationId, driverId, sessionId: new ObjectId() }, today);
+    const late = invoices.filter((i) => i.status !== 'PAID' && i.remainingCents > 0 && diffDaysIso(i.dueDate, today) <= -escalationDays);
+    if (late.length === 0) continue;
+    const total = late.reduce((sum, i) => sum + i.remainingCents, 0);
+    const oldest = late.map((i) => i.dueDate).sort()[0]!;
+    const ok = await createNotification(ctx, {
+      organizationId,
+      type: 'BILLING',
+      severity: 'CRITICAL',
+      title: 'Motorista com fatura atrasada',
+      message: `${driver.fullName} tem ${late.length} fatura(s) em atraso, somando ${formatCentsBRL(total)} (a mais antiga venceu em ${formatIsoDateBR(oldest)}).`,
+      subjectLabel: driver.fullName,
+      entityType: 'driver',
+      entityId: driver._id,
+      targetPath: `/dashboard/drivers/${driverId.toHexString()}`,
+      dedupeKey: `billing-overdue:${driverId.toHexString()}:${weekKey(today)}`,
+    });
+    if (ok) created += 1;
+  }
+  return created;
 }

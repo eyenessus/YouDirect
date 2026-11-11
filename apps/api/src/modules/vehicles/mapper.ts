@@ -30,6 +30,11 @@ export async function toVehicleDTO(
       .filter((f): f is NonNullable<typeof f> => Boolean(f))
       .map((f) => ({ fileId: f.id.toHexString(), url: f.url, originalName: f.originalName })),
     offer: doc.offer ?? null,
+    ipvaDueDate: doc.compliance?.ipvaDueDate ?? null,
+    licensingDueDate: doc.compliance?.licensingDueDate ?? null,
+    insuranceDueDate: doc.compliance?.insuranceDueDate ?? null,
+    insurerName: doc.compliance?.insurerName ?? null,
+    policyNumber: doc.compliance?.policyNumber ?? null,
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
   };
@@ -62,6 +67,11 @@ export async function toVehicleDTOs(
       .filter((f): f is NonNullable<typeof f> => Boolean(f))
       .map((f) => ({ fileId: f.id.toHexString(), url: f.url, originalName: f.originalName })),
     offer: doc.offer ?? null,
+    ipvaDueDate: doc.compliance?.ipvaDueDate ?? null,
+    licensingDueDate: doc.compliance?.licensingDueDate ?? null,
+    insuranceDueDate: doc.compliance?.insuranceDueDate ?? null,
+    insurerName: doc.compliance?.insurerName ?? null,
+    policyNumber: doc.compliance?.policyNumber ?? null,
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
   }));

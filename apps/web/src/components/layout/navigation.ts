@@ -55,6 +55,7 @@ export const navigation: NavItem[] = [
     children: [
       { label: 'Consultar', to: '/dashboard/vehicles' },
       { label: 'Cadastrar', to: '/dashboard/vehicles/new' },
+      { label: 'Vencimentos', to: '/dashboard/vehicles/due' },
       { label: 'Importar', to: '/dashboard/vehicles/import' },
     ],
   },

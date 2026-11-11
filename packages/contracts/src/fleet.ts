@@ -45,10 +45,22 @@ export const vehicleSchema = z.object({
   photos: z.array(vehiclePhotoSchema),
   /** Oferta no site da locadora (grupo, preço semanal); null = fora do site. */
   offer: vehicleOfferSchema.nullable().optional(),
+  /** Vencimentos de IPVA, licenciamento e seguro (alertas e painel de vencimentos). */
+  ipvaDueDate: isoDateSchema.nullable().optional(),
+  licensingDueDate: isoDateSchema.nullable().optional(),
+  insuranceDueDate: isoDateSchema.nullable().optional(),
+  insurerName: z.string().nullable().optional(),
+  policyNumber: z.string().nullable().optional(),
   createdAt: isoDateTimeSchema,
   updatedAt: isoDateTimeSchema,
 });
 export type Vehicle = z.infer<typeof vehicleSchema>;
+
+/** Data opcional: vazio limpa o campo. */
+const nullableDateInput = isoDateSchema.nullable().optional().or(z.literal('').transform(() => null));
+
+const nullableTextInput = (max: number) =>
+  z.string().trim().max(max).nullable().optional().transform((v) => (v === '' || v === undefined ? (v === '' ? null : undefined) : v));
 
 export const vehicleInputSchema = z.object({
   plate: plateSchema,
@@ -67,6 +79,11 @@ export const vehicleInputSchema = z.object({
   purchaseDate: isoDateSchema.optional().or(z.literal('').transform(() => undefined)),
   purchaseAmountCents: amountCentsSchema.optional(),
   photoFileIds: z.array(objectIdSchema).max(12).optional(),
+  ipvaDueDate: nullableDateInput,
+  licensingDueDate: nullableDateInput,
+  insuranceDueDate: nullableDateInput,
+  insurerName: nullableTextInput(80),
+  policyNumber: nullableTextInput(60),
 });
 export type VehicleInput = z.infer<typeof vehicleInputSchema>;
 
@@ -79,6 +96,38 @@ export const vehicleListQuerySchema = z.object({
   cursor: z.string().max(200).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
+
+/* ------------------------ Vencimentos da frota ----------------------- */
+
+export const vehicleDueKinds = ['IPVA', 'LICENSING', 'INSURANCE'] as const;
+export const vehicleDueKindSchema = z.enum(vehicleDueKinds);
+export type VehicleDueKind = z.infer<typeof vehicleDueKindSchema>;
+export const vehicleDueKindLabels: Record<VehicleDueKind, string> = {
+  IPVA: 'IPVA',
+  LICENSING: 'Licenciamento',
+  INSURANCE: 'Seguro',
+};
+
+export const vehicleDueItemSchema = z.object({
+  vehicleId: objectIdSchema,
+  plate: z.string(),
+  label: z.string(),
+  kind: vehicleDueKindSchema,
+  dueDate: isoDateSchema,
+  /** Negativo = vencido. */
+  daysLeft: z.number().int(),
+  status: z.enum(['OVERDUE', 'SOON', 'OK']),
+});
+export type VehicleDueItem = z.infer<typeof vehicleDueItemSchema>;
+
+export const vehicleDueQuerySchema = z.object({
+  /** Janela em dias à frente; vencidos sempre aparecem. */
+  withinDays: z.coerce.number().int().min(1).max(365).default(60),
+  kind: vehicleDueKindSchema.optional(),
+});
+
+/** Faixas dos alertas: vence em até 30, 15 e 7 dias, no dia e vencido. */
+export const vehicleDueAlertWindows = [30, 15, 7] as const;
 
 /* --------------------------- Importação ---------------------------- */
 

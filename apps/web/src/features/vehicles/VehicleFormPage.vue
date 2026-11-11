@@ -32,6 +32,11 @@ const form = reactive({
   mileageKm: '0',
   purchaseDate: '',
   purchaseAmountCents: 0,
+  ipvaDueDate: '',
+  licensingDueDate: '',
+  insuranceDueDate: '',
+  insurerName: '',
+  policyNumber: '',
 });
 
 const photos = ref<Array<{ fileId: string; url: string; originalName: string }>>([]);
@@ -58,6 +63,11 @@ onMounted(async () => {
     form.mileageKm = String(vehicle.mileageKm);
     form.purchaseDate = vehicle.purchaseDate ?? '';
     form.purchaseAmountCents = vehicle.purchaseAmountCents ?? 0;
+    form.ipvaDueDate = vehicle.ipvaDueDate ?? '';
+    form.licensingDueDate = vehicle.licensingDueDate ?? '';
+    form.insuranceDueDate = vehicle.insuranceDueDate ?? '';
+    form.insurerName = vehicle.insurerName ?? '';
+    form.policyNumber = vehicle.policyNumber ?? '';
     photos.value = vehicle.photos.map((p) => ({
       fileId: p.fileId,
       url: p.url,
@@ -95,6 +105,12 @@ async function submit() {
     mileageKm: Number(form.mileageKm || 0),
     purchaseDate: form.purchaseDate || undefined,
     purchaseAmountCents: form.purchaseAmountCents || undefined,
+    // Vazio limpa o campo ao editar.
+    ipvaDueDate: form.ipvaDueDate,
+    licensingDueDate: form.licensingDueDate,
+    insuranceDueDate: form.insuranceDueDate,
+    insurerName: form.insurerName,
+    policyNumber: form.policyNumber,
     photoFileIds: photos.value.map((p) => p.fileId),
   };
   try {
@@ -274,6 +290,29 @@ function cancel() {
           </FormField>
           <FormField v-slot="field" label="Valor de Compra" :error="errors.purchaseAmountCents">
             <CurrencyInput :id="field.id" v-model="form.purchaseAmountCents" />
+          </FormField>
+        </div>
+      </section>
+
+      <!-- Vencimentos -->
+      <section class="fo-card p-7">
+        <h2 class="mb-2 text-xl font-bold text-ink">Vencimentos</h2>
+        <p class="mb-6 text-[15px] text-ink-muted">A equipe é avisada 30, 15 e 7 dias antes, no dia e depois de vencer.</p>
+        <div class="grid gap-5 sm:grid-cols-3">
+          <FormField v-slot="field" label="Vencimento do IPVA" :error="errors.ipvaDueDate">
+            <AppInput :id="field.id" v-model="form.ipvaDueDate" type="date" />
+          </FormField>
+          <FormField v-slot="field" label="Vencimento do Licenciamento" :error="errors.licensingDueDate">
+            <AppInput :id="field.id" v-model="form.licensingDueDate" type="date" />
+          </FormField>
+          <FormField v-slot="field" label="Vencimento do Seguro" :error="errors.insuranceDueDate">
+            <AppInput :id="field.id" v-model="form.insuranceDueDate" type="date" />
+          </FormField>
+          <FormField v-slot="field" label="Seguradora" :error="errors.insurerName">
+            <AppInput :id="field.id" v-model="form.insurerName" placeholder="Porto Seguro" />
+          </FormField>
+          <FormField v-slot="field" label="Número da apólice" :error="errors.policyNumber">
+            <AppInput :id="field.id" v-model="form.policyNumber" />
           </FormField>
         </div>
       </section>

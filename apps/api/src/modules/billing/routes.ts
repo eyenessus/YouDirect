@@ -140,9 +140,35 @@ export async function registerBillingRoutes(app: FastifyInstance): Promise<void>
     const { organizationId } = requireAuthContext(request);
     const org = await request.appCtx.mongo.collections.organizations.findOne({ _id: organizationId });
     return {
-      settings: org?.settings.billing ?? defaultBillingSettings,
+      settings: { ...defaultBillingSettings, ...(org?.settings.billing ?? {}) },
       pix: request.appCtx.integrations.pix.status(),
       whatsapp: request.appCtx.integrations.whatsapp.status(),
+    };
+  });
+
+  /** Últimos lembretes enviados pela régua (para a equipe conferir o que foi mandado). */
+  app.get('/billing/reminders', { onRequest: [app.requireAuth] }, async (request) => {
+    const { organizationId } = requireAuthContext(request);
+    const rows = await request.appCtx.mongo.collections.billingReminders
+      .find({ organizationId })
+      .sort({ createdAt: -1 })
+      .limit(30)
+      .toArray();
+    const drivers = await request.appCtx.mongo.collections.drivers
+      .find({ organizationId, _id: { $in: rows.map((r) => r.driverId) } }, { projection: { fullName: 1 } })
+      .toArray();
+    const names = new Map(drivers.map((d) => [d._id.toHexString(), d.fullName]));
+    return {
+      data: rows.map((r) => ({
+        id: r._id.toHexString(),
+        driverName: names.get(r.driverId.toHexString()) ?? 'Motorista',
+        bucket: r.bucket,
+        dueDate: r.dueDate,
+        status: r.status,
+        error: r.status === 'FAILED' ? r.error : null,
+        attempts: r.attempts ?? 1,
+        createdAt: r.createdAt.toISOString(),
+      })),
     };
   });
 

@@ -186,6 +186,14 @@ export interface VehicleDoc extends Tenant {
     weeklyKmFranchise: number | null;
     highlights: string[];
   } | null;
+  /** Vencimentos de IPVA, licenciamento e seguro (alertas). */
+  compliance?: {
+    ipvaDueDate: IsoDate | null;
+    licensingDueDate: IsoDate | null;
+    insuranceDueDate: IsoDate | null;
+    insurerName: string | null;
+    policyNumber: string | null;
+  } | null;
   status: VehicleStatus;
   archivedAt: Date | null;
   createdBy: ObjectId | null;
@@ -594,6 +602,8 @@ export interface BillingReminderDoc extends Tenant {
   bucket: string;
   status: 'SENT' | 'FAILED';
   error: string | null;
+  /** Tentativas de envio (o job tenta de novo uma falha, até 3 vezes). */
+  attempts?: number;
 }
 
 export interface DamagePriceDoc extends Tenant {

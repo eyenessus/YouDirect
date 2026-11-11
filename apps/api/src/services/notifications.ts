@@ -4,10 +4,12 @@ import {
   businessDate,
   diffDaysIso,
   formatIsoDateBR,
+  vehicleDueKindLabels,
   type NotificationSeverity,
   type NotificationType,
 } from '@yudirect/contracts';
 import type { AppContext } from '../context.js';
+import { dueBucket, listVehicleDue, vehicleDueTitle } from './vehicle-due.js';
 
 export interface CreateNotificationInput {
   organizationId: ObjectId;
@@ -306,6 +308,41 @@ export async function generateFineNotifications(
   return created;
 }
 
+/** Alertas de IPVA, licenciamento e seguro (30, 15 e 7 dias, no dia e vencido, este com reaviso semanal). */
+export async function generateVehicleDueNotifications(
+  ctx: AppContext,
+  organizationId: ObjectId,
+  today = businessDate(),
+): Promise<number> {
+  const items = await listVehicleDue(ctx, organizationId, today, 30);
+  let created = 0;
+  for (const item of items) {
+    const bucket = dueBucket(item.daysLeft);
+    if (!bucket) continue;
+    const name = vehicleDueKindLabels[item.kind];
+    const when =
+      item.daysLeft < 0
+        ? `venceu em ${formatIsoDateBR(item.dueDate)}`
+        : item.daysLeft === 0
+          ? 'vence hoje'
+          : `vence em ${item.daysLeft} dia(s) (${formatIsoDateBR(item.dueDate)})`;
+    const ok = await createNotification(ctx, {
+      organizationId,
+      type: 'VEHICLE',
+      severity: item.daysLeft <= 7 ? 'CRITICAL' : 'WARNING',
+      title: vehicleDueTitle(item.kind, item.daysLeft),
+      message: `${name} do veículo ${item.plate} (${item.label}) ${when}.`,
+      subjectLabel: item.plate,
+      entityType: 'vehicle',
+      entityId: new ObjectId(item.vehicleId),
+      targetPath: '/dashboard/vehicles/due',
+      dedupeKey: `vehicle-due:${item.vehicleId}:${item.kind}:${item.dueDate}:${bucket}:${bucket === 'overdue' ? weekKey(today) : ''}`,
+    });
+    if (ok) created += 1;
+  }
+  return created;
+}
+
 export async function runNotificationGenerators(
   ctx: AppContext,
   organizationId: ObjectId,
@@ -317,6 +354,7 @@ export async function runNotificationGenerators(
     generateInspectionNotifications(ctx, organizationId, today),
     generateMaintenanceNotifications(ctx, organizationId, today),
     generateFineNotifications(ctx, organizationId, today),
+    generateVehicleDueNotifications(ctx, organizationId, today),
   ]);
   return results.reduce((a, b) => a + b, 0);
 }

@@ -33,6 +33,8 @@ const tabs: TabItem[] = [
   { key: 'CNH', label: notificationTypeLabels.CNH },
   { key: 'RENTAL', label: notificationTypeLabels.RENTAL },
   { key: 'INSPECTION', label: notificationTypeLabels.INSPECTION },
+  { key: 'VEHICLE', label: notificationTypeLabels.VEHICLE },
+  { key: 'BILLING', label: notificationTypeLabels.BILLING },
 ];
 
 const readTabs: TabItem[] = [

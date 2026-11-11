@@ -186,7 +186,7 @@ export const transactionOriginLabels: Record<TransactionOrigin, string> = {
 };
 
 /** Abas observadas na página de Notificações (pág. 24). */
-export const notificationTypes = ['MAINTENANCE', 'CNH', 'RENTAL', 'INSPECTION', 'FINE'] as const;
+export const notificationTypes = ['MAINTENANCE', 'CNH', 'RENTAL', 'INSPECTION', 'FINE', 'VEHICLE', 'BILLING'] as const;
 export const notificationTypeSchema = z.enum(notificationTypes);
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
 export const notificationTypeLabels: Record<NotificationType, string> = {
@@ -195,6 +195,8 @@ export const notificationTypeLabels: Record<NotificationType, string> = {
   RENTAL: 'Locações',
   INSPECTION: 'Vistorias',
   FINE: 'Multas',
+  VEHICLE: 'Vencimentos',
+  BILLING: 'Cobrança',
 };
 
 /** Tipo da conta a receber. FINE = multa repassada ao motorista. */

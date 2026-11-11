@@ -10,10 +10,12 @@ import { useToastStore } from '@/stores/ui';
 
 /** Régua de cobrança (WhatsApp + Pix) e níveis de fidelidade dos motoristas. */
 const toasts = useToastStore();
-const billing = reactive<BillingSettings>({ remindersEnabled: true, reminderDaysBefore: 2, overdueReminderDays: [1, 3] });
+const billing = reactive<BillingSettings>({ remindersEnabled: true, reminderDaysBefore: 2, overdueReminderDays: [1, 3], escalationDays: 7 });
 const overdueText = ref('1, 3');
 const providers = ref<{ pix: { connected: boolean; message: string }; whatsapp: { connected: boolean; message: string } } | null>(null);
 const loyalty = ref<LoyaltySettings | null>(null);
+interface ReminderRow { id: string; driverName: string; bucket: string; dueDate: string; status: 'SENT' | 'FAILED'; error: string | null; attempts: number; createdAt: string }
+const reminders = ref<ReminderRow[]>([]);
 const saving = ref<string | null>(null);
 
 onMounted(async () => {
@@ -24,6 +26,7 @@ onMounted(async () => {
   Object.assign(billing, b.settings);
   overdueText.value = b.settings.overdueReminderDays.join(', ');
   providers.value = { pix: b.pix, whatsapp: b.whatsapp };
+  reminders.value = (await api.get<{ data: ReminderRow[] }>('/billing/reminders').catch(() => ({ data: [] }))).data;
   loyalty.value = l;
 });
 
@@ -31,7 +34,7 @@ async function saveBilling() {
   saving.value = 'billing';
   try {
     const days = overdueText.value.split(',').map((d) => Number(d.trim())).filter((n) => Number.isInteger(n) && n > 0);
-    await api.put('/billing/settings', { ...billing, reminderDaysBefore: Number(billing.reminderDaysBefore), overdueReminderDays: days });
+    await api.put('/billing/settings', { ...billing, reminderDaysBefore: Number(billing.reminderDaysBefore), escalationDays: Number(billing.escalationDays), overdueReminderDays: days });
     toasts.success('Régua de cobrança salva');
   } catch (err) {
     toasts.error('Não foi possível salvar', err instanceof ApiRequestError ? err.message : undefined);
@@ -77,8 +80,24 @@ async function saveLoyalty() {
         Dias depois (atraso), separados por vírgula
         <AppInput v-model="overdueText" class="mt-1" />
       </label>
+      <label class="text-sm text-ink-soft">
+        Avisar a equipe após (dias de atraso)
+        <AppInput v-model="billing.escalationDays" type="number" inputmode="numeric" class="mt-1" />
+      </label>
     </div>
     <div class="mt-4 flex justify-end"><AppButton :loading="saving === 'billing'" @click="saveBilling">Salvar régua</AppButton></div>
+
+    <div v-if="reminders.length" class="mt-6">
+      <h3 class="mb-2 text-base font-semibold text-ink">Últimos lembretes enviados</h3>
+      <ul class="divide-y divide-line rounded-control border border-line text-sm">
+        <li v-for="r in reminders.slice(0, 8)" :key="r.id" class="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+          <span class="text-ink">{{ r.driverName }} <span class="text-ink-muted">· marco {{ r.bucket }}</span></span>
+          <span :class="r.status === 'SENT' ? 'text-[rgb(var(--c-positive))]' : 'text-[rgb(var(--c-negative))]'">
+            {{ r.status === 'SENT' ? 'Enviado' : `Falhou (${r.attempts}/3): ${r.error ?? 'sem detalhe'}` }}
+          </span>
+        </li>
+      </ul>
+    </div>
 
     <hr class="my-7 border-line" />
 

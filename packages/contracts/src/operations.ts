@@ -54,9 +54,11 @@ export const billingSettingsSchema = z.object({
   reminderDaysBefore: z.number().int().min(0).max(7),
   /** Dias depois do vencimento para a cobrança de atraso. */
   overdueReminderDays: z.array(z.number().int().min(1).max(30)).max(4),
+  /** Dias de atraso a partir dos quais a equipe recebe um alerta (reaviso semanal). */
+  escalationDays: z.number().int().min(1).max(60).default(7),
 });
 export type BillingSettings = z.infer<typeof billingSettingsSchema>;
-export const defaultBillingSettings: BillingSettings = { remindersEnabled: true, reminderDaysBefore: 2, overdueReminderDays: [1, 3] };
+export const defaultBillingSettings: BillingSettings = { remindersEnabled: true, reminderDaysBefore: 2, overdueReminderDays: [1, 3], escalationDays: 7 };
 
 /* ---------------------------- KM excedente -------------------------- */
 

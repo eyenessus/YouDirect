@@ -223,6 +223,15 @@ pendentes. Ele pode pedir manutenção, o que avisa a equipe sem criar OS
 - **Quem recebe:** respeita o consentimento de WhatsApp do motorista.
 - **Sem provedor de WhatsApp:** nada é enviado nem registrado como enviado.
 - **Conteúdo:** a mensagem leva o link da Área do Motorista, onde o motorista paga por Pix.
+- **Falha no envio:** o job tenta de novo depois de 30 minutos, até 3 tentativas no total, com chave de idempotência nova a cada tentativa. As falhas e as tentativas aparecem em "Últimos lembretes enviados" (Perfil > Cobrança automática).
+- **Alerta à equipe:** a partir de `escalationDays` de atraso (padrão 7) a equipe recebe uma notificação "Cobrança" por motorista, repetida uma vez por semana. Funciona mesmo sem WhatsApp conectado.
+
+### A-VENC-01 — Vencimentos da frota **[R]**
+- **O que controla:** IPVA, licenciamento e seguro (seguradora e apólice só para consulta), com data digitada no cadastro do veículo. O sistema não consulta o DETRAN nem calcula o prazo do licenciamento.
+- **Alertas:** notificação "Vencimentos" em 30, 15 e 7 dias, no dia e depois de vencer (vencido repete toda semana). Uma por veículo, item, data e faixa.
+- **Quem entra:** veículos não arquivados com a data preenchida. Ao renovar, a nova data gera novos alertas.
+- **Painel:** Veículos > Vencimentos, com filtro por tipo e janela de 30, 60 ou 90 dias; vencidos aparecem sempre.
+- **Não faz:** não cria conta a pagar nem lança a renovação. Isso fica a cargo do financeiro.
 
 ### A-KM-01 — KM excedente automático **[R]**
 - **Quando roda:** ao aprovar uma vistoria com hodômetro.
