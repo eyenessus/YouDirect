@@ -34,6 +34,7 @@ import WhatsappConsentCard from './WhatsappConsentCard.vue';
 import FinesPanel from '@/features/fines/FinesPanel.vue';
 import DriverPortalCard from './DriverPortalCard.vue';
 import DriverLoyaltyCard from './DriverLoyaltyCard.vue';
+import DriverCreditCard from '@/features/credit/DriverCreditCard.vue';
 import { api, ApiRequestError, downloadFile } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/ui';
@@ -358,6 +359,8 @@ onMounted(async () => {
         <DriverPortalCard :driver-id="driver.id" :active="driver.status === 'ACTIVE'" />
 
         <DriverLoyaltyCard :driver-id="driver.id" />
+
+        <DriverCreditCard v-if="auth.allows('credit', 'read')" :driver-id="driver.id" :has-cpf="Boolean(driver.cpf)" />
 
         <FinesPanel v-if="auth.allows('fines', 'read')" class="xl:col-span-2" :driver-id="driver.id" />
       </div>

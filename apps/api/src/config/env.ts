@@ -119,6 +119,25 @@ const envSchema = z.object({
   /** Validação da selfie: face-match-and-datavalid (selfie × base do governo pelo CPF), liveness-NXCD ou none. */
   ZAPSIGN_SELFIE_VALIDATION: z.enum(['face-match-and-datavalid', 'liveness-NXCD', 'none']).default('face-match-and-datavalid'),
 
+  /* Serasa Experian — Relatório Básico PF (análise de crédito do motorista).
+   * Sem credenciais => consulta indisponível (nada é simulado). */
+  SERASA_ENVIRONMENT: z.enum(['homologacao', 'producao']).default('homologacao'),
+  SERASA_CLIENT_ID: z.string().optional(),
+  SERASA_CLIENT_SECRET: z.string().optional(),
+  /** Só para testes/proxy homologado: substitui a URL base oficial do ambiente. */
+  SERASA_API_URL: z.string().url().optional(),
+  SERASA_REPORT_NAME: z.string().regex(/^[A-Z0-9_]+$/).default('RELATORIO_BASICO_PF_PME'),
+  /** Features opcionais contratadas, separadas por vírgula (ex.: ANOTACOES_COMPLETAS_PME). */
+  SERASA_OPTIONAL_FEATURES: z.string().regex(/^[A-Z0-9_,]*$/).default(''),
+  /** Modelo de score enviado em reportParameters (ex.: HRLN). Vazio = padrão do relatório. */
+  SERASA_SCORE_MODEL: z.string().regex(/^[A-Z0-9]*$/).optional(),
+  /** Cliente distribuidor: CNPJ do consultante (X-Retailer-Document-Id). */
+  SERASA_RETAILER_DOCUMENT: z.string().regex(/^\d{14}$/).optional(),
+  SERASA_COST_CENTER: z.string().max(12).optional(),
+  SERASA_TIMEOUT_MS: z.coerce.number().int().min(2000).max(60_000).default(20_000),
+  /** Consultas por minuto por cliente na rota de consulta (proteção contra uso em massa). */
+  SERASA_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(1000).default(20),
+
   JOBS_ENABLED: booleanish.default(true),
   JOBS_INTERVAL_MINUTES: z.coerce.number().int().min(1).max(1440).default(30),
 
@@ -217,6 +236,46 @@ export function signatureStatus(env: Env): IntegrationStatus {
     message: connected
       ? 'Assinatura digital pela ZapSign configurada.'
       : 'Assinatura digital não configurada (ZAPSIGN_API_TOKEN). O contrato pode ser baixado em PDF e anexado assinado.',
+  };
+}
+
+/** URL base oficial de cada ambiente da Serasa (manual do Relatório Básico PF, §2.2). */
+export const SERASA_BASE_URLS = {
+  homologacao: 'https://uat-api.serasaexperian.com.br',
+  producao: 'https://api.serasaexperian.com.br',
+} as const;
+
+export function serasaBaseUrl(env: Env): string {
+  return (env.SERASA_API_URL ?? SERASA_BASE_URLS[env.SERASA_ENVIRONMENT]).replace(/\/$/, '');
+}
+
+export function creditStatus(env: Env): IntegrationStatus {
+  const hasCredentials = Boolean(env.SERASA_CLIENT_ID && env.SERASA_CLIENT_SECRET);
+  if (!hasCredentials) {
+    return {
+      name: null,
+      connected: false,
+      message: 'Serasa não configurada (SERASA_CLIENT_ID e SERASA_CLIENT_SECRET). Nenhuma consulta de crédito é feita.',
+    };
+  }
+  // Separação de ambientes: credencial de produção só roda no servidor de produção.
+  if (env.SERASA_ENVIRONMENT === 'producao' && env.NODE_ENV !== 'production') {
+    return {
+      name: null,
+      connected: false,
+      message: 'Credenciais de PRODUÇÃO da Serasa bloqueadas fora do servidor de produção. Use SERASA_ENVIRONMENT=homologacao.',
+    };
+  }
+  if (env.SERASA_API_URL && env.NODE_ENV === 'production') {
+    const host = new URL(env.SERASA_API_URL).hostname;
+    if (env.SERASA_API_URL.startsWith('http:') || !/(^|\.)serasaexperian\.com\.br$/.test(host)) {
+      return { name: null, connected: false, message: 'SERASA_API_URL precisa ser HTTPS em *.serasaexperian.com.br em produção.' };
+    }
+  }
+  return {
+    name: 'serasa',
+    connected: true,
+    message: `Serasa Experian configurada (${env.SERASA_ENVIRONMENT === 'producao' ? 'produção' : 'homologação'}).`,
   };
 }
 

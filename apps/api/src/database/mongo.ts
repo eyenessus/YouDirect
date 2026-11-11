@@ -48,6 +48,7 @@ import type {
   InspectionDamageDoc,
   DepositSettlementDoc,
   ContractSignatureDoc,
+  CreditCheckDoc,
 } from './types.js';
 
 export interface Collections {
@@ -82,6 +83,7 @@ export interface Collections {
   inspectionDamages: Collection<InspectionDamageDoc>;
   depositSettlements: Collection<DepositSettlementDoc>;
   contractSignatures: Collection<ContractSignatureDoc>;
+  creditChecks: Collection<CreditCheckDoc>;
   notifications: Collection<NotificationDoc>;
   messageTemplates: Collection<MessageTemplateDoc>;
   messageDispatches: Collection<MessageDispatchDoc>;
@@ -141,6 +143,7 @@ function buildCollections(db: Db): Collections {
     inspectionDamages: db.collection<InspectionDamageDoc>('inspectionDamages'),
     depositSettlements: db.collection<DepositSettlementDoc>('depositSettlements'),
     contractSignatures: db.collection<ContractSignatureDoc>('contractSignatures'),
+    creditChecks: db.collection<CreditCheckDoc>('creditChecks'),
     notifications: db.collection<NotificationDoc>('notifications'),
     messageTemplates: db.collection<MessageTemplateDoc>('messageTemplates'),
     messageDispatches: db.collection<MessageDispatchDoc>('messageDispatches'),

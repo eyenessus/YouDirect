@@ -6,6 +6,7 @@ import { reconcilePixCharges } from '../services/pix.js';
 import { generateBillingReminders } from '../services/billing-reminders.js';
 import { recomputeLoyalty } from '../services/loyalty.js';
 import { reconcileSignatures } from '../services/contract-signature.js';
+import { expireStaleCreditChecks, purgeExpiredCreditReports } from '../services/credit.js';
 import {
   extendOpenEndedReceivables,
   generateRecurringPayables,
@@ -28,6 +29,14 @@ import { generateScheduledInspections } from '../services/inspection-schedule.js
 export async function runScheduledJobs(ctx: AppContext, logger: FastifyBaseLogger): Promise<void> {
   const today = businessDate();
   const organizations = await ctx.mongo.collections.organizations.find({}).toArray();
+  // Serasa: retenção dos relatórios e consultas interrompidas (globais, sem nova chamada).
+  try {
+    const purged = await purgeExpiredCreditReports(ctx);
+    const stale = await expireStaleCreditChecks(ctx);
+    if (purged || stale) logger.info({ creditReportsPurged: purged, creditChecksInterrupted: stale }, 'retenção Serasa');
+  } catch (err) {
+    logger.error({ err }, 'falha na retenção dos relatórios Serasa');
+  }
 
   for (const organization of organizations) {
     try {

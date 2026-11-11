@@ -226,6 +226,12 @@ const routes: RouteRecordRaw[] = [
       },
 
       {
+        path: 'credit-checks',
+        name: 'credit-checks',
+        component: () => import('@/features/credit/CreditHistoryPage.vue'),
+        meta: { module: 'credit', title: 'Análise de crédito' },
+      },
+      {
         path: 'leads',
         name: 'rental-leads',
         component: () => import('@/features/rentals/RentalLeadsPage.vue'),

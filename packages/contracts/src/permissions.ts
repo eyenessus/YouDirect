@@ -18,6 +18,7 @@ export const permissionModules = [
   'fines',
   'finance',
   'notifications',
+  'credit',
 ] as const;
 export const permissionModuleSchema = z.enum(permissionModules);
 export type PermissionModule = (typeof permissionModules)[number];
@@ -46,6 +47,7 @@ export const permissionModuleLabels: Record<PermissionModule, string> = {
   fines: 'Multas',
   finance: 'Financeiro',
   notifications: 'Notificações',
+  credit: 'Análise de crédito (Serasa)',
 };
 
 export const permissionActionLabels: Record<PermissionAction, string> = {
@@ -72,6 +74,8 @@ export const moduleActions: Record<PermissionModule, readonly PermissionAction[]
   fines: ['read', 'create', 'update', 'delete', 'pay', 'export'],
   finance: ['read', 'create', 'update', 'delete', 'pay', 'export'],
   notifications: ['read', 'update', 'dispatch'],
+  /** `read` = ver relatórios; `request` = fazer consulta paga; `review` = registrar a decisão. */
+  credit: ['read', 'request', 'review'],
 };
 
 export type PermissionMatrix = Partial<Record<PermissionModule, PermissionAction[]>>;

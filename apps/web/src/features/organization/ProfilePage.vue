@@ -5,6 +5,7 @@ import { formatDateTimeBR, maskPhone } from '@yudirect/contracts';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import PublicSiteCard from './PublicSiteCard.vue';
 import OperationsSettingsCard from './OperationsSettingsCard.vue';
+import CreditSettingsCard from '@/features/credit/CreditSettingsCard.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppInput from '@/components/ui/AppInput.vue';
 import AppModal from '@/components/ui/AppModal.vue';
@@ -145,6 +146,7 @@ onMounted(load);
     <div v-else-if="profile" class="grid gap-6 xl:grid-cols-2">
       <PublicSiteCard v-if="auth.isOwnerOrAdmin" />
       <OperationsSettingsCard v-if="auth.isOwnerOrAdmin" />
+      <CreditSettingsCard v-if="auth.isOwnerOrAdmin" />
 
       <!-- Informações pessoais -->
       <section class="fo-card p-7">

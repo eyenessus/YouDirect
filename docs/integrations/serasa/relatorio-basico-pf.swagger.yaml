@@ -1,0 +1,2681 @@
+openapi: 3.0.1
+info:
+  title: CS-Person-Information-Report-BR
+  description: "This API return a report with informations about negative data (pefin,\
+    \ refin, SPC), score of the consulted document, registration data (name, identity,\
+    \ address) and if the consulted document has alert about stolen documents."
+  contact:
+    name: Experian API team - Credit Services
+    email: implantacao@br.experian.com
+  version: 1.0.0
+servers:
+  - url: https://sandbox-api.serasaexperian.com.br/credit-services/person-information-report/v1
+paths:
+  /creditreport:
+    get:
+      tags:
+        - Credit Report
+      summary: Get a credit report (External Request)
+      description: Returns a report. To access this method the client (application)
+        must have "CLI-AUTH-IDENTIFIED" authentication and "CLI-3RDPARTY" role and
+        user must have 'AUTH-BASIC' level and 'USER' or 'BUSINESS' role.
+      operationId: getReportExternalChannel
+      parameters:
+        - name: X-Document-Id
+          in: header
+          description: Consumer document identification to fetch
+          schema:
+            type: string
+        - name: X-Retailer-Document-Id
+          in: header
+          description: Retailer company document code to identify the retailer company
+            in the payment process
+          schema:
+            type: string
+        - name: X-Cost-Center
+          in: header
+          description: Internal billing center informed by the customer
+          schema:
+            type: string
+        - name: reportName
+          in: query
+          description: Consumer document identification to fetch
+          schema:
+            type: string
+        - name: federalUnit
+          in: query
+          description: Federal unit used to filter notary reports
+          schema:
+            type: string
+        - name: optionalFeatures
+          in: query
+          description: Optional Features for consult
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: reportParameters
+          in: query
+          description: String on format Base64 of object (ReportParameters) in json
+            format
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Consumer Report Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonInformationReportResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        "401":
+          description: |-
+            Authorization Failed
+            | Code | Message
+            | 10   | You don't have access to this product yet. Please contact support.
+            | 401  | Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        "403":
+          description: |-
+            Unauthorized user for transaction
+            | Code | Message
+            | 30   | Information not available for the document consulted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        "404":
+          description: |-
+            Not found
+            | Code | Message
+            | 40   | The report <name of the report informed in the request> does not exist. Please check the name of the report.
+            | 40   | The optional feature <name of the feature informed in the request> does not exist. Please check the name of the optional feature.
+            | 41   | The service <call url> does not exist. Please check the service url provided.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        "412":
+          description: |-
+            Missing Required Field
+            | Code | Message
+            | 50   | BusinessId was not identified. Please contact support.
+            | 60   | The report <name of the reported report> is inactive. Please refer to an active report.
+            | 70   | The document number entered is incorrect. Please check the document number.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        "429":
+          description: |-
+            Too many requests
+            | Code | Message
+            | 429  | Too many requests.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        "500":
+          description: |-
+            Internal Server Error
+            | Code | Message
+            | 20   | An internal error has occurred, if the problem persists, please contact support.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+      security:
+        - OauthSecurityClient:
+            - read
+components:
+  schemas:
+    PersonInformationReportResponse:
+      type: object
+      properties:
+        reports:
+          type: array
+          items:
+            type: object
+            properties:
+              reportName:
+                type: string
+                description: Report Name
+              registration:
+                $ref: '#/components/schemas/Registration'
+              localization:
+                $ref: '#/components/schemas/Localization'
+              negativeData:
+                $ref: '#/components/schemas/NegativeData'
+              score:
+                $ref: '#/components/schemas/Score'
+              scores:
+                $ref: '#/components/schemas/Scores'
+              scoresFraud:
+                $ref: '#/components/schemas/ScoresFraud'
+              negativeFlag:
+                $ref: '#/components/schemas/NegativeFlag'
+              spcNegativeFlag:
+                $ref: '#/components/schemas/SpcNegativeFlag'
+              negativeSummary:
+                $ref: '#/components/schemas/NegativeSummary'
+              facts:
+                $ref: '#/components/schemas/Facts'
+              paymentsHistory:
+                $ref: '#/components/schemas/PaymentsHistory'
+              partner:
+                $ref: '#/components/schemas/Partnerships'
+              attributes:
+                $ref: '#/components/schemas/Attributes'
+              death:
+                $ref: '#/components/schemas/DeathReport'
+              creditLimitRecommendation:
+                $ref: '#/components/schemas/CreditLimitRecommendationReport'
+              attributesResponse:
+                $ref: '#/components/schemas/AttributesResponse'
+              deathAlert:
+                $ref: '#/components/schemas/DeathAlert'
+              zoom:
+                $ref: '#/components/schemas/Zoom'
+              checkFilings:
+                $ref: '#/components/schemas/CheckFilings'
+              checkFilingsHistorical:
+                $ref: '#/components/schemas/CheckFilingsHistorical'
+              score360:
+                $ref: '#/components/schemas/Score360Report'
+              income360:
+                $ref: '#/components/schemas/Income360Report'
+
+
+        optionalFeatures:
+          type: object
+          properties:
+            registration:
+              $ref: '#/components/schemas/Registration'
+            localization:
+              $ref: '#/components/schemas/Localization'
+            negativeData:
+              $ref: '#/components/schemas/NegativeData'
+            score:
+              $ref: '#/components/schemas/Score'
+            scores:
+              $ref: '#/components/schemas/Scores'
+            scoresFraud:
+              $ref: '#/components/schemas/ScoresFraud'
+            negativeFlag:
+              $ref: '#/components/schemas/NegativeFlag'
+            spcNegativeFlag:
+              $ref: '#/components/schemas/SpcNegativeFlag'
+            negativeSummary:
+              $ref: '#/components/schemas/NegativeSummary'
+            facts:
+              $ref: '#/components/schemas/Facts'
+            paymentshistory:
+              $ref: '#/components/schemas/PaymentsHistory'
+            partner:
+              $ref: '#/components/schemas/Partnerships'
+            attributes:
+              $ref: '#/components/schemas/Attributes'
+            death:
+              $ref: '#/components/schemas/DeathReport'
+            creditLimitRecommendation:
+              $ref: '#/components/schemas/CreditLimitRecommendationReport'
+            deathAlert:
+              $ref: '#/components/schemas/DeathAlert'
+            zoom:
+              $ref: '#/components/schemas/Zoom'
+            checkFilings:
+              $ref: '#/components/schemas/CheckFilings'
+            checkFilingsHistorical:
+              $ref: '#/components/schemas/CheckFilingsHistorical'
+            score360:
+              $ref: '#/components/schemas/Score360Report'
+            income360:
+              $ref: '#/components/schemas/Income360Report'
+
+
+    AnalyzedCriteriaReport:
+      type: object
+      properties:
+        documentActive:
+          type: boolean
+          description: Document active
+        noDelinquencie:
+          type: boolean
+          description: No delinquency
+        noProtests:
+          type: boolean
+          description: No protests
+        lowIncomeCommitment:
+          type: boolean
+          description: Low income commitment
+    PropostaErpPFRespReport:
+      type: object
+      properties:
+        proposalNumber:
+          type: string
+          description: Proposal number
+        document:
+          type: string
+          description: Document
+        consumerName:
+          type: string
+          description: Consumer name
+        transactionValue:
+          type: number
+          description: Transaction value
+          example: 0.0
+        creationDate:
+          type: string
+          format: date-time
+          description: Creation date
+        saleType:
+          type: string
+          description: Sale type
+        saleTypeCode:
+          type: integer
+          format: int32
+          description: Sale type code
+          example: 0
+        riskLevelCode:
+          type: integer
+          format: int32
+          description: Risk level code
+          example: 0
+        recommendationType:
+          type: string
+          description: Recommendation type
+        recommendationSaleType:
+          type: string
+          description: Recommendation sale type
+        recommendedLimitValue:
+          type: number
+          description: Recommended limit value
+          example: 0.0
+        analyzedCriteria:
+          $ref: '#/components/schemas/AnalyzedCriteriaReport'
+    CreditLimitRecommendationReport:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+          default: 200
+          description: Code
+        message:
+          type: string
+          default: sucesso
+          description: Message
+        data:
+          $ref: '#/components/schemas/PropostaErpPFRespReport'
+    Registration:
+      type: object
+      properties:
+        documentNumber:
+          type: string
+          description: Document number of the person consulted
+        nationalIdCard:
+          type: string
+          description: National identification card of the consulted person
+        alternativeDocumentNumber:
+          type: string
+          description: Alternative document number
+        alternativeDocumentCode:
+          type: string
+          description: Alternative Document Type Code
+        alternativeDocumentDescription:
+          type: string
+          description: Alternative Document Type Code Description
+        alternativeDocumentDate:
+          type: string
+          format: date
+          description: Date of issuance of the alternative document in American format (yyyy mm dd)
+        issuingAgency:
+          type: string
+          description: Code of the agency issuing the alternative document
+        issuingAgencyState:
+          type: string
+          description: UF (state code) of the body issuing the alternative document
+        consumerName:
+          type: string
+          description: Name of the person consulted
+        motherName:
+          type: string
+          description: Name of the mother´s person consulted
+        consumerGender:
+          type: string
+          description: Gender of the person consulted
+        maritalStatus:
+          type: string
+          description: Marital Status
+        maritalStatusDescription:
+          type: string
+          description: Description of Marital Status
+        birthSquareCode:
+          type: string
+          description: Birthplace Code
+        birthSquareCity:
+          type: string
+          description: Name of City of Birth
+        birthSquareState:
+          type: string
+          description: UF of the City of Birth
+        birthDate:
+          type: string
+          format: date
+          description: Full Birthday Date in American format (yyyy mm dd)
+        deathDate:
+          type: string
+          format: date
+        inclusionDeathRecord:
+          type: string
+          description: Date of inclusion of the death record
+          format: date-time
+        profession:
+          type: string
+          description: Profession of the person consulted
+        professionCode:
+          type: string
+          description: Profession code of the person consulted
+        jobDescription:
+          type: string
+          description: Job Description
+        occupationCode:
+          type: string
+          description: Consulted person's occupation code
+        occupation:
+          type: string
+          description: Consulted person's occupation description
+        corporateCompanyName:
+          type: string
+          description: Full company name
+        corporateCompanyDocumentNumber:
+          type: string
+          description: Company document number (CNPJ)
+        educationLevelCode:
+          type: string
+          description: Education level code
+        educationLevelDescription:
+          type: string
+          description: Description of education level
+        dependentsNumber:
+          type: string
+          description: Number of Dependents
+        statusRegistrationCode:
+          type: string
+          description: Registration status code of person at federal bureau
+        statusRegistration:
+          type: string
+          description: Status of person at federal bureau
+        oldStatusRegistrationCode:
+          type: string
+          description: Old status code of the company in Federal Revenue
+        oldStatusRegistration:
+          type: string
+          description: Old status code description of the company in Federal Revenue
+        statusDate:
+          type: string
+          description: Date status of the person consulted
+          format: date
+        socialName:
+          type: string
+          description: Social name of the individual being consulted
+        consumerGenderDescription:
+          type: string
+          description: Description of the sex (gender) of the individual being consulted. Female (F) or Male (M) Return
+        sourceInformationCode:
+          type: string
+          description: Code of origin of the individual information being consulted, e.g. SER
+        sourceInformationDescription:
+          type: string
+          description: Description of the origin of the individual information being consulted, e.g. SERPRO (description of the SER code)
+        address:
+          $ref: '#/components/schemas/Address'
+        addresses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Address'
+        phone:
+          $ref: '#/components/schemas/Phone'
+        phones:
+          type: array
+          items:
+            $ref: '#/components/schemas/Phone'
+        emails:
+          type: array
+          items:
+            $ref: '#/components/schemas/Email'
+        error:
+          $ref: '#/components/schemas/Error'
+    Localization:
+      type: object
+      properties:
+        address:
+          $ref: '#/components/schemas/Address'
+        phone:
+          $ref: '#/components/schemas/Phone'
+        error:
+          $ref: '#/components/schemas/Error'
+    DeathReport:
+      type: object
+      properties:
+        consumerName:
+          type: string
+          description: Name of the person consulted
+        motherName:
+          type: string
+          description: Name of the mother´s person consulted
+        birthDate:
+          type: string
+          description: Birth date person consulted
+          format: date
+        deathDate:
+          type: string
+          description: Death date person consulted
+          format: date
+        inclusionDeathRecord:
+          type: string
+          description: Date of inclusion of the death record
+          format: date-time
+        error:
+          $ref: '#/components/schemas/Error'
+    Address:
+      type: object
+      properties:
+        addressLine:
+          type: string
+          description: Address of person consulted
+          example: Columbia street
+        addressTypeCode:
+          type: integer
+          format: int32
+          description: Address type code
+          example: 0
+        addressTypeDescription:
+          type: string
+          description: Description of the Address Type code
+        addressNumber:
+          type: string
+          description: Address number
+        district:
+          type: string
+          description: District of person consulted
+        zipCode:
+          type: string
+          description: Zip Code of person consulted
+          example: 12345-678
+        country:
+          type: string
+          description: Country of person consulted
+        city:
+          type: string
+          description: City of person consulted
+        state:
+          type: string
+          description: State of person consulted
+        addressComplement:
+          type: string
+          description: Address complement
+        updateDate:
+          type: string
+          format: date
+          description: Full date of the last information update in American format (yyyy mm dd) (full-date format = date-fullyear '-' date-month '-' date-mday)
+    Phone:
+      type: object
+      properties:
+        regionCode:
+          type: integer
+          format: int32
+          description: Region code
+          example: 0
+        areaCode:
+          type: integer
+          format: int32
+          description: Area code
+          example: 0
+        phoneNumber:
+          type: integer
+          format: int64
+          description: Phone number
+          example: 0
+        phoneType:
+          type: string
+          description: Phone type
+        phoneTypeCode:
+          type: integer
+          format: int32
+          description: Phone type code
+          example: 0
+        updateDate:
+          type: string
+          format: date
+          description: Full date of the last information update in American format (yyyy mm dd) (full-date format = date-fullyear '-' date-month '-' date-mday)
+    Email:
+      type: object
+      properties:
+        emailDescription:
+          type: string
+          description: Description of the full e-mail address of the individual consulted
+        updateDate:
+          type: string
+          format: date
+          description: Full date of the last information update in American format (yyyy mm dd) (full-date format = date-fullyear '-' date-month '-' date-mday)
+    NegativeData:
+      type: object
+      properties:
+        pefin:
+          $ref: '#/components/schemas/Pefin'
+        refin:
+          $ref: '#/components/schemas/Refin'
+        notary:
+          $ref: '#/components/schemas/Notary'
+        check:
+          $ref: '#/components/schemas/Check'
+        spcNegative:
+          $ref: '#/components/schemas/SpcNegative'
+        collectionRecords:
+          $ref: '#/components/schemas/CollectionRecords'
+        checkFilings:
+          $ref: '#/components/schemas/CheckFilings'
+        checkFilingsHistorical:
+          $ref: '#/components/schemas/CheckFilingsHistorical'
+    Pefin:
+      type: object
+      properties:
+        pefinResponse:
+          $ref: '#/components/schemas/PefinResponse'
+        summary:
+          $ref: '#/components/schemas/Summary'
+        error:
+          $ref: '#/components/schemas/Error'
+    Refin:
+      type: object
+      properties:
+        refinResponse:
+          $ref: '#/components/schemas/RefinResponse'
+        summary:
+          $ref: '#/components/schemas/Summary'
+        error:
+          $ref: '#/components/schemas/Error'
+    Notary:
+      type: object
+      properties:
+        notaryResponse:
+          $ref: '#/components/schemas/NotaryResponse'
+        summary:
+          $ref: '#/components/schemas/Summary'
+        error:
+          $ref: '#/components/schemas/Error'
+    Check:
+      type: object
+      properties:
+        checkResponse:
+          $ref: '#/components/schemas/CheckResponse'
+        summary:
+          $ref: '#/components/schemas/SummaryCheck'
+        error:
+          $ref: '#/components/schemas/Error'
+    SpcNegative:
+      type: object
+      properties:
+        spcNegativeResponse:
+          $ref: '#/components/schemas/SpcNegativeResponse'
+        summary:
+          $ref: '#/components/schemas/Summary'
+        error:
+          $ref: '#/components/schemas/Error'
+    CollectionRecords:
+      type: object
+      properties:
+        collectionRecordsResponse:
+          $ref: '#/components/schemas/CollectionRecordsResponse'
+        summary:
+          $ref: '#/components/schemas/Summary'
+        error:
+          $ref: '#/components/schemas/Error'
+
+    # ------------------ Resposta unificada ------------------
+    GraphReportResponse:
+      type: object
+      required: [ graph ]
+      properties:
+        graph:
+          $ref: '#/components/schemas/Graph'
+    Graph:
+      type: object
+      required: [ centerNodeId, nodes, edges ]
+      properties:
+        centerNodeId:
+          type: string
+          description: ID do nó central (também presente em nodes[].id)
+        nodes:
+          type: array
+          description: Lista de todos os nós; o nó central também aparece aqui.
+          items:
+            $ref: '#/components/schemas/Node'
+        edges:
+          type: array
+          description: Lista de todas as arestas do grafo.
+          items:
+            $ref: '#/components/schemas/Edge'
+      # Nó unificado (Renda + Score no próprio modelo)
+    Node:
+      type: object
+      required: [ id, relationCategory, proximity ]
+      properties:
+        # Base
+        id:
+          type: string
+          description: Identificador do nó (nodeId persistido no DynamoDB).
+        name:
+          type: string
+          description: Nome exibido.
+        document:
+          type: string
+          description: Documento/ndoc do nó.
+        relationCategory:
+          $ref: '#/components/schemas/RelationCategory'
+        proximity:
+          type: integer
+          minimum: 1
+          maximum: 3
+          description: Grau de proximidade ao nó central (1=mais próximo, 3=mais distante).
+      # Aresta (sem alterações conceituais)
+    Edge:
+      type: object
+      required: [ id, source, target, type ]
+      properties:
+        id:
+          type: string
+          description: Identificador estável da aresta (use a SK do DynamoDB, ex. EDGE#A#B).
+        source:
+          type: string
+          description: ID do nó de origem (Node.id).
+        target:
+          type: string
+          description: ID do nó de destino (Node.id).
+        type:
+          $ref: '#/components/schemas/EdgeType'
+        proximity:
+          type: integer
+          minimum: 1
+          maximum: 3
+          description: Grau mínimo ao centro em um caminho que inclui esta aresta (para estilização).
+        directed:
+          type: boolean
+          default: false
+          description: Se true, aresta é dirigida (source → target). Caso contrário, trate como bidirecional no front.
+    RelationCategory:
+      type: string
+      enum: [ HOUSEHOLD, RELATED ]
+      description: Categoria do nó em relação ao nó central.
+    EdgeType:
+      type: string
+      enum: [ HOUSEHOLD, RELATIONSHIP ]
+      description: Tipo da relação entre nós.
+
+
+    Score360Report:
+      type: object
+      properties:
+        scoreResponse:
+          $ref: '#/components/schemas/ScoreResponse'
+        graphResponse:
+          $ref: "#/components/schemas/GraphReportResponse"
+
+    Score:
+      type: object
+      properties:
+        score:
+          type: integer
+          description: Value of the score
+          example: 0
+        scoreModel:
+          type: string
+          description: Model used to get the score. Examples [HSPN], [HSPO]
+        range:
+          type: string
+          description: Name of the ranges of each interval for rating the score
+        defaultRate:
+          type: string
+          description: Probability non-payments
+        codeMessage:
+          type: integer
+          description: Code score message
+          example: 0
+        message:
+          type: string
+          description: Score message
+        error:
+          $ref: '#/components/schemas/Error'
+      description: General data about score consulted document
+    Scores:
+      type: object
+      properties:
+        scoreResponse:
+          $ref: '#/components/schemas/ScoreResponse'
+
+    Features:
+      type: object
+      description: >
+        Objeto consolidado de atributos do score. Os campos são CONDICIONAIS ao
+        modelo/feature efetivamente consultado — um retorno traz apenas os campos
+        do(s) modelo(s) correspondente(s):
+
+        - trend, control, profile → Score Mais 5.0 (HSM5)
+
+        - agro → elegibilidade Agro (HRP5)
+
+        - scoreRelatedAverage, scoreHouseholdAverage, householdQty, relatedQty → Score 360
+
+        - income, paymentCapacity, incomeCommitment, incomeSource, *Segment, leverage* → features de Renda
+      properties:
+        flag_apostador:
+          type: integer
+        frequenciaapostas:
+          type: integer
+        tm_1m:
+          type: integer
+        tm_3m:
+          type: integer
+        tm_6m:
+          type: integer
+        ccpa_valor:
+          type: integer
+        ccpa_pp:
+          type: integer
+        income:
+          type: string
+        paymentCapacity:
+          type: string
+        incomeCommitment:
+          type: string
+        incomeSource:
+          type: array
+          items:
+            $ref: '#/components/schemas/IncomeSource'
+        generalPrincipality:
+          type: string
+        cardPrincipality:
+          type: string
+        privateSegment:
+          type: string
+        publicSegment:
+          type: string
+        fintechSegment:
+          type: string
+        cooperativeSegment:
+          type: string
+        retailSegment:
+          type: string
+        currentLeverage:
+          type: number
+        leverageUpTo1Y:
+          type: number
+        leverageUpTo3Y:
+          type: number
+        leverageUpTo5Y:
+          type: number
+        leverageUpTo15Y:
+          type: number
+        scoreRelatedAverage:
+          type: integer
+          format: int32
+        scoreHouseholdAverage:
+          type: integer
+          format: int32
+        householdQty:
+          type: integer
+          format: int32
+        relatedQty:
+          type: integer
+          format: int32
+        trend:
+          type: integer
+          format: int32
+          description: "1..18 (HSM5 e HAM5)"
+          minimum: 1
+          maximum: 18
+        control:
+          type: integer
+          format: int32
+          description: "HSM5: 1..5"
+          minimum: 1
+          maximum: 5
+        profile:
+          type: integer
+          format: int32
+          description: "HSM5: 1..12"
+          minimum: 1
+          maximum: 12
+        agro:
+          type: integer
+          format: int32
+          description: "HRP5: 0 (não elegível) ou 1 (elegível)"
+          enum: [ 0, 1 ]
+        hhd8Seg1:
+          type: string
+        hhd8Seg2:
+          type: string
+        hhd8Seg3:
+          type: string
+        hhd8Seg4:
+          type: string
+    IncomeSource:
+      type: object
+      properties:
+        sourceCode:
+          type: string
+        sourceDescription:
+          type: string
+
+
+    ScoreResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          score:
+            type: integer
+            description: Value of the score
+            example: 0
+          scoreModel:
+            type: string
+            description: Model used to get the score. Examples [HSPN], [HSPO]
+          range:
+            type: string
+            description: Name of the ranges of each interval for rating the score
+          defaultRate:
+            type: string
+            description: Probability non-payments
+          codeMessage:
+            type: integer
+            description: Code score message
+            example: 0
+          message:
+            type: string
+            description: Score message
+          features:
+            $ref: '#/components/schemas/Features'
+          error:
+            $ref: '#/components/schemas/Error'
+
+    ScoresFraud:
+      type: object
+      properties:
+        scoresFraudResponse:
+          $ref: '#/components/schemas/ScoresFraudResponse'
+    ScoresFraudResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          scoreModel:
+            type: string
+            description: Model used to get score
+          score:
+            type: integer
+            description: Value of the score
+            example: 0
+          recommendationRisk:
+            type: string
+            description: Recommendation based on score value
+          message:
+            type: string
+            description: Score message
+          error:
+            $ref: '#/components/schemas/Error'
+    NegativeFlag:
+      type: object
+      properties:
+        hasNegative:
+          type: boolean
+          description: If the negative flag is true the totalAmount and totalValue will be shown
+        totalAmount:
+          type: integer
+          description: Total quantity (count) of all negatives
+          example: 0
+        totalValue:
+          type: number
+          description: Total value of all negatives
+          example: 0 0
+      description: General data about negative flag consulted document
+    SpcNegativeFlag:
+      type: object
+      properties:
+        hasNegative:
+          type: boolean
+          description: Negative flag indicative
+      description: General data about spc negative flag consulted document
+    NegativeSummary:
+      type: object
+      properties:
+        hasNegative:
+          type: boolean
+          description: If has negative
+        message:
+          type: string
+          description: Negative message
+        summaries:
+          type: array
+          items:
+            $ref: '#/components/schemas/NegativeSummaryData'
+    NegativeSummaryData:
+      type: object
+      properties:
+        negativeType:
+          type: string
+          description: Negative type
+        newestNegativeDate:
+          type: string
+          description: Event date. Mask yyyy-MM-dd
+          format: date
+        oldestNegativeDate:
+          type: string
+          description: Event date. Mask yyyy-MM-dd
+          format: date
+        count:
+          type: integer
+          description: Total count of the found items
+          format: int32
+          example: 0
+        balance:
+          type: number
+          description: Total balance of the found items
+          example: 0.0
+    Facts:
+      type: object
+      properties:
+        inquiry:
+          $ref: '#/components/schemas/Inquiry'
+        inquirySummary:
+          $ref: '#/components/schemas/InquirySummary'
+        stolenDocuments:
+          $ref: '#/components/schemas/StolenDocuments'
+        spcInquires:
+          $ref: '#/components/schemas/SpcInquiries'
+        inquiriesSegments:
+          $ref: '#/components/schemas/InquiriesSegments'
+        inquiriesSegmentsMonthly:
+          $ref: '#/components/schemas/InquiriesSegmentsMonthly'
+        spcInquiriesSegments:
+          $ref: '#/components/schemas/SpcInquiriesSegments'
+        judgementFilings:
+          $ref: '#/components/schemas/JudgementFilings'
+        bankrupts:
+          $ref: '#/components/schemas/Bankrupts'
+        spcInquirySummary:
+          $ref: '#/components/schemas/SpcInquirySummary'
+    InquirySummary:
+      type: object
+      properties:
+        inquiryQuantity:
+          type: object
+          properties:
+            actual:
+              type: integer
+              description: Actual month inquiry quantity including banks and company
+              example: 0
+            checkActual:
+              type: integer
+              description: Actual month inquiry quantity from checks
+              example: 0
+            bankActual:
+              type: integer
+              description: Actual month inquiry quantity from banks
+              example: 0
+            companyActual:
+              type: integer
+              description: Actual month inquiry quantity from companies
+              example: 0
+            creditInquiriesQuantity:
+              type: array
+              description: Decreasing month array, the items will depend on the years parameter
+              items:
+                type: object
+                properties:
+                  inquiryDate:
+                    type: string
+                    description: Inquiry date. Mask yyyy-MM
+                  occurrences:
+                    type: integer
+                    description: Period occurrence quantity including bank and company
+                    format: int32
+                    example: 0
+                  bankOccurrences:
+                    type: integer
+                    description: Period occurrence quantity from banks
+                    format: int32
+                    example: 0
+                  companyOccurrences:
+                    type: integer
+                    description: Period occurrence quantity from companies
+                    format: int32
+                    example: 0
+            checkInquiriesQuantity:
+              type: array
+              description: "Decreasing month array, the items will depend on the years\
+                \ parameter"
+              items:
+                type: object
+                properties:
+                  inquiryDate:
+                    type: string
+                    description: Inquiry date. Mask yyyy-MM
+                  occurrences:
+                    type: integer
+                    description: Period occurrence quantity
+                    format: int32
+                    example: 0
+        summary:
+          $ref: '#/components/schemas/Summary'
+    SpcInquirySummary:
+      type: object
+      properties:
+        spcInquiryQuantity:
+          type: object
+          properties:
+            actual:
+              type: integer
+              description: Actual month inquiry quantity
+              example: 0
+            creditInquiriesQuantity:
+              type: array
+              description: Decreasing month array, the items will depend on the years parameter
+              items:
+                type: object
+                properties:
+                  inquiryDate:
+                    type: string
+                    description: Inquiry date. Mask yyyy-MM
+                  occurrences:
+                    type: integer
+                    description: Period occurrence quantity
+                    format: int32
+                    example: 0
+            checkInquiriesQuantity:
+              type: array
+              description: Decreasing month array, the items will depend on the years parameter
+              items:
+                type: object
+                properties:
+                  inquiryDate:
+                    type: string
+                    description: Inquiry date. Mask yyyy-MM
+                  occurrences:
+                    type: integer
+                    description: Period occurrence quantity
+                    format: int32
+                    example: 0
+        summary:
+          $ref: '#/components/schemas/Summary'
+    Inquiry:
+      type: object
+      properties:
+        inquiryResponse:
+          $ref: '#/components/schemas/InquiryResponse'
+        summary:
+          $ref: '#/components/schemas/Summary'
+        error:
+          $ref: '#/components/schemas/Error'
+    StolenDocuments:
+      type: object
+      properties:
+        stolenDocumentsResponse:
+          $ref: '#/components/schemas/StolenDocumentsResponse'
+        summary:
+          $ref: '#/components/schemas/Summary'
+        error:
+          $ref: '#/components/schemas/Error'
+    SpcInquiries:
+      type: object
+      properties:
+        spcInquiriesResponse:
+          $ref: '#/components/schemas/SpcInquiriesResponse'
+        summary:
+          $ref: '#/components/schemas/Summary'
+        error:
+          $ref: '#/components/schemas/Error'
+    InquiriesSegments:
+      type: object
+      properties:
+        inquiriesSegmentsResponse:
+          $ref: '#/components/schemas/SegmentsResponse'
+        summary:
+          $ref: '#/components/schemas/Summary'
+        error:
+          $ref: '#/components/schemas/Error'
+    InquiriesSegmentsMonthly:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Informational message regarding details
+        inquiriesSegmentsMonthlyResponse:
+          $ref: '#/components/schemas/SegmentsResponse'
+        summary:
+          $ref: '#/components/schemas/Summary'
+        error:
+          $ref: '#/components/schemas/Error'
+    SpcInquiriesSegments:
+      type: object
+      properties:
+        spcInquiriesSegmentsResponse:
+          $ref: '#/components/schemas/SegmentsResponse'
+        summary:
+          $ref: '#/components/schemas/Summary'
+        error:
+          $ref: '#/components/schemas/Error'
+    JudgementFilings:
+      type: object
+      properties:
+        judgementFilingsResponse:
+          $ref: '#/components/schemas/JudgementFilingsResponse'
+        summary:
+          $ref: '#/components/schemas/Summary'
+        error:
+          $ref: '#/components/schemas/Error'
+    CheckFilings:
+      type: object
+      properties:
+        checkFilingsResponse:
+          $ref: '#/components/schemas/CheckFilingsResponse'
+    CheckFilingsHistorical:
+      type: object
+      properties:
+        checkFilingsHistoricalResponse:
+          $ref: '#/components/schemas/CheckFilingsHistoricalResponse'
+    Bankrupts:
+      type: object
+      properties:
+        bankruptsResponse:
+          $ref: '#/components/schemas/BankruptsResponse'
+        summary:
+          $ref: '#/components/schemas/Summary'
+        error:
+          $ref: '#/components/schemas/Error'
+    PefinResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          occurrenceDate:
+            type: string
+            description: Date of occurrence. Mask yyyy-MM-dd
+            format: date
+          inclusionDate:
+            type: string
+            description: Date when the occurrence was included in the database. Mask yyyy-MM-dd
+            format: date
+          availabilityDate:
+            type: string
+            description: Date when the occurrence will be available to the market. Mask yyyy-MM-dd
+            format: date
+          legalNatureId:
+            type: string
+            description: Legal nature id of occurrence
+          legalNature:
+            type: string
+            description: Description legal nature id of occurrence
+          contractId:
+            type: string
+            description: Contract id of occurrence
+          creditorName:
+            type: string
+            description: Creditor name
+          creditorBusinessId:
+            type: string
+            description: Creditor business identification
+          amount:
+            type: number
+            description: Value of occurrence
+            example: 0.0
+          city:
+            type: string
+            description: City of occurrence
+          federalUnit:
+            type: string
+            description: Federal Unit of occurrence
+          publicAgency:
+            type: boolean
+            description: Cadin[X] Indicates if is a government collection
+          principal:
+            type: boolean
+            description: Indicates if this is principal or not. True for principal's record and False for guarantor's record
+          flagSubJudice:
+            type: boolean
+            description: Indicates if has flag of sub judice or not
+          legalSquare:
+            type: string
+            description: Legal square of the occurrence
+          dispute:
+            $ref: '#/components/schemas/Dispute'
+    RefinResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          occurrenceDate:
+            type: string
+            description: Date of occurrence. Mask yyyy-MM-dd
+            format: date
+          inclusionDate:
+            type: string
+            description: Date when the occurrence was included in the database. Mask yyyy-MM-dd
+            format: date
+          availabilityDate:
+            type: string
+            description: Date when the occurrence will be available to the market. Mask yyyy-MM-dd
+            format: date
+          legalNatureId:
+            type: string
+            description: Legal nature identification of occurrence
+          legalNature:
+            type: string
+            description: Description Legal Nature identification of occurrence
+          contractId:
+            type: string
+            description: Contract id of occurrence
+          creditorName:
+            type: string
+            description: Creditor name
+          creditorBusinessId:
+            type: string
+            description: Creditor business identification
+          amount:
+            type: number
+            description: value of occurrence
+            example: 0.0
+          city:
+            type: string
+            description: City of occurrence
+          federalUnit:
+            type: string
+            description: Federal Unit of occurrence
+          publicAgency:
+            type: boolean
+            description: Cadin[X] Indicates if is a government collection
+          principal:
+            type: boolean
+            description: Indicates if this is principal or not. True for principal's record and False for guarantor's record
+          flagSubJudice:
+            type: boolean
+            description: Indicates if has subJudice or not
+          legalSquare:
+            type: string
+            description: Legal square of the occurrence
+          dispute:
+            $ref: '#/components/schemas/Dispute'
+          bank:
+            $ref: '#/components/schemas/Bank'
+    NotaryResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          occurrenceDate:
+            type: string
+            description: Date of occurrence. Mask yyyy-MM-dd
+            format: date
+          inclusionDate:
+            type: string
+            description: Date when the occurrence was included in the database. Mask yyyy-MM-dd
+            format: date
+          availabilityDate:
+            type: string
+            description: Date when the occurrence will be available to the market. Mask yyyy-MM-dd
+            format: date
+          currency:
+            type: string
+            description: Currency Type of the occurrence
+          amount:
+            type: number
+            description: Amount protest value of the occurrence
+            example: 0.0
+          contractId:
+            type: string
+            description: Contract number of the occurrence
+          officeNumber:
+            type: string
+            description: Notary office number the number of the registry office
+          officeName:
+            type: string
+            description: Notary office name the name of the registry office
+          city:
+            type: string
+            description: City of the occurrence
+          federalUnit:
+            type: string
+            description: Federal unit of the occurrence
+          flagSubJudice:
+            type: boolean
+            description: Indicates if has flag sub judice or not
+          legalSquare:
+            type: string
+            description: Legal square of the occurrence
+          dispute:
+            $ref: '#/components/schemas/Dispute'
+    CheckResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          occurrenceDate:
+            type: string
+            description: Date occurrence information. Format accepted yyyy-mm-dd
+            format: date
+          inclusionDate:
+            type: string
+            description: Date when the occurrence was included in the database. Mask yyyy-MM-dd
+            format: date
+          availabilityDate:
+            type: string
+            description: Date when the occurrence will be available to the market. Mask yyyy-MM-dd
+            format: date
+          legalSquare:
+            type: string
+            description: Legal square of the occurrence
+          bankId:
+            type: integer
+            description: Id of the bank's occurrence
+            format: int32
+            example: 0
+          bankName:
+            type: string
+            description: Name of the bank's occurrence
+          bankAgencyId:
+            type: integer
+            description: Agency Id of the occurrence
+            format: int32
+            example: 0
+          checkCount:
+            type: integer
+            description: Check count
+            format: int32
+            example: 0
+          city:
+            type: string
+            description: City of the occurrence
+          federalUnit:
+            type: string
+            description: Federal unit of the occurrence
+          accountType:
+            type: string
+            description: Account type
+          checkNumber:
+            type: string
+            description: CCF-BB
+          alinea:
+            type: integer
+            description: Alinea
+            format: int32
+            example: 0
+          dispute:
+            $ref: '#/components/schemas/Dispute'
+    SpcNegativeResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          occurrenceDate:
+            type: string
+            format: date
+            description: Date of occurrence. Mask yyyy-MM-dd
+          occurrenceStatus:
+            type: string
+            description: Status of occurrence
+          inclusionDate:
+            type: string
+            format: date
+            description: Date when the occurrence was included in the database. Mask yyyy-MM-dd
+          availabilityDate:
+            type: string
+            format: date
+            description: Date when the occurrence will be available to the market. Mask yyyy-MM-dd
+          legalNatureId:
+            type: string
+            description: Legal nature identification
+          legalNature:
+            type: string
+            description: Legal nature description of the occurrence
+          contractId:
+            type: string
+            description: Contract number of the occurrence
+          creditorBusinessId:
+            type: string
+            description: Creditor business identification
+          creditorAlias:
+            type: string
+            description: Alias name of the creditor
+          creditorName:
+            type: string
+            description: Name of the creditor
+          amount:
+            type: number
+            description: Amount value of the occurrence
+            example: 0.0
+          operationType:
+            type: string
+            description: Negative operation type
+          city:
+            type: string
+            description: City of the occurrence
+          federalUnit:
+            type: string
+            description: Federal unit of the occurrence
+          creditorCity:
+            type: string
+            description: Creditor's city
+          creditorFederalUnit:
+            type: string
+            description: Creditor's federal unit
+          principal:
+            type: boolean
+            description: true for principal's record and false for guarantor's record
+          legalSquare:
+            type: string
+            description: Legal square of the occurrence
+          dispute:
+            $ref: '#/components/schemas/Dispute'
+          origin:
+            type: string
+            description: Debt origin
+    CollectionRecordsResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          occurrenceDate:
+            type: string
+            description: Date of occurrence with Mask yyyy-MM-dd
+            format: date
+          inclusionDate:
+            type: string
+            description: Date when the occurrence was included in the database. Mask yyyy-MM-dd
+            format: date
+          availabilityDate:
+            type: string
+            description: Date when the occurrence will be available to the market. Mask yyyy-MM-dd
+            format: date
+          legalNatureId:
+            type: string
+            description: Legal nature id of occurrence
+          legalNature:
+            type: string
+            description: Description legal nature id of occurrence
+          legalSquare:
+            type: string
+            description: Legal square of the occurrence
+          contractId:
+            type: string
+            description: Contract id of occurrence
+          creditorBusinessId:
+            type: string
+            description: Creditor business identification
+          creditorName:
+            type: string
+            description: Creditor name
+          amount:
+            type: number
+            description: value of occurrence
+            example: 0.0
+          city:
+            type: string
+            description: City of occurrence
+          federalUnit:
+            type: string
+            description: Federal Unit of occurrence
+          publicAgency:
+            type: boolean
+            description: Cadin[X] Indicates if is a government collection
+          principal:
+            type: boolean
+            description: Indicates if this is principal or not. True for principal's record and False for guarantor's record
+          flagSubJudice:
+            type: boolean
+            description: Indicates if has subJudice or not
+          dispute:
+            $ref: '#/components/schemas/Dispute'
+    InquiryResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          occurrenceDate:
+            type: string
+            description: Occurrence Date. Mask yyyy-MM-dd
+            format: date
+          segmentDescription:
+            type: string
+            description: Company segment that performed the inquiry
+          daysQuantity:
+            type: integer
+            description: Days quantity from last inquiry
+            format: int32
+            example: 0
+    SpcInquiriesResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          daysQuantity:
+            type: integer
+            description: Days quantity from last inquiry
+            format: int32
+            example: 0
+          occurrenceDate:
+            type: string
+            description: Occurrence date. Mask yyyy-MM-dd
+            format: date
+          segmentDescription:
+            type: string
+            description: Company segment that performed the inquiry
+          companyName:
+            type: string
+            description: Company legal name
+          companyDocumentId:
+            type: string
+            description: Company document registered, in Brazil CNPJ
+          companyAlias:
+            type: string
+            description: Trade name of the company
+    SegmentsResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          segmentDescription:
+            type: string
+            description: Company segment that performed the inquiry
+          occurrenceDate:
+            type: array
+            items:
+              type: string
+              description: Occurrence Date. Mask yyyy-MM-dd
+              format: date
+          total:
+            type: integer
+            description: Total count of the found items
+            format: int32
+            example: 0
+    StolenDocumentsResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          occurrenceDate:
+            type: string
+            description: Event date. Mask yyyy-MM-dd
+            format: date
+          inclusionDate:
+            type: string
+            description: Database inclusion date
+            format: date-time
+          documentType:
+            type: string
+            description: Document type PF or PJ
+          documentNumber:
+            type: string
+            description: Document number
+          issuingAuthority:
+            type: string
+            description: Issuing authority for example SSP secretary of state of Sao Paulo
+          detailedReason:
+            type: string
+            description: Reason for occurrence
+          occurrenceState:
+            type: string
+            description: State in which it occurred
+          phoneNumber:
+            $ref: '#/components/schemas/Phone'
+    JudgementFilingsResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          occurrenceDate:
+            type: string
+            description: Occurrence date. Mask yyyy-MM-dd
+            format: date
+          availabilityDate:
+            type: string
+            description: Date when the occurrence will be available to the market. Mask yyyy-MM-dd
+            format: date
+          legalSquare:
+            type: string
+            description: Legal square of occurrence
+          legalNatureId:
+            type: string
+            description: Legal nature id of occurrence
+          legalNature:
+            type: string
+            description: Description legal nature id of occurrence
+          civilCourt:
+            type: string
+            description: Civil court number
+          principal:
+            type: boolean
+            description: Indicates if this is principal or not. True for principal's record and False for guarantor's record
+          inclusionDate:
+            type: string
+            description: Database inclusion date
+            format: date
+          flagSubJudice:
+            type: boolean
+            description: Indicates if has sub judice or not
+          caseNumber:
+            type: string
+            description: Number of the case
+          amount:
+            type: number
+            description: Amount value of the occurrence
+            format: double
+            example: 0.0
+          distributor:
+            type: string
+            description: Distributor number
+          city:
+            type: string
+            description: City of the inquiry
+          state:
+            type: string
+            description: State of the inquiry
+          dispute:
+            $ref: '#/components/schemas/Dispute'
+    CheckFilingsResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          bankNumber:
+            type: integer
+            description: bank code.
+          bankName:
+            type: string
+            description: Bank name.
+          agencyNumber:
+            type: integer
+            description: Check agency.
+          accountNumberCheck:
+            type: number
+            description: check current account.
+          initialCheckNumber:
+            type: integer
+            description: Initial check number.
+          finalCheckNumber:
+            type: integer
+            description: Final check number
+          holderNameAccount:
+            type: string
+            description: Informed account holder name.
+          checkAmount:
+            type: number
+            description: Check amount.
+          agencySquareCode:
+            type: string
+            description: Square code of Bank agency.
+          agencyZipCode:
+            type: integer
+            description: Zip of Bank agency
+          briefDescriptionReason:
+            type: string
+            description: Brief description of the reason for the check
+          dateTimeInclusion:
+            type: string
+            description: Date Time of inclusion.
+          messageDescription:
+            type: string
+            description: Message description source
+    CheckFilingsHistoricalResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          bankNumber:
+            type: integer
+            description: bank code.
+          bankName:
+            type: string
+            description: Bank name.
+          agencyNumber:
+            type: integer
+            description: Check agency.
+          accountNumberCheck:
+            type: number
+            description: check current account.
+          initialCheckNumber:
+            type: integer
+            description: Initial check number.
+          finalCheckNumber:
+            type: integer
+            description: Final check number
+          holderNameAccount:
+            type: string
+            description: Informed account holder name.
+          checkAmount:
+            type: number
+            description: Check amount.
+          agencySquareCode:
+            type: string
+            description: Square code of Bank agency.
+          agencyZipCode:
+            type: integer
+            description: Zip of Bank agency
+          briefDescriptionReason:
+            type: string
+            description: Brief description of the reason for the check
+          dateTimeInclusion:
+            type: string
+            description: Date Time of inclusion.
+          messageDescription:
+            type: string
+            description: Message description source
+          quantityCheck:
+            type: integer
+            description: Quantity check.
+    BankruptsResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          occurrenceDate:
+            type: string
+            description: Occurrence date. Mask yyyy-MM-dd
+            format: date
+          availabilityDate:
+            type: string
+            description: Date of availability date. Mask yyyy-MM-dd
+            format: date
+          inclusionDate:
+            type: string
+            description: Database inclusion date. Mask yyyy-MM-dd
+            format: date
+          legalNatureId:
+            type: string
+            description: Legal nature id of occurrence
+          legalNature:
+            type: string
+            description: Description legal nature id
+          caseNumber:
+            type: string
+            description: Civil court case identification
+          companyDocumentId:
+            type: string
+            description: Business document id of the company
+          companyName:
+            type: string
+            description: Business company name
+          positionCompany:
+            type: string
+            description: Position in the company
+          city:
+            type: string
+            description: City
+          state:
+            type: string
+            description: State
+          civilCourt:
+            type: string
+            description: Civil court
+          typeOccurrence:
+            type: string
+            description: Type of occurrence
+          legalSquare:
+            type: string
+            description: Legal square
+          companyLegalNatureID:
+            type: string
+            description: Identification of company legal nature
+          companyLegalNature:
+            type: string
+            description: Company legal nature
+          dispute:
+            $ref: '#/components/schemas/Dispute'
+    PaymentsHistory:
+      type: object
+      properties:
+        paymentsHistoryResponse:
+          $ref: '#/components/schemas/PaymentsHistoryResponse'
+    PaymentsHistoryResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          initialDayRange:
+            type: integer
+            description: Initial day of the range of days late in payment
+            format: int32
+            example: 0
+          finalDayRange:
+            type: integer
+            description: Final day of the range of days late in payment
+            format: int32
+            example: 0
+          score:
+            type: string
+            description: Score assigned to the consumer's payment history based on the calculated amount (percentage or currency)
+          range:
+            type: string
+            description: Range of value calculated based on the consumer's payment history for a given period of days. It can be a percentage or currency value range
+          error:
+            $ref: '#/components/schemas/Error'
+    Partnerships:
+      type: object
+      properties:
+        partnershipResponse:
+          $ref: '#/components/schemas/PartnershipResponse'
+        summary:
+          $ref: '#/components/schemas/Summary'
+        error:
+          $ref: '#/components/schemas/Error'
+    PartnershipResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          businessDocument:
+            type: string
+            description: Legal person CNPJ
+          companyName:
+            type: string
+            description: Name of the company
+          companyAlias:
+            type: string
+            description: Alias name of the company
+          sinceDate:
+            type: string
+            description: Since Date. Mask yyyy-MM-dd
+            format: date
+          participationType:
+            type: string
+            description: Type of participation
+          participationPercentage:
+            type: number
+            description: Percentage partnership of the company
+            format: double
+            example: 0.0
+          companyStatus:
+            type: string
+            description: Status of the company [Active, Inactive, so on]
+          companyStatusCode:
+            type: string
+            description: Status code of the company [Active, Inactive, so on]
+          companyState:
+            type: string
+            description: Shows the state where the company is based
+          companyStatusDate:
+            type: string
+            description: Date of the status company. Mask yyyy-MM-dd
+          updateDate:
+            type: string
+            description: Date of the company status updated. Mask yyyy-MM-dd
+            format: date
+          participationInitialDate:
+            type: string
+            description: Initial date of the company participation. Mask yyyy-MM-dd
+            format: date
+          hasNegative:
+            type: boolean
+            description: Negative flag
+    AttributesResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/AttributeResponse'
+    Attributes:
+      type: object
+      properties:
+        attributesResponse:
+          $ref: '#/components/schemas/AttributesResponse'
+        estimatedIncome:
+          $ref: '#/components/schemas/EstimatedIncomeResponse'
+        onTimePaymentsIndex:
+          $ref: '#/components/schemas/OnTimePaymentsIndexResponse'
+        creditCardUsageTrend:
+          $ref: '#/components/schemas/CreditCardUsageTrendResponse'
+        creditCardOnTimePaymentIndex:
+          $ref: '#/components/schemas/CreditCardOnTimePaymentIndexResponse'
+        affordability:
+          $ref: '#/components/schemas/AffordabilityResponse'
+        incomeCommitment:
+          $ref: '#/components/schemas/IncomeCommitmentResponse'
+    AttributeResponse:
+      type: object
+      properties:
+        scoring:
+          type: integer
+          description: Income value estimated
+          format: int32
+          example: 0
+        attributeModel:
+          type: string
+          description: Model used to get the score
+        codeMessage:
+          type: integer
+          description: Code score message
+          format: int32
+          example: 0
+        message:
+          type: string
+          description: Score message description
+        error:
+          $ref: '#/components/schemas/Error'
+        range:
+          type: string
+          description: Range
+        tax:
+          type: string
+          description: Tax
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttributeData'
+
+    AttributeData:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Code
+        codeDescription:
+          type: string
+          description: Code description
+        codeMessage:
+          type: integer
+          description: Score message code
+          example: 0
+        message:
+          type: string
+          description: Score message
+
+    CustomIncomeResponse:
+      type: object
+      properties:
+        scoring:
+          type: integer
+          description: Income value estimated
+          format: int32
+          example: 0
+        attributeModel:
+          type: string
+          description: Model used to get the score
+        codeMessage:
+          type: integer
+          description: Code message
+          format: int32
+          example: 0
+        message:
+          type: string
+          description: Score message description
+        error:
+          $ref: '#/components/schemas/Error'
+    EstimatedIncomeResponse:
+      type: object
+      properties:
+        scoring:
+          type: integer
+          description: Income value estimated
+          format: int32
+          example: 0
+        attributeModel:
+          type: string
+          description: Model used to get the score
+        codeMessage:
+          type: integer
+          description: Code message
+          format: int32
+          example: 0
+        message:
+          type: string
+          description: Score message description
+        error:
+          $ref: '#/components/schemas/Error'
+    OnTimePaymentsIndexResponse:
+      type: object
+      properties:
+        scoring:
+          type: integer
+          description: Value of the score
+          format: int32
+          example: 0
+        attributeModel:
+          type: string
+          description: Model used to get the score
+        codeMessage:
+          type: integer
+          description: Code message
+          format: int32
+          example: 0
+        message:
+          type: string
+          description: Score message description
+        error:
+          $ref: '#/components/schemas/Error'
+    CreditCardUsageTrendResponse:
+      type: object
+      properties:
+        scoring:
+          type: integer
+          description: Value of the score. 1 [Ascending], 2 [Neutral], 3 [Descending], 99 [Not enough information for trend calculation]
+          format: int32
+          example: 1
+        attributeModel:
+          type: string
+          description: Model used to get the score
+        codeMessage:
+          type: integer
+          description: Code message
+          format: int32
+          example: 0
+        message:
+          type: string
+          description: Score message description
+        error:
+          $ref: '#/components/schemas/Error'
+    CreditCardOnTimePaymentIndexResponse:
+      type: object
+      properties:
+        scoring:
+          type: integer
+          description: Value of the score. 1 [No stress], 2 [With low stress], 3 [With medium stress], 4 [With high stress], 99 [Not enough information to calculate Stress]
+          format: int32
+          example: 1
+        attributeModel:
+          type: string
+          description: Model used to get the score
+        codeMessage:
+          type: integer
+          description: Code message
+          format: int32
+          example: 0
+        message:
+          type: string
+          description: Score message description
+        error:
+          $ref: '#/components/schemas/Error'
+    AffordabilityResponse:
+      type: object
+      properties:
+        scoring:
+          type: integer
+          description: Value of the score
+          example: 0
+        attributeModel:
+          type: string
+          description: Model used to get the score. [HCPA]
+        codeMessage:
+          type: integer
+          description: Code message
+          example: 0
+        message:
+          type: string
+          description: Score message
+        error:
+          $ref: '#/components/schemas/Error'
+
+
+    Income360Data:
+      type: object
+      properties:
+        incomeIndividual:
+          type: string
+        incomeRelatedAverage:
+          type: string
+        relatedQuantity:
+          type: string
+        incomeHouseholdSum:
+          type: string
+        householdQuantity:
+          type: string
+        scoring:
+          type: string
+        attributeModel:
+          type: string
+        tax:
+          type: string
+        range:
+          type: string
+        codeMessage:
+          type: string
+        message:
+          type: string
+        billing:
+          type: boolean
+
+    IncomeGraph:
+      type: object
+      required: [ centerNodeId, nodes, edges ]
+      properties:
+        centerNodeId:
+          type: string
+          description: ID do nó central (também presente em nodes[].id)
+        nodes:
+          type: array
+          description: Lista de todos os nós; o nó central também aparece aqui.
+          items:
+            $ref: '#/components/schemas/IncomeNode'
+        edges:
+          type: array
+          description: Lista de todas as arestas do grafo.
+          items:
+            $ref: '#/components/schemas/IncomeEdge'
+
+    IncomeNode:
+      type: object
+      required: [ id, relationCategory, proximity ]
+      properties:
+        id:
+          type: string
+          description: Identificador do nó (nodeId persistido no DynamoDB).
+        name:
+          type: string
+          description: Nome exibido.
+        document:
+          type: string
+          description: Documento/ndoc do nó.
+        relationCategory:
+          $ref: '#/components/schemas/IncomeRelationCategory'
+        proximity:
+          type: integer
+          minimum: 1
+          maximum: 3
+          description: Grau de proximidade ao nó central (1=mais próximo, 3=mais distante).
+
+    IncomeEdge:
+      type: object
+      required: [ id, source, target, type ]
+      properties:
+        id:
+          type: string
+          description: Identificador estável da aresta (use a SK do DynamoDB, ex. EDGE#A#B).
+        source:
+          type: string
+          description: ID do nó de origem (Node.id).
+        target:
+          type: string
+          description: ID do nó de destino (Node.id).
+        type:
+          $ref: '#/components/schemas/IncomeEdgeType'
+        proximity:
+          type: integer
+          minimum: 1
+          maximum: 3
+          description: Grau mínimo ao centro em um caminho que inclui esta aresta (para estilização).
+        directed:
+          type: boolean
+          default: false
+          description: Se true, aresta é dirigida (source → target). Caso contrário, trate como bidirecional no front.
+
+    IncomeRelationCategory:
+      type: string
+      enum: [ HOUSEHOLD, RELATED ]
+      description: Categoria do nó em relação ao nó central.
+
+    IncomeEdgeType:
+      type: string
+      enum: [ HOUSEHOLD, RELATIONSHIP ]
+      description: Tipo da relação entre nós.
+    NDocRequest:
+      type: object
+      properties:
+        ndoc:
+          type: string
+          pattern: "^(\\d{11}|[A-Za-z0-9]{32,})$"
+
+
+    Income360Report:
+      type: object
+      properties:
+        incomeData:
+          $ref: '#/components/schemas/Income360Data'
+        incomeGraph:
+          $ref: '#/components/schemas/IncomeGraph'
+    IncomeCommitmentResponse:
+      type: object
+      properties:
+        scoring:
+          type: integer
+          description: Value of the income
+          example: 0
+        attributeModel:
+          type: string
+          description: Model used to get the score. [HCOR]
+        codeMessage:
+          type: integer
+          description: Code message
+          example: 0
+        message:
+          type: string
+          description: Score message
+        error:
+          $ref: '#/components/schemas/Error'
+    Summary:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Total count of the found items
+          format: int32
+          example: 0
+        checkCount:
+          type: number
+          description: Sum of values of check count on check-records
+          example: 0.0
+        creditCount:
+          type: integer
+          format: int32
+          description: Total count of credit inquiry found items
+          example: 0
+        bankCount:
+          type: integer
+          format: int32
+          description: Total count of bank found items
+          example: 0
+        companyCount:
+          type: integer
+          format: int32
+          description: Total count of company found items
+          example: 0
+        balance:
+          type: number
+          description: Total balance of the found items
+          example: 0.0
+        firstOccurrence:
+          type: string
+          description: Date of first occurrence. Mask yyyy-MM-dd
+          format: date
+        lastOccurrence:
+          type: string
+          description: Event date. Mask yyyy-MM-dd
+          format: date
+        message:
+          type: string
+          description: Summary message
+    SummaryCheck:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Total count of the found items
+          format: int32
+          example: 0
+        checkCount:
+          type: integer
+          description: Sum of values of check records
+          format: int32
+          example: 0
+        balance:
+          type: number
+          description: Total balance of the found items
+          example: 0.0
+        firstOccurrence:
+          type: string
+          description: Date of first occurrence. Mask yyyy-MM-dd
+          format: date
+        lastOccurrence:
+          type: string
+          description: Data of last occurrence. Mask yyyy-MM-dd
+          format: date
+        message:
+          type: string
+          description: Summary message
+    Dispute:
+      type: object
+      properties:
+        disputeIndicativeFlag:
+          type: boolean
+          description: Dispute indicative flag
+        trialDate:
+          type: string
+          description: Trial date
+          format: date
+        civilCourtId:
+          type: string
+          description: Civil court identification
+        distributorId:
+          type: string
+          description: Distributor identification
+        trialSquareId:
+          type: string
+          description: Trial square identification
+        trialId:
+          type: string
+          description: Trial identification
+        disputeMessagePt:
+          type: string
+          description: Dispute message
+    Bank:
+      type: object
+      properties:
+        bankId:
+          type: integer
+          description: Bank number identification
+          example: 0
+        bankName:
+          type: string
+          description: Bank name
+        bankAgencyId:
+          type: integer
+          description: Bank Agency identification
+          example: 0
+
+    DeathAlert:
+      properties:
+        deathResponse:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeathAlertResponse'
+
+    DeathAlertResponse:
+      type: object
+      properties:
+        document:
+          type: string
+          description: Document consulted
+        alert:
+          type: string
+          description: Description of the death alert
+        codes:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeathAlertCodes'
+
+    DeathAlertCodes:
+      type: object
+      properties:
+        messageCode:
+          type: string
+          description: Alert Code
+        fullMessage:
+          type: string
+          description: Alert message
+
+    Zoom:
+      type: object
+      properties:
+        document:
+          type: string
+          description: Request document.
+        annotationType:
+          type: string
+          description: Request annotationType
+        participantName:
+          type: string
+          description: Request participantName
+        participantQuantity:
+          type: string
+          description: Request participantQuantity
+        participantType:
+          type: string
+          description: Request participantType
+        processNumber:
+          type: string
+          description: Request processNumber
+        protocolNumber:
+          type: string
+          description: Request protocolNumber
+        qualification:
+          type: string
+          description: Request qualification
+        quantityCorresponsible:
+          type: string
+          description: Request quantityCorresponsible
+        titleIssueDate:
+          type: string
+          description: Request titleIssueDate
+        titleIdentification:
+          type: string
+          description: Request titleIdentification
+        valueRemaining:
+          type: string
+          description: Request valueRemaining
+        complementDocument:
+          type: string
+          description: Request complementDocument
+        statementNumber:
+          type: string
+          description: Request statementNumber
+        statementProtocol:
+          type: string
+          description: Request statementProtocol
+        square:
+          type: string
+          description: Request square
+        name:
+          type: string
+          description: Request name
+        address:
+          type: string
+          description: Request address
+        zipCode:
+          type: string
+          description: Request zipCode
+        district:
+          type: string
+          description: Request district
+        city:
+          type: string
+          description: Request city
+        state:
+          type: string
+          description: Request state
+        agency:
+          $ref: '#/components/schemas/Agency'
+        creditor:
+          $ref: '#/components/schemas/Creditor'
+        debtor:
+          $ref: '#/components/schemas/Debtor'
+        registryOffice:
+          $ref: '#/components/schemas/RegistryOffice'
+        civilCourt:
+          $ref: '#/components/schemas/CivilCourt'
+        origin:
+          $ref: '#/components/schemas/Origin'
+
+    Agency:
+      type: object
+      properties:
+        ddd:
+          type: string
+          description: Request ddd
+        address:
+          type: string
+          description: Request address
+        fax:
+          type: string
+          description: Request fax
+        name:
+          type: string
+          description: Request name
+        phoneNumber:
+          type: string
+          description: Request phoneNumber
+
+    Creditor:
+      type: object
+      properties:
+        district:
+          type: string
+          description: Request district
+        zipCode:
+          type: string
+          description: Request zipCode
+        document:
+          type: string
+          description: Request document
+        address:
+          type: string
+          description: Request address
+        city:
+          type: string
+          description: Request city
+        name:
+          type: string
+          description: Request name
+        rg:
+          type: string
+          description: Request rg
+        state:
+          type: string
+          description: Request state
+        stateRg:
+          type: string
+          description: Request stateRg
+
+    Debtor:
+      type: object
+      properties:
+        district:
+          type: string
+          description: Request district
+        zipCode:
+          type: string
+          description: Request zipCode
+        document:
+          type: string
+          description: Request document
+        dateBirth:
+          type: string
+          description: Request dateBirth
+        ddd:
+          type: string
+          description: Request ddd
+        address:
+          type: string
+          description: Request address
+        state:
+          type: string
+          description: Request state
+        motherName:
+          type: string
+          description: Request motherName
+        city:
+          type: string
+          description: Request city
+        name:
+          type: string
+          description: Request name
+        phoneNumber:
+          type: string
+          description: Request phoneNumber
+        fatherName:
+          type: string
+          description: Request fatherName
+        stateRg:
+          type: string
+          description: Request stateRg
+
+    RegistryOffice:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Request name
+        address:
+          type: string
+          description: Request address
+        district:
+          type: string
+          description: Request district
+        zipCode:
+          type: string
+          description: Request zipCode
+        fax:
+          type: string
+          description: Request fax
+        phoneNumber:
+          type: string
+          description: Request phoneNumber
+        ddd:
+          type: string
+          description: Request ddd
+
+    CivilCourt:
+      type: object
+      properties:
+        district:
+          type: string
+          description: Request district
+        ddd:
+          type: string
+          description: Request ddd
+        address:
+          type: string
+          description: Request address
+        fax:
+          type: string
+          description: Request fax
+        qualification:
+          type: string
+          description: Request qualification
+        phoneNumber:
+          type: string
+          description: Request phoneNumber
+
+    Origin:
+      type: object
+      properties:
+        district:
+          type: string
+          description: Request district
+        zipCode:
+          type: string
+          description: Request zipCode
+        document:
+          type: string
+          description: Request document
+        address:
+          type: string
+          description: Request address
+        city:
+          type: string
+          description: Request city
+        name:
+          type: string
+          description: Request name
+        state:
+          type: string
+          description: Request state
+
+    ResponseError:
+      type: array
+      items:
+        required:
+          - code
+          - message
+        type: object
+        properties:
+          code:
+            type: string
+          message:
+            type: string
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+  securitySchemes:
+    OauthSecurityClient:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://sandbox-api.serasaexperian.com.br/security/iam/v1/client-identities/login
+          scopes:
+            read: client read scope
+x-original-swagger-version: "2.0"

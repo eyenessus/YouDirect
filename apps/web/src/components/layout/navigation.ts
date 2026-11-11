@@ -10,6 +10,7 @@ import {
   Users,
   Car,
   ReceiptText,
+  ShieldCheck,
 } from 'lucide-vue-next';
 import type { PermissionModule } from '@yudirect/contracts';
 
@@ -83,6 +84,13 @@ export const navigation: NavItem[] = [
       { label: 'Consultar', to: '/dashboard/drivers' },
       { label: 'Cadastrar', to: '/dashboard/drivers/new' },
     ],
+  },
+  {
+    key: 'credit',
+    label: 'Análise de crédito',
+    icon: ShieldCheck,
+    to: '/dashboard/credit-checks',
+    module: 'credit',
   },
   {
     key: 'rentals',

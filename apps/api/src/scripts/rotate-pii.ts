@@ -75,7 +75,16 @@ async function main() {
     if (apply) await c.whatsappMessages.updateOne({ _id: m._id }, { $set: { requestPayloadEnc: next ?? null } });
   }
 
+  let creditReports = 0;
+  for await (const r of c.creditChecks.find({ reportEncrypted: { $type: 'string' } }, { projection: { reportEncrypted: 1 } })) {
+    const next = reencrypt(r.reportEncrypted, `creditCheck ${r._id.toHexString()} report`);
+    if (next === r.reportEncrypted) continue;
+    creditReports += 1;
+    if (apply) await c.creditChecks.updateOne({ _id: r._id }, { $set: { reportEncrypted: next ?? null } });
+  }
+
   console.log(`${apply ? 'APLICADO' : 'SIMULAÇÃO (use --apply para gravar)'} — chave atual ${ctx.pii.currentVersion}`);
+  console.log(`  relatórios Serasa:     ${creditReports}`);
   console.log(`  motoristas recifrados: ${stats.drivers} (sem mudança: ${stats.unchanged})`);
   console.log(`  tokens de vistoria:    ${stats.inspections}`);
   console.log(`  mensagens WhatsApp:    ${stats.messages}`);

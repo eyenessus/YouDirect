@@ -501,6 +501,7 @@ export async function registerNotificationRoutes(app: FastifyInstance): Promise<
       trafficFines: ctx.integrations.trafficFines.status(),
       pix: ctx.integrations.pix.status(),
       signature: ctx.integrations.signature.status(),
+      credit: ctx.integrations.credit.status(),
       billing: ctx.integrations.billing.status(),
     };
   });

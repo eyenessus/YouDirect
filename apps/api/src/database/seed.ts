@@ -644,6 +644,7 @@ async function wipe(ctx: AppContext) {
     c.inspectionDamages.deleteMany({}),
     c.depositSettlements.deleteMany({}),
     c.contractSignatures.deleteMany({}),
+    c.creditChecks.deleteMany({}),
     c.notifications.deleteMany({}),
     c.messageTemplates.deleteMany({}),
     c.messageDispatches.deleteMany({}),

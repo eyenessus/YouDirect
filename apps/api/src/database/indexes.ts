@@ -230,6 +230,16 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
     { key: { status: 1 }, name: 'by_status' },
   ]);
 
+  await c.creditChecks.createIndexes([
+    // Uma consulta em andamento por motorista: bloqueia consultas pagas simultâneas.
+    { key: { organizationId: 1, driverId: 1 }, unique: true, partialFilterExpression: { status: 'PENDING' }, name: 'uniq_driver_pending' },
+    // Clique repetido devolve a mesma consulta.
+    { key: { organizationId: 1, idempotencyKey: 1 }, unique: true, name: 'uniq_idempotency' },
+    { key: { organizationId: 1, driverId: 1, requestedAt: -1 }, name: 'by_driver' },
+    { key: { organizationId: 1, requestedAt: -1 }, name: 'by_org_date' },
+    { key: { reportExpiresAt: 1 }, partialFilterExpression: { reportEncrypted: { $type: 'string' } }, name: 'by_report_expiry' },
+  ]);
+
   await c.trafficFines.createIndexes([
     { key: { organizationId: 1, fineNumber: 1 }, unique: true, name: 'uniq_org_fine_number' },
     {

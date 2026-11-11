@@ -264,6 +264,17 @@ pendentes. Ele pode pedir manutenção, o que avisa a equipe sem criar OS
 - **Ao assinar:** o PDF assinado é guardado como contrato da locação.
 - **Sem provedor:** o PDF continua disponível para assinatura manual.
 
+### A-SER-01 — Análise de crédito pela Serasa **[R]**
+- **Escopo:** só o Relatório Básico PF do motorista, para nova locação, renovação ou revisão por atraso. CNPJ, monitoramento, antifraude e agentes de IA ficam fora, porque não servem à locação para motorista de app.
+- **Decisão:** sempre humana e justificada. O sistema não aprova nem reprova sozinho, e o score é exibido com o modelo e a faixa que a Serasa devolveu.
+- **Custo:** a consulta começa desligada e exige finalidade e confirmação do custo.
+  - Consultas recentes são reaproveitadas, por 30 dias no padrão.
+  - Há limite mensal (50 no padrão) e no máximo uma consulta em andamento por motorista.
+  - Uma consulta com resultado incerto nunca é repetida automaticamente.
+- **Retenção:** o relatório normalizado fica cifrado por 90 dias no padrão; depois resta só o registro. Filiação, endereços e contatos do relatório não são guardados.
+- **Ambientes:** credencial de produção só roda com `NODE_ENV=production`.
+- **Detalhes:** `docs/integrations/serasa/README.md`.
+
 ## 4. Dados de demonstração (seed)
 
 ### A-SEED-01 — Saldo de abertura da conta **[R]**

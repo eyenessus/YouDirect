@@ -11,6 +11,7 @@ import {
 import { createWhaplyClient, type WhaplyClient } from './whaply/client.js';
 import { createPixProvider, type PixProvider } from './mercadopago.js';
 import { createSignatureProvider, type SignatureProvider } from './zapsign.js';
+import { createCreditBureauProvider, type CreditBureauProvider } from './serasa.js';
 
 /* ------------------------------------------------------------------ *
  * Adapters de integrações externas.
@@ -88,6 +89,8 @@ export interface Integrations {
   pix: PixProvider;
   /** Assinatura digital do contrato (ZapSign). */
   signature: SignatureProvider;
+  /** Análise de crédito do motorista (Serasa Experian, Relatório Básico PF). */
+  credit: CreditBureauProvider;
 }
 
 /** Nenhuma chamada a provedor externo pode prender a requisição indefinidamente. */
@@ -117,6 +120,7 @@ export function createIntegrations(env: Env): Integrations {
     whaply: createWhaplyClient(env),
     pix: createPixProvider(env),
     signature: createSignatureProvider(env),
+    credit: createCreditBureauProvider(env),
 
     whatsapp: {
       status: () => wa,

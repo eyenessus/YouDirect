@@ -7,6 +7,7 @@ import { cursorDate, decodeCursor, encodeCursor, toObjectId } from '../../common
 import { requireAuthContext } from '../../plugins/auth.js';
 import { audit } from '../../services/common.js';
 import { softDeleteFile } from '../../services/files.js';
+import { purgeDriverCreditReports, toCreditCheckDTOs } from '../../services/credit.js';
 
 /* ------------------------------------------------------------------ *
  * Auditoria (OWNER/ADMIN) e direitos do titular (LGPD) — §8.
@@ -104,7 +105,7 @@ export async function registerAuditRoutes(app: FastifyInstance): Promise<void> {
       const driver = await ctx.mongo.collections.drivers.findOne({ _id: id, organizationId: auth.organizationId });
       if (!driver) throw notFound('Motorista não encontrado.');
       const c = ctx.mongo.collections;
-      const [rentals, receivables, inspections, files] = await Promise.all([
+      const [rentals, receivables, inspections, files, creditChecks] = await Promise.all([
         c.rentals.find({ organizationId: auth.organizationId, driverId: id }).toArray(),
         c.receivables.find({ organizationId: auth.organizationId, driverId: id }).toArray(),
         c.inspections.find({ organizationId: auth.organizationId, driverId: id }).toArray(),
@@ -114,6 +115,7 @@ export async function registerAuditRoutes(app: FastifyInstance): Promise<void> {
             _id: { $in: [driver.idDocumentFileId, driver.addressProofFileId].filter((v): v is ObjectId => Boolean(v)) },
           })
           .toArray(),
+        c.creditChecks.find({ organizationId: auth.organizationId, driverId: id }).sort({ requestedAt: -1 }).toArray(),
       ]);
       const payments = receivables.length
         ? await c.payments
@@ -147,6 +149,16 @@ export async function registerAuditRoutes(app: FastifyInstance): Promise<void> {
             mileageKm: (i as { mileageKm?: unknown }).mileageKm ?? null,
           })),
         ),
+        // Consultas de crédito: registro, finalidade e decisão (o titular tem direito de saber quem consultou e por quê).
+        creditChecks: (await toCreditCheckDTOs(ctx, creditChecks, { includeReport: true })).map((ch) => ({
+          requestedAt: ch.requestedAt,
+          purpose: ch.purpose,
+          justification: ch.justification,
+          status: ch.status,
+          source: 'Serasa Experian',
+          report: ch.report,
+          decision: ch.review ? { decision: ch.review.decision, notes: ch.review.notes, reviewedAt: ch.review.reviewedAt } : null,
+        })),
         documents: files.map((f) => ({ id: f._id.toHexString(), name: f.originalName, purpose: f.purpose })),
       };
       reply
@@ -209,6 +221,7 @@ export async function registerAuditRoutes(app: FastifyInstance): Promise<void> {
           $inc: { version: 1 },
         },
       );
+      await purgeDriverCreditReports(ctx, auth.organizationId, id);
       for (const fileId of [driver.idDocumentFileId, driver.addressProofFileId]) {
         if (fileId) await softDeleteFile(ctx, auth.organizationId, fileId).catch(() => undefined);
       }

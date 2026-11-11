@@ -45,6 +45,10 @@ import type {
   RentalKmPolicy,
   BillingSettings,
   LoyaltySettings,
+  CreditSettings,
+  CreditCheckStatus,
+  CreditPurpose,
+  CreditDecision,
 } from '@yudirect/contracts';
 
 /** Data pura de negócio no formato `YYYY-MM-DD`. */
@@ -84,6 +88,8 @@ export interface OrganizationDoc extends Base {
     billing?: BillingSettings;
     /** Programa de fidelidade do motorista. Ausente = padrão. */
     loyalty?: LoyaltySettings;
+    /** Análise de crédito (Serasa). Ausente = padrão (desligada). */
+    credit?: CreditSettings;
     /** Coleta de vistoria pelo WhatsApp (plano §4.1). Ausente = padrão. */
     inspectionWhatsapp?: InspectionWhatsappSettings;
   };
@@ -893,4 +899,37 @@ export interface LoginAttemptDoc {
   windowStart: Date;
   lockedUntil: Date | null;
   expiresAt: Date;
+}
+
+/** Consulta de crédito do motorista (Serasa). Sem CPF em claro: só o hash. */
+export interface CreditCheckDoc extends Tenant {
+  driverId: ObjectId;
+  rentalId: ObjectId | null;
+  requestedBy: ObjectId;
+  purpose: CreditPurpose;
+  justification: string;
+  /** Base legal registrada (LGPD art. 7º, X — proteção do crédito). */
+  legalBasis: 'PROTECAO_CREDITO';
+  holderInformedAt: Date;
+  idempotencyKey: string;
+  /** Hash (com pepper) do CPF consultado — prova qual documento foi usado sem guardá-lo. */
+  documentHash: string;
+  environment: 'homologacao' | 'producao';
+  reportName: string;
+  optionalFeatures: string[];
+  status: CreditCheckStatus;
+  outcome: string | null;
+  message: string | null;
+  httpStatus: number | null;
+  providerCode: string | null;
+  billable: 'YES' | 'NO' | 'UNKNOWN';
+  estimatedCostCents: number | null;
+  requestedAt: Date;
+  completedAt: Date | null;
+  /** Relatório normalizado, cifrado (AES-GCM da PII). null depois da retenção. */
+  reportEncrypted: string | null;
+  reportExpiresAt: Date | null;
+  reportPurgedAt: Date | null;
+  review: { decision: CreditDecision; notes: string; reviewedBy: ObjectId; reviewedAt: Date } | null;
+  version: number;
 }
