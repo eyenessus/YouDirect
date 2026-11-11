@@ -5,6 +5,7 @@ import { Eye, EyeOff } from 'lucide-vue-next';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppInput from '@/components/ui/AppInput.vue';
 import FormField from '@/components/ui/FormField.vue';
+import LoginShowroom from './LoginShowroom.vue';
 import TurnstileWidget from '@/components/ui/TurnstileWidget.vue';
 import { api, ApiRequestError } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
@@ -70,33 +71,41 @@ async function submit() {
 
 <template>
   <div class="grid min-h-screen lg:grid-cols-[1fr_minmax(420px,520px)]">
+    <!-- Faixa de marca (celular) -->
+    <div class="relative h-56 overflow-hidden bg-[#0a0b10] lg:hidden">
+      <LoginShowroom compact />
+      <div class="relative z-10 flex items-center gap-3 p-6">
+        <span class="flex size-11 items-center justify-center rounded-xl border border-white/15 bg-white/10 backdrop-blur">
+          <img src="/brand/yudirect-mark-white.png" alt="" class="size-7 object-contain" />
+        </span>
+        <span class="text-xl font-bold text-white">YuDirect</span>
+      </div>
+    </div>
+
     <!-- Painel de marca -->
-    <div class="relative hidden flex-col justify-between bg-sidebar p-12 text-white lg:flex">
-      <div class="flex items-center gap-3">
-        <span class="flex size-12 items-center justify-center rounded-xl bg-sidebar-active">
+    <div class="relative hidden min-h-screen flex-col overflow-hidden bg-[#0a0b10] p-12 text-white lg:flex">
+      <LoginShowroom />
+      <div class="relative z-10 flex items-center gap-3">
+        <span class="flex size-12 items-center justify-center rounded-xl border border-white/15 bg-white/10 shadow-lg backdrop-blur">
           <img src="/brand/yudirect-mark-white.png" alt="" class="size-8 object-contain" />
         </span>
         <span class="text-2xl font-bold tracking-tight">YuDirect</span>
       </div>
-      <div class="max-w-lg">
-        <h1 class="text-4xl font-bold leading-tight">Gestão completa da sua frota.</h1>
-        <p class="mt-4 text-lg leading-relaxed text-white/80">
+      <div class="relative z-10 mt-[11vh] max-w-lg">
+        <h1 class="text-5xl font-bold leading-[1.08] tracking-tight">
+          Gestão completa da sua
+          <span class="bg-gradient-to-r from-[#ff4d3d] to-[#d40000] bg-clip-text text-transparent">frota.</span>
+        </h1>
+        <p class="mt-5 text-lg leading-relaxed text-white/75">
           Veículos, motoristas, locações, vistorias, manutenções e financeiro — em um só lugar.
         </p>
       </div>
-      <p class="text-sm text-white/60">© {{ new Date().getFullYear() }} YuDirect · Gestão veicular</p>
+      <p class="relative z-10 mt-auto text-sm text-white/55">© {{ new Date().getFullYear() }} YuDirect · Gestão veicular</p>
     </div>
 
     <!-- Formulário -->
     <div class="flex items-center justify-center bg-canvas p-6 sm:p-10">
       <div class="w-full max-w-md">
-        <div class="mb-8 flex items-center gap-3 lg:hidden">
-          <span class="flex size-11 items-center justify-center rounded-xl bg-sidebar">
-            <img src="/brand/yudirect-mark-white.png" alt="" class="size-7 object-contain" />
-          </span>
-          <span class="text-xl font-bold text-ink">YuDirect</span>
-        </div>
-
         <h2 class="text-[28px] font-bold text-ink">Entrar</h2>
         <p class="mt-1.5 text-[17px] text-ink-muted">Acesse o painel da sua organização.</p>
 
