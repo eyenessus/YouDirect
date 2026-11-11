@@ -24,6 +24,12 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true, title: 'Entrar' },
   },
   {
+    path: '/creditos-fotos',
+    name: 'photo-credits',
+    component: () => import('@/features/auth/PhotoCreditsPage.vue'),
+    meta: { public: true, title: 'Créditos das fotos' },
+  },
+  {
     path: '/esqueci-a-senha',
     name: 'forgot-password',
     component: () => import('@/features/auth/ForgotPasswordPage.vue'),

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AuthShell from './AuthShell.vue';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { MIN_PASSWORD_LENGTH } from '@yudirect/contracts';
@@ -75,84 +76,75 @@ async function submit() {
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-canvas p-6">
-    <div class="w-full max-w-md">
-      <div class="mb-8 flex items-center gap-3">
-        <span class="flex size-11 items-center justify-center rounded-xl bg-sidebar">
-          <img src="/brand/yudirect-mark-white.png" alt="" class="size-7 object-contain" />
-        </span>
-        <span class="text-xl font-bold text-ink">YuDirect</span>
-      </div>
+  <AuthShell>
+    <div class="fo-card p-7">
+      <p v-if="loading" class="text-[15px] text-ink-muted" aria-live="polite">Carregando convite…</p>
 
-      <div class="fo-card p-7">
-        <p v-if="loading" class="text-[15px] text-ink-muted" aria-live="polite">Carregando convite…</p>
+      <template v-else-if="loadError">
+        <h1 class="text-2xl font-bold text-ink">Convite indisponível</h1>
+        <p class="mt-2 text-[15px] leading-relaxed text-ink-muted">{{ loadError }}</p>
+        <AppButton class="mt-6" variant="secondary" @click="router.replace({ name: 'login' })">
+          Ir para o login
+        </AppButton>
+      </template>
 
-        <template v-else-if="loadError">
-          <h1 class="text-2xl font-bold text-ink">Convite indisponível</h1>
-          <p class="mt-2 text-[15px] leading-relaxed text-ink-muted">{{ loadError }}</p>
-          <AppButton class="mt-6" variant="secondary" @click="router.replace({ name: 'login' })">
-            Ir para o login
-          </AppButton>
-        </template>
+      <template v-else>
+        <h1 class="text-2xl font-bold text-ink">Você foi convidado(a)</h1>
+        <p class="mt-2 text-[15px] leading-relaxed text-ink-muted">
+          <template v-if="existing">
+            Este e-mail já tem uma conta no YuDirect. Informe a senha dessa conta para entrar também na
+          </template>
+          <template v-else>Crie sua senha para acessar o YuDirect da</template>
+          <strong class="text-ink">{{ preview?.organizationName }}</strong
+          >.
+        </p>
 
-        <template v-else>
-          <h1 class="text-2xl font-bold text-ink">Você foi convidado(a)</h1>
-          <p class="mt-2 text-[15px] leading-relaxed text-ink-muted">
-            <template v-if="existing">
-              Este e-mail já tem uma conta no YuDirect. Informe a senha dessa conta para entrar também na
-            </template>
-            <template v-else>Crie sua senha para acessar o YuDirect da</template>
-            <strong class="text-ink">{{ preview?.organizationName }}</strong
-            >.
-          </p>
+        <form class="mt-6 space-y-5" novalidate @submit.prevent="submit">
+          <FormField v-slot="field" label="E-mail">
+            <AppInput :id="field.id" :model-value="preview?.email" readonly disabled />
+          </FormField>
 
-          <form class="mt-6 space-y-5" novalidate @submit.prevent="submit">
-            <FormField v-slot="field" label="E-mail">
-              <AppInput :id="field.id" :model-value="preview?.email" readonly disabled />
-            </FormField>
+          <FormField v-slot="field" label="Nome completo" required :error="fieldErrors.name">
+            <AppInput :id="field.id" v-model="name" :invalid="Boolean(fieldErrors.name)" />
+          </FormField>
 
-            <FormField v-slot="field" label="Nome completo" required :error="fieldErrors.name">
-              <AppInput :id="field.id" v-model="name" :invalid="Boolean(fieldErrors.name)" />
-            </FormField>
+          <FormField
+            v-slot="field"
+            :label="existing ? 'Senha da sua conta' : 'Senha'"
+            required
+            :hint="existing ? undefined : `Mínimo ${MIN_PASSWORD_LENGTH} caracteres; evite senhas óbvias`"
+            :error="fieldErrors.password"
+          >
+            <AppInput
+              :id="field.id"
+              v-model="password"
+              type="password"
+              :autocomplete="existing ? 'current-password' : 'new-password'"
+              :invalid="Boolean(fieldErrors.password)"
+            />
+          </FormField>
 
-            <FormField
-              v-slot="field"
-              :label="existing ? 'Senha da sua conta' : 'Senha'"
-              required
-              :hint="existing ? undefined : `Mínimo ${MIN_PASSWORD_LENGTH} caracteres; evite senhas óbvias`"
-              :error="fieldErrors.password"
-            >
-              <AppInput
-                :id="field.id"
-                v-model="password"
-                type="password"
-                :autocomplete="existing ? 'current-password' : 'new-password'"
-                :invalid="Boolean(fieldErrors.password)"
-              />
-            </FormField>
+          <FormField
+            v-if="!existing"
+            v-slot="field"
+            label="Confirmar senha"
+            required
+            :error="fieldErrors.confirmPassword"
+          >
+            <AppInput
+              :id="field.id"
+              v-model="confirmPassword"
+              type="password"
+              autocomplete="new-password"
+              :invalid="Boolean(fieldErrors.confirmPassword)"
+            />
+          </FormField>
 
-            <FormField
-              v-if="!existing"
-              v-slot="field"
-              label="Confirmar senha"
-              required
-              :error="fieldErrors.confirmPassword"
-            >
-              <AppInput
-                :id="field.id"
-                v-model="confirmPassword"
-                type="password"
-                autocomplete="new-password"
-                :invalid="Boolean(fieldErrors.confirmPassword)"
-              />
-            </FormField>
+          <p v-if="formError" class="text-sm text-negative" role="alert">{{ formError }}</p>
 
-            <p v-if="formError" class="text-sm text-negative" role="alert">{{ formError }}</p>
-
-            <AppButton type="submit" block size="lg" :loading="submitting">Aceitar convite</AppButton>
-          </form>
-        </template>
-      </div>
+          <AppButton type="submit" block size="lg" :loading="submitting">Aceitar convite</AppButton>
+        </form>
+      </template>
     </div>
-  </div>
+  </AuthShell>
 </template>
