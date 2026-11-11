@@ -30,8 +30,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(email: string, password: string): Promise<void> {
-    await api.post('/auth/login', { email, password });
+  async function login(email: string, password: string, captchaToken?: string | null): Promise<void> {
+    await api.post('/auth/login', { email, password, ...(captchaToken ? { captchaToken } : {}) });
     await load();
   }
 

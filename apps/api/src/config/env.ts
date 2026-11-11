@@ -145,6 +145,11 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW: z.string().default('1 minute'),
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().min(3).max(100).default(10),
 
+  /* Cloudflare Turnstile na tela de login (anti-robô). Sem as duas chaves => desligado. */
+  TURNSTILE_SITE_KEY: z.string().optional(),
+  TURNSTILE_SECRET_KEY: z.string().optional(),
+  TURNSTILE_VERIFY_URL: z.string().url().default('https://challenges.cloudflare.com/turnstile/v0/siteverify'),
+
   SEED_OWNER_EMAIL: z.string().default('erik@ffveiculos.example.com'),
   SEED_OWNER_PASSWORD: z.string().default('YuDirect@2026'),
 });
@@ -170,6 +175,12 @@ export function productionProblems(env: Env): string[] {
   if (LOCALHOST.test(env.API_PUBLIC_URL)) problems.push('API_PUBLIC_URL: aponta para localhost.');
   if (corsOrigins(env).length === 0 || corsOrigins(env).every((o) => LOCALHOST.test(o))) {
     problems.push('CORS_ORIGINS: inclua o domínio público (a proteção CSRF recusaria todo POST).');
+  }
+  if (Boolean(env.TURNSTILE_SITE_KEY) !== Boolean(env.TURNSTILE_SECRET_KEY)) {
+    problems.push('TURNSTILE_SITE_KEY e TURNSTILE_SECRET_KEY: configure as duas chaves juntas (ou nenhuma).');
+  }
+  if (env.TURNSTILE_SECRET_KEY?.startsWith('1x0000') || env.TURNSTILE_SECRET_KEY?.startsWith('2x0000') || env.TURNSTILE_SECRET_KEY?.startsWith('3x0000')) {
+    problems.push('TURNSTILE_SECRET_KEY: chave de TESTE da Cloudflare não pode ser usada em produção.');
   }
   if (env.PII_KEY && env.PII_KEY === env.SESSION_SECRET) {
     problems.push('PII_KEY: não reutilize o SESSION_SECRET.');

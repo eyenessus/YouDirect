@@ -76,12 +76,15 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   });
 
   const selfOrigins = [...new Set([ctx.env.APP_URL, ctx.env.API_PUBLIC_URL].map((u) => new URL(u).origin))];
+  const turnstileHosts = ctx.integrations.turnstile.enabled() ? ['https://challenges.cloudflare.com'] : [];
   await app.register(helmet, {
     contentSecurityPolicy: {
       useDefaults: false,
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
+        // Turnstile (login): script e iframe da Cloudflare, só quando ligado.
+        scriptSrc: ["'self'", ...turnstileHosts],
+        ...(turnstileHosts.length ? { frameSrc: turnstileHosts } : {}),
         // Vue aplica estilos inline (bindings :style) e o ECharts também.
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],

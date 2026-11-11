@@ -275,6 +275,14 @@ pendentes. Ele pode pedir manutenção, o que avisa a equipe sem criar OS
 - **Ambientes:** credencial de produção só roda com `NODE_ENV=production`.
 - **Detalhes:** `docs/integrations/serasa/README.md`.
 
+### A-TUR-01 — Anti-robô no login (Cloudflare Turnstile) **[R]**
+- **Onde aparece:** só na tela de login da equipe. A Área do Motorista entra por link de uso único e não tem senha.
+- **Chaves:** a chave pública vem de `GET /auth/login-config`. O segredo fica só no servidor. Sem as duas chaves, o login funciona como antes.
+- **Verificação:** o token é conferido no `siteverify` antes do bloqueio por tentativas e da senha. Desafio recusado retorna 400 e não conta como senha errada. O token é de uso único, e a tela pede outro a cada tentativa recusada.
+- **Falha fechada:** se a Cloudflare não responder, o login retorna 503. O desafio não pode ser contornado derrubando a verificação.
+- **CSP:** o script e o iframe de `https://challenges.cloudflare.com` só são liberados quando o Turnstile está ligado.
+- **Produção:** recusa subir com só uma das chaves ou com as chaves de teste da Cloudflare.
+
 ## 4. Dados de demonstração (seed)
 
 ### A-SEED-01 — Saldo de abertura da conta **[R]**

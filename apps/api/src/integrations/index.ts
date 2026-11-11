@@ -12,6 +12,7 @@ import { createWhaplyClient, type WhaplyClient } from './whaply/client.js';
 import { createPixProvider, type PixProvider } from './mercadopago.js';
 import { createSignatureProvider, type SignatureProvider } from './zapsign.js';
 import { createCreditBureauProvider, type CreditBureauProvider } from './serasa.js';
+import { createTurnstileVerifier, type TurnstileVerifier } from './turnstile.js';
 
 /* ------------------------------------------------------------------ *
  * Adapters de integrações externas.
@@ -91,6 +92,8 @@ export interface Integrations {
   signature: SignatureProvider;
   /** Análise de crédito do motorista (Serasa Experian, Relatório Básico PF). */
   credit: CreditBureauProvider;
+  /** Anti-robô do login (Cloudflare Turnstile). */
+  turnstile: TurnstileVerifier;
 }
 
 /** Nenhuma chamada a provedor externo pode prender a requisição indefinidamente. */
@@ -121,6 +124,7 @@ export function createIntegrations(env: Env): Integrations {
     pix: createPixProvider(env),
     signature: createSignatureProvider(env),
     credit: createCreditBureauProvider(env),
+    turnstile: createTurnstileVerifier(env),
 
     whatsapp: {
       status: () => wa,

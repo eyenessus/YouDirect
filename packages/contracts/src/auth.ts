@@ -35,6 +35,8 @@ export const loginRequestSchema = z.object({
   email: emailSchema,
   password: z.string().min(1, 'Informe a senha').max(200),
   organizationId: objectIdSchema.optional(),
+  /** Token do Cloudflare Turnstile (obrigatório quando o anti-robô está ligado). */
+  captchaToken: z.string().max(2048).optional(),
 });
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 

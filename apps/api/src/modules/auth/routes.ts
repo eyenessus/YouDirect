@@ -11,7 +11,8 @@ import {
   updateProfileRequestSchema,
   type MeResponse,
 } from '@yudirect/contracts';
-import { badRequest, conflict, forbidden, notFound, rateLimited, unauthorized } from '../../common/errors.js';
+import { badRequest, conflict, forbidden, integrationUnavailable, notFound, rateLimited, unauthorized } from '../../common/errors.js';
+import { TURNSTILE_ACTION } from '../../integrations/turnstile.js';
 import type { AppContext } from '../../context.js';
 import {
   generateToken,
@@ -67,6 +68,12 @@ export async function registerAuthRoutes(
   app: FastifyInstance,
   options: { loginRateLimit?: number } = {},
 ): Promise<void> {
+  /** Configuração pública da tela de login (chave pública do Turnstile). */
+  app.get('/auth/login-config', async (request) => {
+    const turnstile = request.appCtx.integrations.turnstile;
+    return { captcha: turnstile.enabled() ? { provider: 'turnstile', siteKey: turnstile.siteKey(), action: TURNSTILE_ACTION } : null };
+  });
+
   /* ------------------------------- login --------------------------- */
   app.post(
     '/auth/login',
@@ -76,6 +83,20 @@ export async function registerAuthRoutes(
     async (request, reply) => {
       const ctx = request.appCtx;
       const body = loginRequestSchema.parse(request.body);
+      // Anti-robô antes de qualquer custo (bloqueio, scrypt): token de uso único da Cloudflare.
+      const captcha = await ctx.integrations.turnstile.verify(body.captchaToken, request.ip);
+      if (!captcha.ok) {
+        request.log.info({ reason: captcha.reason, codes: captcha.errorCodes }, 'turnstile recusou o login');
+        if (captcha.reason === 'UNAVAILABLE') {
+          throw integrationUnavailable('A verificação anti-robô está indisponível no momento. Tente novamente em instantes.');
+        }
+        throw badRequest(
+          captcha.reason === 'MISSING'
+            ? 'Confirme a verificação anti-robô antes de entrar.'
+            : 'A verificação anti-robô expirou ou não foi aceita. Faça a verificação de novo.',
+          { field: 'captchaToken' },
+        );
+      }
       await assertNotLocked(ctx, body.email);
 
       const user = await ctx.mongo.collections.users.findOne({ emailLower: body.email });

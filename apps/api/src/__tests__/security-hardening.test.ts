@@ -328,6 +328,8 @@ describe('API — autenticação, convites e permissões (S3, S5, S6, S7, S9, S1
     expect(csp).toContain("script-src 'self'");
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).not.toContain("script-src 'self' 'unsafe-inline'");
+    // Sem Turnstile configurado, nenhum host externo de script.
+    expect(csp).not.toContain('challenges.cloudflare.com');
   });
 
   it('S12 — cursor de paginação adulterado devolve 400, não 500', async () => {

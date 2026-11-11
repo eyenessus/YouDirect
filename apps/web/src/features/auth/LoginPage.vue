@@ -5,7 +5,8 @@ import { Eye, EyeOff } from 'lucide-vue-next';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppInput from '@/components/ui/AppInput.vue';
 import FormField from '@/components/ui/FormField.vue';
-import { ApiRequestError } from '@/lib/api';
+import TurnstileWidget from '@/components/ui/TurnstileWidget.vue';
+import { api, ApiRequestError } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 
 /**
@@ -24,20 +25,43 @@ const loading = ref(false);
 const error = ref('');
 const expired = ref(false);
 
-onMounted(() => {
+/** Anti-robô (Cloudflare Turnstile): só aparece quando o servidor tem as chaves. */
+const captcha = ref<{ siteKey: string; action: string } | null>(null);
+const captchaToken = ref<string | null>(null);
+const captchaError = ref('');
+const widget = ref<InstanceType<typeof TurnstileWidget> | null>(null);
+
+onMounted(async () => {
   expired.value = route.query.expired === '1';
+  try {
+    const config = await api.get<{ captcha: { siteKey: string; action: string } | null }>('/auth/login-config');
+    captcha.value = config.captcha;
+  } catch {
+    captcha.value = null; // o servidor recusa o login se exigir o desafio
+  }
 });
+
+function onCaptchaToken(token: string | null) {
+  captchaToken.value = token;
+  if (token) captchaError.value = '';
+}
 
 async function submit() {
   error.value = '';
+  if (captcha.value && !captchaToken.value) {
+    error.value = 'Confirme a verificação anti-robô antes de entrar.';
+    return;
+  }
   loading.value = true;
   try {
-    await auth.login(email.value, password.value);
+    await auth.login(email.value, password.value, captchaToken.value);
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/dashboard';
     await router.replace(redirect);
   } catch (err) {
     error.value =
       err instanceof ApiRequestError ? err.message : 'Não foi possível entrar. Tente novamente.';
+    // O token do Turnstile é de uso único: depois de uma tentativa recusada, pede outro.
+    if (captcha.value) widget.value?.reset();
   } finally {
     loading.value = false;
   }
@@ -118,6 +142,16 @@ async function submit() {
             </div>
           </FormField>
 
+          <TurnstileWidget
+            v-if="captcha"
+            ref="widget"
+            :site-key="captcha.siteKey"
+            :action="captcha.action"
+            @token="onCaptchaToken"
+            @error="(m: string) => (captchaError = m)"
+          />
+          <p v-if="captchaError" class="text-sm text-negative" role="alert">{{ captchaError }}</p>
+
           <p v-if="error" class="text-sm text-negative" role="alert">{{ error }}</p>
 
           <div class="-mt-2 text-right">
@@ -126,7 +160,7 @@ async function submit() {
             </RouterLink>
           </div>
 
-          <AppButton type="submit" block size="lg" :loading="loading">Entrar</AppButton>
+          <AppButton type="submit" block size="lg" :loading="loading" :disabled="Boolean(captcha) && !captchaToken">Entrar</AppButton>
         </form>
 
         <p class="mt-8 text-center text-sm leading-relaxed text-ink-muted">
