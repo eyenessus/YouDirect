@@ -191,7 +191,7 @@ describe('recibos e controle fiscal', () => {
     const res = await call('GET', '/api/v1/fiscal/pending.csv', undefined, staff);
     expect(res.statusCode).toBe(200);
     expect(res.headers['content-type']).toContain('text/csv');
-    const csv = res.body.replace(/^﻿/, '');
+    const csv = res.body.replace(String.fromCharCode(0xfeff), '');
     const lines = csv.trim().split('\r\n');
     expect(lines[0]).toBe('"Data do pagamento";"Motorista";"Descrição";"Forma de pagamento";"Valor"');
     expect(lines.some((l) => l.includes(p.driverName) && l.includes('"617,50"') && l.includes('"PIX"'))).toBe(true);
