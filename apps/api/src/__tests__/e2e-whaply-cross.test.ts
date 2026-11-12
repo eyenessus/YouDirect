@@ -129,7 +129,8 @@ describe.skipIf(!WHAPLY_DIR)('E2E YuDirect ⇄ Whaply (código real dos dois lad
   const messages = (id: string) => harness.ctx.mongo.collections.whatsappMessages.find({ inspectionId: new ObjectId(id) }).toArray();
 
   beforeAll(async () => {
-    const port = 5100 + Math.floor(Math.random() * 800);
+    // Porta fixa opcional (WHAPLY_E2E_PORT / YUDIRECT_E2E_PORT) para maquinas com faixas de porta reservadas.
+    const port = Number(process.env.WHAPLY_E2E_PORT) || 5100 + Math.floor(Math.random() * 800);
     whaplyUrl = `http://127.0.0.1:${port}`;
     child = spawn(process.execPath, ['-r', 'ts-node/register/transpile-only', 'tests/e2e-harness/YuDirectPartnerHarness.ts'], {
       cwd: WHAPLY_DIR,
@@ -170,7 +171,7 @@ describe.skipIf(!WHAPLY_DIR)('E2E YuDirect ⇄ Whaply (código real dos dois lad
       WHAPLY_REQUEST_TIMEOUT_MS: '8000',
     });
     // O Whaply chama a rota pública do YuDirect por HTTP real.
-    await harness.app.listen({ port: 0, host: '127.0.0.1' });
+    await harness.app.listen({ port: Number(process.env.YUDIRECT_E2E_PORT) || 0, host: '127.0.0.1' });
     const ydPort = (harness.app.server.address() as AddressInfo).port;
     await wh('/__test/configure', { callbackUrl: `http://127.0.0.1:${ydPort}/api/v1/integrations/whaply/events` });
 
