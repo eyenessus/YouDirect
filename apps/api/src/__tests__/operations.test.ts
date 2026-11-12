@@ -287,7 +287,7 @@ describe('operação: km, avarias, caução, fidelidade e contrato', () => {
     const status = (await call('GET', `/api/v1/drivers/${r.driverId}/loyalty`, undefined, staff)).json();
     expect(status.enabled).toBe(true);
     expect(status.level.code).toBe('INICIAL');
-    expect(status.criteria.map((c: { key: string }) => c.key)).toEqual(['TENURE', 'PAYMENTS', 'INSPECTIONS', 'FINES']);
+    expect(status.criteria.map((c: { key: string }) => c.key)).toEqual(['TENURE', 'PAYMENTS', 'INSPECTIONS', 'FINES', 'CLAIMS']);
     // Semana 1 já venceu sem pagamento: penaliza.
     expect(status.criteria.find((c: { key: string }) => c.key === 'PAYMENTS').points).toBeLessThan(0);
 
