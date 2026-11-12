@@ -29,7 +29,7 @@ import {
   toInspectionDamageDTO,
 } from '../../services/damages.js';
 import { kmSummary } from '../../services/km-billing.js';
-import { loyaltySettingsOf, loyaltyStatus } from '../../services/loyalty.js';
+import { driverRanking, loyaltySettingsOf, loyaltyStatus } from '../../services/loyalty.js';
 import { renderRentalContract } from '../../pdf/rental-contract.js';
 import type { AppContext } from '../../context.js';
 import { ObjectId as ObjectIdCtor, type ObjectId } from 'mongodb';
@@ -165,6 +165,11 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     await ctx.mongo.collections.organizations.updateOne({ _id: auth.organizationId }, { $set: { 'settings.loyalty': settings, updatedAt: new Date() } });
     await audit(ctx, { organizationId: auth.organizationId, actorId: auth.userId, action: 'loyalty.settings', entityType: 'organization', entityId: auth.organizationId, after: settings });
     return settings;
+  });
+
+  app.get('/drivers/ranking', { onRequest: [app.requireAuth, app.requirePermission('drivers', 'read')] }, async (request) => {
+    const { organizationId } = requireAuthContext(request);
+    return { data: await driverRanking(request.appCtx, organizationId) };
   });
 
   app.get('/drivers/:id/loyalty', { onRequest: [app.requireAuth, app.requirePermission('drivers', 'read')] }, async (request) => {

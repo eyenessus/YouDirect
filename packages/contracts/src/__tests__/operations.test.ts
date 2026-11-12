@@ -64,6 +64,14 @@ describe('fidelidade', () => {
     expect(scoreLoyalty({ ...zero, overdueInvoices: 10, recentFines: 10, inspectionsLate: 10 }).score).toBe(0);
   });
 
+  it('sinistro com culpa tira 40 pontos cada, com teto de 80, e a falta do dado não pesa', () => {
+    const base = { ...zero, tenureDays: 180, paidOnTimeInvoices: 20, inspectionsOnTime: 6 };
+    expect(scoreLoyalty(base).score).toBe(170);
+    expect(scoreLoyalty({ ...base, recentClaims: 1 }).score).toBe(130);
+    expect(scoreLoyalty({ ...base, recentClaims: 9 }).score).toBe(90);
+    expect(scoreLoyalty({ ...base, recentClaims: 2 }).criteria.find((c) => c.key === 'CLAIMS')?.detail).toContain('2 sinistro(s)');
+  });
+
   it('próximo nível e topo', () => {
     expect(levelForScore(defaultLoyaltySettings, 100).next?.code).toBe('INTERMEDIARIO');
     expect(levelForScore(defaultLoyaltySettings, 999)).toMatchObject({ level: { code: 'ESPECIAL' }, next: null });

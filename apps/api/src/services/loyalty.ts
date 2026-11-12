@@ -6,6 +6,7 @@ import {
   diffDaysIso,
   levelForScore,
   scoreLoyalty,
+  type DriverRankingRow,
   type LoyaltyFacts,
   type LoyaltySettings,
   type LoyaltyStatus,
@@ -51,7 +52,14 @@ export async function loyaltyFacts(ctx: AppContext, organizationId: ObjectId, dr
     occurredOn: { $gte: addDaysIso(today, -180) },
     status: { $nin: ['CANCELED', 'COMPANY_LIABLE', 'RECEIVED'] },
   });
-  return { tenureDays, overdueInvoices, paidOnTimeInvoices, inspectionsOnTime, inspectionsLate, recentFines };
+  const recentClaims = await c.claims.countDocuments({
+    organizationId,
+    driverId,
+    fault: 'DRIVER',
+    status: { $ne: 'CANCELED' },
+    occurredOn: { $gte: addDaysIso(today, -365) },
+  });
+  return { tenureDays, overdueInvoices, paidOnTimeInvoices, inspectionsOnTime, inspectionsLate, recentFines, recentClaims };
 }
 
 export async function loyaltyStatus(ctx: AppContext, organizationId: ObjectId, driverId: ObjectId, today = businessDate()): Promise<LoyaltyStatus> {
@@ -69,6 +77,35 @@ export async function loyaltyStatus(ctx: AppContext, organizationId: ObjectId, d
     criteria,
     computedAt: new Date().toISOString(),
   };
+}
+
+/** Ranking dos motoristas com locação ativa, do menor para o maior ponto (quem precisa de atenção primeiro). */
+export async function driverRanking(ctx: AppContext, organizationId: ObjectId): Promise<DriverRankingRow[]> {
+  const org = await ctx.mongo.collections.organizations.findOne({ _id: organizationId });
+  const settings = loyaltySettingsOf(org?.settings);
+  const rentals = await ctx.mongo.collections.rentals.find({ organizationId, status: 'ACTIVE' }).toArray();
+  const drivers = await ctx.mongo.collections.drivers.find({ organizationId, _id: { $in: rentals.map((r) => r.driverId) }, anonymizedAt: { $in: [null, undefined] } }).toArray();
+  const vehicles = await ctx.mongo.collections.vehicles.find({ organizationId, _id: { $in: rentals.map((r) => r.vehicleId) } }).toArray();
+  const plateByVehicle = new Map(vehicles.map((v) => [v._id.toHexString(), v.plate]));
+  const sorted = [...settings.levels].sort((a, b) => a.minScore - b.minScore);
+  const attentionBelow = sorted[1]?.minScore ?? 0;
+  return drivers
+    .map((d) => {
+      const rental = rentals.find((r) => r.driverId.equals(d._id));
+      const score = d.loyalty?.score ?? 0;
+      const level = levelForScore(settings, score).level;
+      return {
+        driverId: d._id.toHexString(),
+        fullName: d.fullName,
+        plate: rental ? (plateByVehicle.get(rental.vehicleId.toHexString()) ?? null) : null,
+        score,
+        levelCode: level.code,
+        levelName: level.name,
+        attention: score < attentionBelow,
+        computedAt: d.loyalty?.computedAt ? d.loyalty.computedAt.toISOString() : null,
+      };
+    })
+    .sort((a, b) => a.score - b.score || a.fullName.localeCompare(b.fullName));
 }
 
 /** Job diário: recalcula e grava o nível de quem tem locação ativa; avisa a equipe quando alguém sobe de nível. */

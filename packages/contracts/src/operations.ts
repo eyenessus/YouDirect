@@ -216,7 +216,7 @@ export const defaultLoyaltySettings: LoyaltySettings = {
 };
 
 export const loyaltyCriterionSchema = z.object({
-  key: z.enum(['TENURE', 'PAYMENTS', 'INSPECTIONS', 'FINES']),
+  key: z.enum(['TENURE', 'PAYMENTS', 'INSPECTIONS', 'FINES', 'CLAIMS']),
   label: z.string(),
   points: z.number().int(),
   detail: z.string(),
@@ -233,6 +233,20 @@ export const loyaltyStatusSchema = z.object({
 });
 export type LoyaltyStatus = z.infer<typeof loyaltyStatusSchema>;
 
+/** Linha do ranking de motoristas (nível gravado pelo job diário). */
+export const driverRankingRowSchema = z.object({
+  driverId: objectIdSchema,
+  fullName: z.string(),
+  plate: z.string().nullable(),
+  score: z.number().int(),
+  levelCode: z.string(),
+  levelName: z.string(),
+  /** Abaixo do segundo nível: merece atenção do operador. */
+  attention: z.boolean(),
+  computedAt: isoDateTimeSchema.nullable(),
+});
+export type DriverRankingRow = z.infer<typeof driverRankingRowSchema>;
+
 export interface LoyaltyFacts {
   tenureDays: number;
   overdueInvoices: number;
@@ -240,6 +254,8 @@ export interface LoyaltyFacts {
   inspectionsOnTime: number;
   inspectionsLate: number;
   recentFines: number;
+  /** Sinistros com culpa do motorista nos últimos 365 dias. */
+  recentClaims?: number;
 }
 
 /** Pontuação de fidelidade (regra pura). Cada critério tem teto para não depender de um só. */
@@ -248,6 +264,7 @@ export function scoreLoyalty(f: LoyaltyFacts): { score: number; criteria: Array<
   const payments = Math.max(-60, Math.min(80, f.paidOnTimeInvoices * 5 - f.overdueInvoices * 20));
   const inspections = Math.max(-45, Math.min(40, f.inspectionsOnTime * 5 - f.inspectionsLate * 15));
   const fines = -Math.min(60, f.recentFines * 15);
+  const claims = -Math.min(80, (f.recentClaims ?? 0) * 40);
   const criteria = [
     { key: 'TENURE' as const, label: 'Tempo de contrato', points: tenure, detail: `${Math.floor(f.tenureDays / 30)} mês(es) como cliente` },
     {
@@ -263,6 +280,7 @@ export function scoreLoyalty(f: LoyaltyFacts): { score: number; criteria: Array<
       detail: `${f.inspectionsOnTime} no prazo${f.inspectionsLate ? `, ${f.inspectionsLate} atrasada(s)` : ''} (90 dias)`,
     },
     { key: 'FINES' as const, label: 'Direção segura', points: fines, detail: f.recentFines ? `${f.recentFines} multa(s) em 180 dias` : 'Sem multas em 180 dias' },
+    { key: 'CLAIMS' as const, label: 'Sinistros', points: claims, detail: f.recentClaims ? `${f.recentClaims} sinistro(s) com culpa em 12 meses` : 'Sem sinistros com culpa em 12 meses' },
   ];
   return { score: Math.max(0, criteria.reduce((a, c) => a + c.points, 0)), criteria };
 }

@@ -206,6 +206,12 @@ const routes: RouteRecordRaw[] = [
         meta: { module: 'drivers', title: 'Novo Motorista' },
       },
       {
+        path: 'drivers/ranking',
+        name: 'driver-ranking',
+        component: () => import('@/features/drivers/DriverRankingPage.vue'),
+        meta: { module: 'drivers', title: 'Ranking de motoristas' },
+      },
+      {
         path: 'drivers/:id',
         name: 'driver-detail',
         component: () => import('@/features/drivers/DriverDetailPage.vue'),
