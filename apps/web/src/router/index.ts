@@ -175,6 +175,12 @@ const routes: RouteRecordRaw[] = [
         meta: { module: 'vehicles', title: 'Abastecimento' },
       },
       {
+        path: 'vehicles/availability',
+        name: 'vehicle-availability',
+        component: () => import('@/features/vehicles/AvailabilityPage.vue'),
+        meta: { module: 'vehicles', title: 'Disponibilidade e carro reserva' },
+      },
+      {
         path: 'vehicles/import',
         name: 'vehicle-import',
         component: () => import('@/features/vehicles/VehicleImportPage.vue'),

@@ -31,6 +31,8 @@ export async function processKmReading(ctx: AppContext, inspection: InspectionDo
   if (inspection.status !== 'APPROVED' || inspection.odometerKm === null || !inspection.rentalId) return none('NOT_APPLICABLE');
   const rental = await ctx.mongo.collections.rentals.findOne({ _id: inspection.rentalId, organizationId: inspection.organizationId });
   if (!rental || rental.status === 'CANCELED') return none('NOT_APPLICABLE');
+  // Leitura de outro veículo (carro reserva) nunca vira cobrança de km do contrato.
+  if (!inspection.vehicleId.equals(rental.vehicleId)) return none('NOT_APPLICABLE');
   const billing = rental.kmBilling ?? null;
   if (billing?.processedInspectionIds.some((i) => i.equals(inspection._id))) return none('ALREADY_PROCESSED');
 

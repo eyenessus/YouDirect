@@ -246,6 +246,22 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
     { key: { reportExpiresAt: 1 }, partialFilterExpression: { reportEncrypted: { $type: 'string' } }, name: 'by_report_expiry' },
   ]);
 
+  await c.vehicleSwaps.createIndexes([
+    { key: { organizationId: 1, status: 1, startedOn: -1 }, name: 'by_org_status' },
+    {
+      // Uma troca ativa por locação e um reserva só serve a uma locação por vez.
+      key: { organizationId: 1, rentalId: 1 },
+      unique: true,
+      partialFilterExpression: { status: 'ACTIVE' },
+      name: 'uniq_active_swap_rental',
+    },
+    {
+      key: { organizationId: 1, replacementVehicleId: 1 },
+      unique: true,
+      partialFilterExpression: { status: 'ACTIVE' },
+      name: 'uniq_active_swap_replacement',
+    },
+  ]);
   await c.fuelLogs.createIndexes([
     { key: { organizationId: 1, vehicleId: 1, date: -1, odometerKm: -1 }, name: 'by_vehicle_date' },
     { key: { organizationId: 1, date: -1 }, name: 'by_org_date' },

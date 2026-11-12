@@ -1,6 +1,8 @@
 import type { ObjectId } from 'mongodb';
 import type {
   BankAccountType,
+  SwapReason,
+  SwapStatus,
   FuelType,
   ClaimFault,
   ClaimKind,
@@ -706,6 +708,23 @@ export interface RentalLeadDoc extends Tenant {
   notes: string | null;
   ip: string | null;
   handledBy: ObjectId | null;
+}
+
+export interface VehicleSwapDoc extends Tenant {
+  rentalId: ObjectId;
+  driverId: ObjectId | null;
+  originalVehicleId: ObjectId;
+  replacementVehicleId: ObjectId;
+  status: SwapStatus;
+  reason: SwapReason;
+  claimId: ObjectId | null;
+  startedOn: IsoDate;
+  endedOn: IsoDate | null;
+  /** Situação do veículo original antes da troca (para devolver ao encerrar). */
+  originalStatusBefore: VehicleStatus;
+  notes: string | null;
+  createdBy: ObjectId | null;
+  version: number;
 }
 
 export interface FuelLogDoc extends Tenant {

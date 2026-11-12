@@ -11,6 +11,7 @@ export * from './finance.js';
 export * from './fines.js';
 export * from './claims.js';
 export * from './fuel.js';
+export * from './swaps.js';
 export * from './portal.js';
 export * from './operations.js';
 export * from './credit.js';

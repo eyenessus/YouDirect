@@ -40,6 +40,7 @@ import type {
   TrafficFineDoc,
   ClaimDoc,
   FuelLogDoc,
+  VehicleSwapDoc,
   DriverAccessTokenDoc,
   DriverSessionDoc,
   MaintenanceRequestDoc,
@@ -77,6 +78,7 @@ export interface Collections {
   trafficFines: Collection<TrafficFineDoc>;
   claims: Collection<ClaimDoc>;
   fuelLogs: Collection<FuelLogDoc>;
+  vehicleSwaps: Collection<VehicleSwapDoc>;
   driverAccessTokens: Collection<DriverAccessTokenDoc>;
   driverSessions: Collection<DriverSessionDoc>;
   maintenanceRequests: Collection<MaintenanceRequestDoc>;
@@ -139,6 +141,7 @@ function buildCollections(db: Db): Collections {
     trafficFines: db.collection<TrafficFineDoc>('trafficFines'),
     claims: db.collection<ClaimDoc>('claims'),
     fuelLogs: db.collection<FuelLogDoc>('fuelLogs'),
+    vehicleSwaps: db.collection<VehicleSwapDoc>('vehicleSwaps'),
     driverAccessTokens: db.collection<DriverAccessTokenDoc>('driverAccessTokens'),
     driverSessions: db.collection<DriverSessionDoc>('driverSessions'),
     maintenanceRequests: db.collection<MaintenanceRequestDoc>('maintenanceRequests'),

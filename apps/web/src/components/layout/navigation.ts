@@ -57,6 +57,7 @@ export const navigation: NavItem[] = [
       { label: 'Consultar', to: '/dashboard/vehicles' },
       { label: 'Cadastrar', to: '/dashboard/vehicles/new' },
       { label: 'Vencimentos', to: '/dashboard/vehicles/due' },
+      { label: 'Disponibilidade', to: '/dashboard/vehicles/availability' },
       { label: 'Abastecimento', to: '/dashboard/vehicles/fuel' },
       { label: 'Importar', to: '/dashboard/vehicles/import' },
     ],
