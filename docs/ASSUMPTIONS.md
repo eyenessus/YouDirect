@@ -242,6 +242,39 @@ pendentes. Ele pode pedir manutenção, o que avisa a equipe sem criar OS
 - **Alerta:** sinistro sem conclusão há mais de 15 dias avisa a equipe, com reaviso semanal.
 - **Não faz:** não integra com seguradora, não muda a situação do veículo sozinho e não calcula o valor do reparo.
 
+### A-ABA-01 — Abastecimento e custo por km **[R]**
+- **Registro:** data, combustível, litros, valor, hodômetro e se o tanque foi cheio. O motorista é o da locação do veículo na data.
+- **Hodômetro:** não pode ser menor que o do abastecimento anterior nem maior que o seguinte (por data). Também atualiza o hodômetro do veículo se for maior.
+- **Consumo e custo por km:** método do tanque cheio, entre o primeiro e o último abastecimento cheio do período (90 dias). Os litros e o dinheiro do primeiro enchimento não entram. Com menos de dois tanques cheios não calcula, em vez de estimar.
+
+### A-RES-01 — Carro reserva **[R]**
+- **O que é:** troca temporária do veículo de uma locação ativa (manutenção, sinistro ou outro motivo). A locação, a cobrança e a franquia de km continuam no veículo original.
+- **Situação dos veículos:** o reserva (precisa estar disponível) fica "Locado"; o original vai para "Em manutenção" (manutenção ou sinistro) ou "Disponível" (outro motivo). Ao devolver, o reserva volta a "Disponível" e o original a "Locado" se a opção "original voltou" estiver marcada.
+- **Limites:** uma troca ativa por locação e um reserva por vez (índices únicos). O quadro de disponibilidade só oferece como reserva veículo disponível, sem OS nem sinistro em aberto.
+- **Km:** leitura de hodômetro de vistoria feita em outro veículo que não o da locação nunca gera cobrança de km excedente.
+- **Não faz:** não troca a locação definitivamente de veículo.
+
+### A-FIP-01 — Valor de mercado (FIPE) **[R]**
+- **Fonte:** API pública da Parallelum (`fipe.parallelum.com.br`, v2), sem token ou com `FIPE_API_TOKEN` (limite diário maior). `FIPE_ENABLED=false` desliga.
+- **Guarda:** código FIPE, valor em centavos, mês de referência e histórico de 24 meses por veículo vinculado. Falha de rede, limite da API ou resposta fora do formato viram erro; nunca se grava preço inventado.
+- **Atualização:** o job reconsulta quem está há mais de 25 dias sem atualizar, até 15 veículos por rodada (preserva o limite da API).
+- **Relatório:** variação sobre o preço de compra e rendimento anual do aluguel semanal (52 semanas sobre o valor FIPE). Não desconta manutenção, impostos nem ociosidade e não recomenda venda.
+
+### A-RAS-01 — Rastreamento **[R]**
+- **Sem fabricante:** qualquer plataforma que envie posições em JSON por webhook (`POST /api/v1/webhooks/tracker`, cabeçalho `x-tracker-token` ou Bearer) funciona. O token é gerado por dono ou administrador, mostrado uma vez, e só o hash é guardado.
+- **Posições:** até 100 por chamada; repetidas são ignoradas; leitura mais de 5 minutos no futuro ou com mais de 30 dias é recusada; histórico guardado por 90 dias. A "última posição" nunca volta no tempo e o hodômetro nunca diminui.
+- **Alertas:** carro locado fora de todas as áreas permitidas (círculos), um aviso por dia; rastreador de carro locado sem sinal há mais de 24 h (ou que nunca reportou), reaviso semanal.
+- **Não faz:** não bloqueia nem imobiliza veículo, não mostra mapa embutido (abre o mapa externo) e não alimenta a cobrança de km. Bloqueio remoto exige contrato, aviso ao motorista e validação jurídica.
+
+### A-FIS-01 — Recibos e controle fiscal **[R]**
+- **Recibo:** PDF com número `REC-AAAA-NNN` fixo por pagamento, valor, data, forma e pagador. Diz que não substitui a nota fiscal. Recusado para pagamento estornado ou compensado com a caução.
+- **Nota fiscal:** o sistema **não emite NFS-e**. Ela depende da prefeitura (ou de um emissor contratado) e dos dados do contador. O que ele faz é listar os recebimentos de aluguel e km excedente ainda sem nota (multa, avaria e caução ficam de fora), exportar o CSV para o contador e registrar número, data e link da nota emitida fora.
+- **Regras:** uma nota por recebimento; número único entre notas emitidas; cancelar exige motivo e libera o recebimento para nova nota (inclusive reaproveitando o número).
+
+### A-PON-01 — Pontuação do motorista **[R]**
+- A fidelidade já pontuava tempo de contrato, pagamentos em dia, vistorias e multas. Passou a incluir sinistros com culpa do motorista nos últimos 12 meses (−40 pontos cada, teto de −80); cancelado, de terceiro ou a apurar não pesam.
+- Ranking em Motoristas > Ranking, do menor para o maior ponto; "atenção" é quem está abaixo do segundo nível. Usa a pontuação gravada pelo job diário.
+
 ### A-KM-01 — KM excedente automático **[R]**
 - **Quando roda:** ao aprovar uma vistoria com hodômetro.
 - **Base:** o hodômetro da entrega ou, se não houver, a 1ª vistoria aprovada.
