@@ -1,6 +1,7 @@
 import type { ObjectId } from 'mongodb';
 import type {
   BankAccountType,
+  FuelType,
   ClaimFault,
   ClaimKind,
   ClaimStatus,
@@ -705,6 +706,21 @@ export interface RentalLeadDoc extends Tenant {
   notes: string | null;
   ip: string | null;
   handledBy: ObjectId | null;
+}
+
+export interface FuelLogDoc extends Tenant {
+  vehicleId: ObjectId;
+  driverId: ObjectId | null;
+  rentalId: ObjectId | null;
+  date: IsoDate;
+  fuelType: FuelType;
+  liters: number;
+  totalCents: number;
+  odometerKm: number;
+  fullTank: boolean;
+  station: string | null;
+  notes: string | null;
+  createdBy: ObjectId | null;
 }
 
 export interface ClaimDoc extends Tenant {

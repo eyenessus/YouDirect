@@ -169,6 +169,12 @@ const routes: RouteRecordRaw[] = [
         meta: { module: 'vehicles', title: 'Vencimentos da frota' },
       },
       {
+        path: 'vehicles/fuel',
+        name: 'vehicle-fuel',
+        component: () => import('@/features/vehicles/FuelPage.vue'),
+        meta: { module: 'vehicles', title: 'Abastecimento' },
+      },
+      {
         path: 'vehicles/import',
         name: 'vehicle-import',
         component: () => import('@/features/vehicles/VehicleImportPage.vue'),

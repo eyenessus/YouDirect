@@ -39,6 +39,7 @@ import type {
   UnmatchedMediaDoc,
   TrafficFineDoc,
   ClaimDoc,
+  FuelLogDoc,
   DriverAccessTokenDoc,
   DriverSessionDoc,
   MaintenanceRequestDoc,
@@ -75,6 +76,7 @@ export interface Collections {
   rentalPayments: Collection<RentalPaymentDoc>;
   trafficFines: Collection<TrafficFineDoc>;
   claims: Collection<ClaimDoc>;
+  fuelLogs: Collection<FuelLogDoc>;
   driverAccessTokens: Collection<DriverAccessTokenDoc>;
   driverSessions: Collection<DriverSessionDoc>;
   maintenanceRequests: Collection<MaintenanceRequestDoc>;
@@ -136,6 +138,7 @@ function buildCollections(db: Db): Collections {
     rentalPayments: db.collection<RentalPaymentDoc>('rentalPayments'),
     trafficFines: db.collection<TrafficFineDoc>('trafficFines'),
     claims: db.collection<ClaimDoc>('claims'),
+    fuelLogs: db.collection<FuelLogDoc>('fuelLogs'),
     driverAccessTokens: db.collection<DriverAccessTokenDoc>('driverAccessTokens'),
     driverSessions: db.collection<DriverSessionDoc>('driverSessions'),
     maintenanceRequests: db.collection<MaintenanceRequestDoc>('maintenanceRequests'),

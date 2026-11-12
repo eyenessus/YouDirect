@@ -246,6 +246,10 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
     { key: { reportExpiresAt: 1 }, partialFilterExpression: { reportEncrypted: { $type: 'string' } }, name: 'by_report_expiry' },
   ]);
 
+  await c.fuelLogs.createIndexes([
+    { key: { organizationId: 1, vehicleId: 1, date: -1, odometerKm: -1 }, name: 'by_vehicle_date' },
+    { key: { organizationId: 1, date: -1 }, name: 'by_org_date' },
+  ]);
   await c.claims.createIndexes([
     { key: { organizationId: 1, claimNumber: 1 }, unique: true, name: 'uniq_org_claim_number' },
     { key: { organizationId: 1, status: 1, createdAt: -1 }, name: 'by_org_status' },
