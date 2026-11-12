@@ -107,6 +107,10 @@ const envSchema = z.object({
   /** Assinatura secreta dos webhooks (painel do Mercado Pago > Webhooks). Obrigatória para receber baixas. */
   MERCADOPAGO_WEBHOOK_SECRET: z.string().optional(),
   MERCADOPAGO_API_URL: z.string().url().default('https://api.mercadopago.com'),
+  /** Tabela FIPE (API pública da Parallelum). O token é opcional e só aumenta o limite diário. */
+  FIPE_ENABLED: booleanish.default(true),
+  FIPE_API_URL: z.string().url().default('https://fipe.parallelum.com.br/api/v2'),
+  FIPE_API_TOKEN: z.string().optional(),
   /** E-mail do pagador quando o motorista não tem e-mail (exigido pela API). */
   PIX_PAYER_FALLBACK_EMAIL: z.string().email().optional(),
   PIX_EXPIRATION_MINUTES: z.coerce.number().int().min(30).max(43_200).default(1440),

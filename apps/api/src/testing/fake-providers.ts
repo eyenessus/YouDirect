@@ -30,6 +30,8 @@ export interface FakeProviders {
   requests: Array<{ method: string; path: string; headers: IncomingMessage['headers'] }>;
   /** Próximas respostas de erro (HTTP) para POST /v1/payments. */
   failNextCreate: number;
+  /** Tabela FIPE falsa em `${url}/fipe`: preços por código de ano, editáveis pelo teste. */
+  fipePrices: Map<string, string>;
   approve(id: string, amountOverride?: number): void;
   sign(token: string): void;
   close(): Promise<void>;
@@ -53,6 +55,7 @@ export async function startFakeProviders(): Promise<FakeProviders> {
   const docs = new Map<string, FakeDoc>();
   const requests: FakeProviders['requests'] = [];
   const state = { failNextCreate: 0 };
+  const fipePrices = new Map<string, string>([['21/4828/2022-1', 'R$ 62.350,00']]);
   let baseUrl = '';
 
   const server: Server = createServer(async (req, res) => {
@@ -95,6 +98,21 @@ export async function startFakeProviders(): Promise<FakeProviders> {
         return send(res, 200, mpPayment(p));
       }
       return send(res, 200, mpPayment(p));
+    }
+
+    // --------------------------- FIPE ---------------------------
+    // Caminho: /fipe/cars/brands[/<marca>[/models[/<modelo>[/years[/<ano>]]]]]
+    const parts = url.pathname.split('/').filter(Boolean);
+    if (parts[0] === 'fipe' && parts[1] === 'cars' && parts[2] === 'brands' && req.method === 'GET') {
+      const brand = parts[3];
+      const model = parts[5];
+      const year = parts[7];
+      if (parts.length === 3) return send(res, 200, [{ code: '21', name: 'Fiat' }, { code: '59', name: 'VW - VolksWagen' }]);
+      if (parts.length === 5) return send(res, brand === '21' ? 200 : 404, brand === '21' ? [{ code: '4828', name: 'Mobi Like 1.0' }] : { message: 'x' });
+      if (parts.length === 7) return send(res, 200, [{ code: '2022-1', name: '2022 Gasolina' }]);
+      const price = fipePrices.get(`${brand}/${model}/${year}`);
+      if (!price) return send(res, 404, { error: 'not found' });
+      return send(res, 200, { vehicleType: 1, price, brand: 'Fiat', model: 'Mobi Like 1.0', modelYear: 2022, fuel: 'Gasolina', codeFipe: '001478-1', referenceMonth: 'novembro de 2026', fuelAcronym: 'G' });
     }
 
     // ------------------------- ZapSign -------------------------
@@ -142,6 +160,7 @@ export async function startFakeProviders(): Promise<FakeProviders> {
     payments,
     docs,
     requests,
+    fipePrices,
     get failNextCreate() {
       return state.failNextCreate;
     },

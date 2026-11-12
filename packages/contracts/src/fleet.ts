@@ -1,3 +1,4 @@
+import { vehicleFipeSchema } from './fipe.js';
 import { z } from 'zod';
 import { vehicleOfferSchema } from './portal.js';
 import {
@@ -50,6 +51,8 @@ export const vehicleSchema = z.object({
   licensingDueDate: isoDateSchema.nullable().optional(),
   insuranceDueDate: isoDateSchema.nullable().optional(),
   insurerName: z.string().nullable().optional(),
+  /** Valor de mercado na tabela FIPE (vínculo e histórico mensal). */
+  fipe: vehicleFipeSchema.nullable().optional(),
   policyNumber: z.string().nullable().optional(),
   createdAt: isoDateTimeSchema,
   updatedAt: isoDateTimeSchema,

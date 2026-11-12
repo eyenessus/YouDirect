@@ -18,6 +18,7 @@ import {
   runCollectionLifecycle,
   sendPendingMessages,
 } from '../services/whatsapp-inspection.js';
+import { refreshStaleFipe } from '../services/fipe.js';
 import { withLease } from './lease.js';
 import { generateScheduledInspections } from '../services/inspection-schedule.js';
 
@@ -51,6 +52,7 @@ export async function runScheduledJobs(ctx: AppContext, logger: FastifyBaseLogge
       const pix = await reconcilePixCharges(ctx, organization._id).catch(() => ({ paid: 0, expired: 0 }));
       const reminders = await generateBillingReminders(ctx, organization._id).catch(() => ({ sent: 0, failed: 0, skipped: 0 }));
       const escalations = await generateBillingEscalations(ctx, organization._id, today).catch(() => 0);
+      const fipe = await refreshStaleFipe(ctx, organization._id).catch(() => ({ updated: 0, failed: 0 }));
       const loyalty = await recomputeLoyalty(ctx, organization._id, today).catch(() => 0);
       const signatures = await reconcileSignatures(ctx, organization._id).catch(() => 0);
       logger.info(
@@ -66,6 +68,7 @@ export async function runScheduledJobs(ctx: AppContext, logger: FastifyBaseLogge
           pixExpired: pix.expired,
           billingRemindersSent: reminders.sent,
           billingEscalations: escalations,
+          fipeUpdated: fipe.updated,
           loyaltyUpdated: loyalty,
           signaturesUpdated: signatures,
         },

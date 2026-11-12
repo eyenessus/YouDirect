@@ -192,6 +192,19 @@ export interface VehicleDoc extends Tenant {
     weeklyKmFranchise: number | null;
     highlights: string[];
   } | null;
+  /** Valor de mercado na tabela FIPE e histórico mensal. */
+  fipe?: {
+    link: { brandId: string; modelId: string; yearId: string };
+    codeFipe: string;
+    brandName: string;
+    modelName: string;
+    modelYear: number;
+    fuel: string;
+    referenceMonth: string;
+    priceCents: number;
+    fetchedAt: Date;
+    history: Array<{ referenceMonth: string; priceCents: number }>;
+  } | null;
   /** Vencimentos de IPVA, licenciamento e seguro (alertas). */
   compliance?: {
     ipvaDueDate: IsoDate | null;

@@ -181,6 +181,12 @@ const routes: RouteRecordRaw[] = [
         meta: { module: 'vehicles', title: 'Disponibilidade e carro reserva' },
       },
       {
+        path: 'vehicles/fipe',
+        name: 'vehicle-fipe',
+        component: () => import('@/features/vehicles/FipeReportPage.vue'),
+        meta: { module: 'vehicles', title: 'Valor de mercado (FIPE)' },
+      },
+      {
         path: 'vehicles/import',
         name: 'vehicle-import',
         component: () => import('@/features/vehicles/VehicleImportPage.vue'),

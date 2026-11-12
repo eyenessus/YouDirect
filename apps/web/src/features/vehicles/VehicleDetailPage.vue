@@ -12,6 +12,7 @@ import {
 import PageHeader from '@/components/layout/PageHeader.vue';
 import FinesPanel from '@/features/fines/FinesPanel.vue';
 import VehicleOfferCard from './VehicleOfferCard.vue';
+import VehicleFipeCard from './VehicleFipeCard.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSkeleton from '@/components/ui/AppSkeleton.vue';
 import { api } from '@/lib/api';
@@ -119,6 +120,8 @@ onMounted(async () => {
       </section>
 
       <VehicleOfferCard :vehicle-id="vehicle.id" :offer="vehicle.offer" @saved="(o) => vehicle && (vehicle.offer = o)" />
+
+      <VehicleFipeCard :vehicle-id="vehicle.id" :fipe="vehicle.fipe" @saved="(f) => vehicle && (vehicle.fipe = f)" />
 
       <FinesPanel v-if="auth.allows('fines', 'read')" :vehicle-id="vehicle.id" />
 

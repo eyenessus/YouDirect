@@ -3,6 +3,7 @@ import type { Vehicle } from '@yudirect/contracts';
 import type { AppContext } from '../../context.js';
 import type { VehicleDoc } from '../../database/types.js';
 import { describeFiles } from '../../services/files.js';
+import { toVehicleFipeDTO } from '../../services/fipe.js';
 
 export async function toVehicleDTO(
   ctx: AppContext,
@@ -35,6 +36,7 @@ export async function toVehicleDTO(
     insuranceDueDate: doc.compliance?.insuranceDueDate ?? null,
     insurerName: doc.compliance?.insurerName ?? null,
     policyNumber: doc.compliance?.policyNumber ?? null,
+    fipe: toVehicleFipeDTO(doc.fipe),
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
   };
@@ -72,6 +74,7 @@ export async function toVehicleDTOs(
     insuranceDueDate: doc.compliance?.insuranceDueDate ?? null,
     insurerName: doc.compliance?.insurerName ?? null,
     policyNumber: doc.compliance?.policyNumber ?? null,
+    fipe: toVehicleFipeDTO(doc.fipe),
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
   }));
