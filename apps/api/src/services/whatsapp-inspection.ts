@@ -1214,7 +1214,10 @@ async function updateWithEvidence(
 async function handleMediaReceived(ctx: AppContext, envelope: WhaplyEventEnvelope, data: z_MediaData): Promise<IngestOutcome> {
   const inspection = await loadInspectionForEvent(ctx, envelope);
   if (!inspection) return 'ignored';
-  if ((inspection.photoEvidence ?? []).some((e) => e.wamid === data.wamid)) return 'processed';
+  if ((inspection.photoEvidence ?? []).some((e) => e.wamid === data.wamid)) {
+    await completeIfSessionAlreadyClosed(ctx, envelope);
+    return 'processed';
+  }
 
   const media = await ctx.integrations.whaply.fetchMedia(data.mediaRef);
   if (!media.ok) {
@@ -1302,6 +1305,7 @@ async function handleMediaReceived(ctx: AppContext, envelope: WhaplyEventEnvelop
       dedupeKey: `wa-late:${data.wamid}`,
     });
   }
+  await completeIfSessionAlreadyClosed(ctx, envelope);
   return 'processed';
 }
 
@@ -1337,7 +1341,25 @@ async function handleTextReceived(
       $inc: { version: 1 },
     },
   );
+  await completeIfSessionAlreadyClosed(ctx, envelope);
   return 'processed';
+}
+
+/**
+ * A entrega é pelo-menos-uma-vez e uma nova tentativa pode chegar DEPOIS
+ * de eventos posteriores: a conclusão da coleta passa na frente da foto
+ * (ou da quilometragem) que falhou na primeira entrega. Nesse caso a
+ * conclusão foi registrada como incompleta; quando o item atrasado chega,
+ * ela é reavaliada — senão a vistoria ficaria pendente com tudo recebido.
+ */
+async function completeIfSessionAlreadyClosed(ctx: AppContext, envelope: WhaplyEventEnvelope): Promise<void> {
+  if (!envelope.sessionId) return;
+  const closed = await ctx.mongo.collections.integrationInbox.findOne({
+    type: 'session.completed',
+    'payload.sessionId': envelope.sessionId,
+    processedAt: { $ne: null },
+  });
+  if (closed) await handleSessionCompleted(ctx, closed.payload as WhaplyEventEnvelope);
 }
 
 export function isCollectionComplete(doc: InspectionDoc): boolean {
