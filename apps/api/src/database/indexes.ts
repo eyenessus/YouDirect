@@ -246,6 +246,12 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
     { key: { reportExpiresAt: 1 }, partialFilterExpression: { reportEncrypted: { $type: 'string' } }, name: 'by_report_expiry' },
   ]);
 
+  await c.fiscalNotes.createIndexes([
+    // Um pagamento tem no máximo uma nota emitida; cancelada libera para registrar outra.
+    { key: { organizationId: 1, paymentId: 1 }, unique: true, partialFilterExpression: { status: 'ISSUED' }, name: 'uniq_active_note_payment' },
+    { key: { organizationId: 1, number: 1 }, unique: true, partialFilterExpression: { status: 'ISSUED' }, name: 'uniq_active_note_number' },
+    { key: { organizationId: 1, issuedOn: -1 }, name: 'by_org_issued' },
+  ]);
   await c.trackerDevices.createIndexes([
     { key: { organizationId: 1, deviceId: 1 }, unique: true, name: 'uniq_org_device' },
     { key: { organizationId: 1, vehicleId: 1 }, unique: true, name: 'uniq_org_vehicle' },

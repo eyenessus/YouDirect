@@ -143,6 +143,7 @@ export const navigation: NavItem[] = [
       { label: 'Relatório por Veículo', to: '/dashboard/finance/reports/by-vehicle' },
       { label: 'Relatório por Cliente', to: '/dashboard/finance/reports/by-client' },
       { label: 'DRE Mensal', to: '/dashboard/finance/reports/dre' },
+      { label: 'Notas fiscais', to: '/dashboard/finance/fiscal' },
     ],
   },
   {

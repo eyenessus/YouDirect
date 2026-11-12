@@ -14,6 +14,7 @@ export * from './fuel.js';
 export * from './swaps.js';
 export * from './fipe.js';
 export * from './tracking.js';
+export * from './fiscal.js';
 export * from './portal.js';
 export * from './operations.js';
 export * from './credit.js';

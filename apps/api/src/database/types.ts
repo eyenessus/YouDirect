@@ -1,6 +1,7 @@
 import type { ObjectId } from 'mongodb';
 import type {
   BankAccountType,
+  FiscalNoteStatus,
   SwapReason,
   SwapStatus,
   FuelType,
@@ -727,6 +728,20 @@ export interface RentalLeadDoc extends Tenant {
   handledBy: ObjectId | null;
 }
 
+/** Nota fiscal de serviço emitida fora do sistema e registrada aqui para controle. */
+export interface FiscalNoteDoc extends Tenant {
+  paymentId: ObjectId;
+  number: string;
+  issuedOn: IsoDate;
+  amountCents: number;
+  url: string | null;
+  notes: string | null;
+  status: FiscalNoteStatus;
+  canceledReason: string | null;
+  canceledAt: Date | null;
+  createdBy: ObjectId | null;
+}
+
 export interface TrackerDeviceDoc extends Tenant {
   vehicleId: ObjectId;
   deviceId: string;
@@ -881,6 +896,8 @@ export interface PaymentDoc extends Tenant {
   reversalTransactionId?: ObjectId | null;
   /** Origem especial: PIX (baixa automática) ou DEPOSIT (compensado com a caução, sem extrato). */
   origin?: 'PIX' | 'DEPOSIT' | null;
+  /** Número do recibo (REC-AAAA-NNN), atribuído na primeira emissão e mantido depois. */
+  receiptDocNumber?: string | null;
 }
 
 /**

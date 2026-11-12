@@ -421,6 +421,12 @@ const routes: RouteRecordRaw[] = [
         meta: { module: 'finance', title: 'Relatório por Cliente' },
       },
       {
+        path: 'finance/fiscal',
+        name: 'finance-fiscal',
+        component: () => import('@/features/finance/FiscalPage.vue'),
+        meta: { module: 'finance', title: 'Notas fiscais e recibos' },
+      },
+      {
         path: 'finance/reports/dre',
         name: 'report-dre',
         component: () => import('@/features/finance/DrePage.vue'),
