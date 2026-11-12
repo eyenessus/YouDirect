@@ -10,6 +10,7 @@ import {
   Users,
   Car,
   ReceiptText,
+  ShieldAlert,
   ShieldCheck,
 } from 'lucide-vue-next';
 import type { PermissionModule } from '@yudirect/contracts';
@@ -112,6 +113,16 @@ export const navigation: NavItem[] = [
     children: [
       { label: 'Consultar', to: '/dashboard/fines' },
       { label: 'Cadastrar', to: '/dashboard/fines/new' },
+    ],
+  },
+  {
+    key: 'claims',
+    label: 'Sinistros',
+    icon: ShieldAlert,
+    module: 'claims',
+    children: [
+      { label: 'Consultar', to: '/dashboard/claims' },
+      { label: 'Registrar', to: '/dashboard/claims/new' },
     ],
   },
   {

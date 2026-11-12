@@ -268,6 +268,24 @@ const routes: RouteRecordRaw[] = [
         meta: { module: 'fines', title: 'Editar Multa' },
       },
       {
+        path: 'claims',
+        name: 'claims',
+        component: () => import('@/features/claims/ClaimListPage.vue'),
+        meta: { module: 'claims', title: 'Sinistros' },
+      },
+      {
+        path: 'claims/new',
+        name: 'claim-new',
+        component: () => import('@/features/claims/ClaimFormPage.vue'),
+        meta: { module: 'claims', title: 'Registrar sinistro' },
+      },
+      {
+        path: 'claims/:id',
+        name: 'claim-detail',
+        component: () => import('@/features/claims/ClaimDetailPage.vue'),
+        meta: { module: 'claims', title: 'Sinistro' },
+      },
+      {
         path: 'fines/:id',
         name: 'fine-detail',
         component: () => import('@/features/fines/FineDetailPage.vue'),

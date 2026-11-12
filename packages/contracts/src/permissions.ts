@@ -16,6 +16,7 @@ export const permissionModules = [
   'inspections',
   'maintenance',
   'fines',
+  'claims',
   'finance',
   'notifications',
   'credit',
@@ -45,6 +46,7 @@ export const permissionModuleLabels: Record<PermissionModule, string> = {
   inspections: 'Vistorias',
   maintenance: 'Manutenções',
   fines: 'Multas',
+  claims: 'Sinistros',
   finance: 'Financeiro',
   notifications: 'Notificações',
   credit: 'Análise de crédito (Serasa)',
@@ -72,6 +74,8 @@ export const moduleActions: Record<PermissionModule, readonly PermissionAction[]
   maintenance: ['read', 'create', 'update', 'delete', 'export'],
   /** `pay` = cobrar a multa do motorista (gera conta a receber). */
   fines: ['read', 'create', 'update', 'delete', 'pay', 'export'],
+  /** `pay` = cobrar a franquia do motorista (gera conta a receber). */
+  claims: ['read', 'create', 'update', 'pay'],
   finance: ['read', 'create', 'update', 'delete', 'pay', 'export'],
   notifications: ['read', 'update', 'dispatch'],
   /** `read` = ver relatórios; `request` = fazer consulta paga; `review` = registrar a decisão. */

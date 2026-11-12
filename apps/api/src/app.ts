@@ -28,6 +28,7 @@ import { registerRentalRoutes } from './modules/rentals/routes.js';
 import { registerRentalPaymentRoutes } from './modules/rentals/payments.js';
 import { registerMaintenanceRoutes } from './modules/maintenance/routes.js';
 import { registerFineRoutes } from './modules/fines/routes.js';
+import { registerClaimRoutes } from './modules/claims/routes.js';
 import { registerInspectionRoutes } from './modules/inspections/routes.js';
 import { registerBankRoutes } from './modules/finance/bank.js';
 import { registerAccountRoutes } from './modules/finance/accounts.js';
@@ -165,6 +166,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
       await registerRentalPaymentRoutes(api);
       await registerMaintenanceRoutes(api);
       await registerFineRoutes(api);
+      await registerClaimRoutes(api);
       await registerDriverPortalRoutes(api);
       await registerPublicSiteRoutes(api);
       await registerBillingRoutes(api);

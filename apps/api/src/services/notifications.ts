@@ -10,6 +10,7 @@ import {
 } from '@yudirect/contracts';
 import type { AppContext } from '../context.js';
 import { dueBucket, listVehicleDue, vehicleDueTitle } from './vehicle-due.js';
+import { generateClaimNotifications } from './claims.js';
 
 export interface CreateNotificationInput {
   organizationId: ObjectId;
@@ -355,6 +356,7 @@ export async function runNotificationGenerators(
     generateMaintenanceNotifications(ctx, organizationId, today),
     generateFineNotifications(ctx, organizationId, today),
     generateVehicleDueNotifications(ctx, organizationId, today),
+    generateClaimNotifications(ctx, organizationId, today),
   ]);
   return results.reduce((a, b) => a + b, 0);
 }

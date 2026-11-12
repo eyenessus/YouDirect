@@ -233,6 +233,15 @@ pendentes. Ele pode pedir manutenção, o que avisa a equipe sem criar OS
 - **Painel:** Veículos > Vencimentos, com filtro por tipo e janela de 30, 60 ou 90 dias; vencidos aparecem sempre.
 - **Não faz:** não cria conta a pagar nem lança a renovação. Isso fica a cargo do financeiro.
 
+### A-SIN-01 — Sinistros **[R]**
+- **O que é:** registro de acidente, roubo, incêndio, vandalismo, enchente, vidros ou outro dano a um veículo, com número `SIN-AAAA-NNN`, B.O., protocolo da seguradora, franquia, custo estimado e final, fotos e documentos.
+- **Motorista:** vem da locação do veículo vigente na data do sinistro (a mais recente que já tinha começado). Sem locação, o sinistro fica sem motorista e não há cobrança.
+- **Andamento:** Aberto → Em análise (seguradora) → Em reparo → Encerrado, ou Cancelado. Só avança; encerrado e cancelado são finais. Cada mudança entra no histórico.
+- **Culpa:** quem registra decide (do motorista, de terceiro ou a apurar). O sistema não decide a culpa.
+- **Cobrança da franquia:** gera uma conta a receber do tipo Avarias (uma por sinistro; repetir devolve a mesma). Não cobra se a culpa for de terceiro. Aparece na Área do Motorista.
+- **Alerta:** sinistro sem conclusão há mais de 15 dias avisa a equipe, com reaviso semanal.
+- **Não faz:** não integra com seguradora, não muda a situação do veículo sozinho e não calcula o valor do reparo.
+
 ### A-KM-01 — KM excedente automático **[R]**
 - **Quando roda:** ao aprovar uma vistoria com hodômetro.
 - **Base:** o hodômetro da entrega ou, se não houver, a 1ª vistoria aprovada.

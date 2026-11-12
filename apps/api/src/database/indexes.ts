@@ -169,6 +169,12 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
     },
     {
       // Uma multa gera no máximo uma cobrança (idempotência do "Cobrar").
+      key: { organizationId: 1, claimId: 1 },
+      unique: true,
+      partialFilterExpression: { claimId: { $type: 'objectId' } },
+      name: 'uniq_claim_charge',
+    },
+    {
       key: { organizationId: 1, trafficFineId: 1 },
       unique: true,
       partialFilterExpression: { trafficFineId: { $type: 'objectId' } },
@@ -240,6 +246,11 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
     { key: { reportExpiresAt: 1 }, partialFilterExpression: { reportEncrypted: { $type: 'string' } }, name: 'by_report_expiry' },
   ]);
 
+  await c.claims.createIndexes([
+    { key: { organizationId: 1, claimNumber: 1 }, unique: true, name: 'uniq_org_claim_number' },
+    { key: { organizationId: 1, status: 1, createdAt: -1 }, name: 'by_org_status' },
+    { key: { organizationId: 1, vehicleId: 1, occurredOn: -1 }, name: 'by_vehicle' },
+  ]);
   await c.trafficFines.createIndexes([
     { key: { organizationId: 1, fineNumber: 1 }, unique: true, name: 'uniq_org_fine_number' },
     {

@@ -1,6 +1,9 @@
 import type { ObjectId } from 'mongodb';
 import type {
   BankAccountType,
+  ClaimFault,
+  ClaimKind,
+  ClaimStatus,
   DispatchDeliveryStatus,
   DriverStatus,
   InspectionPeriod,
@@ -566,6 +569,8 @@ export interface ReceivableDoc extends Tenant {
   expectedPeriod: string | null;
   /** kind FINE: a multa que originou a cobrança. */
   trafficFineId?: ObjectId | null;
+  /** Franquia de sinistro cobrada do motorista. */
+  claimId?: ObjectId | null;
   status: ReceivableStatus;
   createdBy: ObjectId | null;
   version: number;
@@ -700,6 +705,32 @@ export interface RentalLeadDoc extends Tenant {
   notes: string | null;
   ip: string | null;
   handledBy: ObjectId | null;
+}
+
+export interface ClaimDoc extends Tenant {
+  claimNumber: string;
+  sequence: number;
+  status: ClaimStatus;
+  kind: ClaimKind;
+  fault: ClaimFault;
+  occurredOn: IsoDate;
+  location: string | null;
+  description: string;
+  policeReportNumber: string | null;
+  insurerClaimNumber: string | null;
+  deductibleCents: number | null;
+  estimatedCostCents: number | null;
+  finalCostCents: number | null;
+  vehicleId: ObjectId;
+  rentalId: ObjectId | null;
+  driverId: ObjectId | null;
+  /** Texto para busca (placa, motorista, número). */
+  searchFold: string;
+  fileIds: ObjectId[];
+  receivableId: ObjectId | null;
+  history: Array<{ at: Date; actorId: ObjectId | null; action: string; detail: string | null }>;
+  createdBy: ObjectId | null;
+  version: number;
 }
 
 export interface TrafficFineDoc extends Tenant {
