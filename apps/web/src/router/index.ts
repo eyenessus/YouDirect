@@ -187,6 +187,12 @@ const routes: RouteRecordRaw[] = [
         meta: { module: 'vehicles', title: 'Valor de mercado (FIPE)' },
       },
       {
+        path: 'vehicles/tracking',
+        name: 'vehicle-tracking',
+        component: () => import('@/features/vehicles/TrackingPage.vue'),
+        meta: { module: 'vehicles', title: 'Rastreamento' },
+      },
+      {
         path: 'vehicles/import',
         name: 'vehicle-import',
         component: () => import('@/features/vehicles/VehicleImportPage.vue'),

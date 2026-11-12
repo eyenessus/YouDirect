@@ -92,6 +92,8 @@ export interface OrganizationDoc extends Base {
     };
     /** Lembretes de cobrança pelo WhatsApp. Ausente = padrão. */
     billing?: BillingSettings;
+    /** Token do webhook de rastreadores (só o hash é guardado). */
+    tracker?: { tokenHash: string; rotatedAt: Date } | null;
     /** Programa de fidelidade do motorista. Ausente = padrão. */
     loyalty?: LoyaltySettings;
     /** Análise de crédito (Serasa). Ausente = padrão (desligada). */
@@ -192,6 +194,8 @@ export interface VehicleDoc extends Tenant {
     weeklyKmFranchise: number | null;
     highlights: string[];
   } | null;
+  /** Última posição do rastreador (atualizada pelo webhook). */
+  lastPosition?: { lat: number; lng: number; at: Date; speedKmh: number | null; ignition: boolean | null; odometerKm: number | null } | null;
   /** Valor de mercado na tabela FIPE e histórico mensal. */
   fipe?: {
     link: { brandId: string; modelId: string; yearId: string };
@@ -721,6 +725,32 @@ export interface RentalLeadDoc extends Tenant {
   notes: string | null;
   ip: string | null;
   handledBy: ObjectId | null;
+}
+
+export interface TrackerDeviceDoc extends Tenant {
+  vehicleId: ObjectId;
+  deviceId: string;
+  label: string | null;
+  createdBy: ObjectId | null;
+}
+
+export interface VehiclePositionDoc extends Tenant {
+  vehicleId: ObjectId;
+  deviceId: string;
+  lat: number;
+  lng: number;
+  at: Date;
+  speedKmh: number | null;
+  ignition: boolean | null;
+  odometerKm: number | null;
+}
+
+export interface GeofenceDoc extends Tenant {
+  name: string;
+  lat: number;
+  lng: number;
+  radiusM: number;
+  createdBy: ObjectId | null;
 }
 
 export interface VehicleSwapDoc extends Tenant {

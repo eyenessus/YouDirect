@@ -60,6 +60,7 @@ export const navigation: NavItem[] = [
       { label: 'Disponibilidade', to: '/dashboard/vehicles/availability' },
       { label: 'Abastecimento', to: '/dashboard/vehicles/fuel' },
       { label: 'Valor de mercado', to: '/dashboard/vehicles/fipe' },
+      { label: 'Rastreamento', to: '/dashboard/vehicles/tracking' },
       { label: 'Importar', to: '/dashboard/vehicles/import' },
     ],
   },

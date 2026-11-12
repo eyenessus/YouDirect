@@ -246,6 +246,20 @@ export async function ensureIndexes(ctx: MongoContext): Promise<void> {
     { key: { reportExpiresAt: 1 }, partialFilterExpression: { reportEncrypted: { $type: 'string' } }, name: 'by_report_expiry' },
   ]);
 
+  await c.trackerDevices.createIndexes([
+    { key: { organizationId: 1, deviceId: 1 }, unique: true, name: 'uniq_org_device' },
+    { key: { organizationId: 1, vehicleId: 1 }, unique: true, name: 'uniq_org_vehicle' },
+  ]);
+  await c.vehiclePositions.createIndexes([
+    { key: { organizationId: 1, deviceId: 1, at: 1 }, unique: true, name: 'uniq_device_at' },
+    { key: { organizationId: 1, vehicleId: 1, at: -1 }, name: 'by_vehicle_at' },
+    // Histórico de posições guardado por 90 dias.
+    { key: { at: 1 }, expireAfterSeconds: 90 * 24 * 3600, name: 'ttl_positions_90d' },
+  ]);
+  await c.geofences.createIndexes([{ key: { organizationId: 1, name: 1 }, unique: true, name: 'uniq_org_zone' }]);
+  await c.organizations.createIndexes([
+    { key: { 'settings.tracker.tokenHash': 1 }, unique: true, partialFilterExpression: { 'settings.tracker.tokenHash': { $type: 'string' } }, name: 'uniq_tracker_token' },
+  ]);
   await c.vehicleSwaps.createIndexes([
     { key: { organizationId: 1, status: 1, startedOn: -1 }, name: 'by_org_status' },
     {

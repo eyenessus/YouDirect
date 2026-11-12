@@ -41,6 +41,9 @@ import type {
   ClaimDoc,
   FuelLogDoc,
   VehicleSwapDoc,
+  TrackerDeviceDoc,
+  VehiclePositionDoc,
+  GeofenceDoc,
   DriverAccessTokenDoc,
   DriverSessionDoc,
   MaintenanceRequestDoc,
@@ -79,6 +82,9 @@ export interface Collections {
   claims: Collection<ClaimDoc>;
   fuelLogs: Collection<FuelLogDoc>;
   vehicleSwaps: Collection<VehicleSwapDoc>;
+  trackerDevices: Collection<TrackerDeviceDoc>;
+  vehiclePositions: Collection<VehiclePositionDoc>;
+  geofences: Collection<GeofenceDoc>;
   driverAccessTokens: Collection<DriverAccessTokenDoc>;
   driverSessions: Collection<DriverSessionDoc>;
   maintenanceRequests: Collection<MaintenanceRequestDoc>;
@@ -142,6 +148,9 @@ function buildCollections(db: Db): Collections {
     claims: db.collection<ClaimDoc>('claims'),
     fuelLogs: db.collection<FuelLogDoc>('fuelLogs'),
     vehicleSwaps: db.collection<VehicleSwapDoc>('vehicleSwaps'),
+    trackerDevices: db.collection<TrackerDeviceDoc>('trackerDevices'),
+    vehiclePositions: db.collection<VehiclePositionDoc>('vehiclePositions'),
+    geofences: db.collection<GeofenceDoc>('geofences'),
     driverAccessTokens: db.collection<DriverAccessTokenDoc>('driverAccessTokens'),
     driverSessions: db.collection<DriverSessionDoc>('driverSessions'),
     maintenanceRequests: db.collection<MaintenanceRequestDoc>('maintenanceRequests'),

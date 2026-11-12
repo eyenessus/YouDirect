@@ -11,6 +11,7 @@ import {
 import type { AppContext } from '../context.js';
 import { dueBucket, listVehicleDue, vehicleDueTitle } from './vehicle-due.js';
 import { generateClaimNotifications } from './claims.js';
+import { generateTrackerNotifications } from './tracking.js';
 
 export interface CreateNotificationInput {
   organizationId: ObjectId;
@@ -357,6 +358,7 @@ export async function runNotificationGenerators(
     generateFineNotifications(ctx, organizationId, today),
     generateVehicleDueNotifications(ctx, organizationId, today),
     generateClaimNotifications(ctx, organizationId, today),
+    generateTrackerNotifications(ctx, organizationId, today),
   ]);
   return results.reduce((a, b) => a + b, 0);
 }
